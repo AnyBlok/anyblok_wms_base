@@ -1,0 +1,15 @@
+syntax: glob
+
+dist
+build
+doc/_build
+
+*.egg-info
+*.swp
+*.pyc
+*.pyo
+*\#
+*.\#*
+*~
+*.orig
+*.DS_Store
