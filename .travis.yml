@@ -1,0 +1,39 @@
+language: python
+sudo: false
+
+python:
+  - "3.5"
+  - "3.6"
+  - "3.6-dev" # 3.6 development branch
+
+matrix:
+  allow_failures:
+      - python: "3.6-dev"
+
+virtualenv:
+  system_site_packages: false
+
+services:
+  - postgresql
+
+install:
+  - pip install flake8
+  - pip install coverage
+  - pip install nose
+  - pip install coveralls
+  - pip install -e .
+
+env:
+  global:
+    - ANYBLOK_DATABASE_NAME=travis_ci_test
+    - ANYBLOK_DATABASE_DRIVER=postgresql
+    - ANYBLOK_DATABASE_USER=postgres
+
+script:
+  - flake8 anyblok_wms_base
+  - psql -c 'create database travis_ci_test;' -U postgres
+  - anyblok_createdb --install-all-bloks
+  - nosetests anyblok_wms_base/bloks --with-anyblok-bloks -v -s --with-coverage --cover-package=anyblok_wms_base
+
+after_success:
+  coveralls
