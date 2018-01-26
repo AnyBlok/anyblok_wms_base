@@ -31,7 +31,6 @@ env:
 
 script:
   - flake8 anyblok_wms_base
-  - psql -c 'create database travis_ci_test;' -U postgres
   - anyblok_createdb --install-all-bloks
   - nosetests anyblok_wms_base/bloks --with-anyblok-bloks -v -s --with-coverage --cover-package=anyblok_wms_base
 
