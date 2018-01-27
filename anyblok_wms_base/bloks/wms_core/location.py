@@ -17,13 +17,14 @@ Model = Declarations.Model
 
 
 @register(Model.Wms)
-class Items:
-    type = Many2One(model='Model.Wms.Items.Type')
-    code = String(label="Identifying code", primary_key=True)
+class Location:
+    """A stock location.
 
-
-@register(Model.Wms.Items)
-class Type:
-    """Type of WMS items"""
+    TODO add location types to encode behavioral properties (internal, EDI,
+    stuff like size ?)
+    """
     id = Integer(label="Identifier", primary_key=True)
-    label = String(label=u"Label")
+    code = String(label="Identifying code")  # TODO index
+    label = String(label="Label")
+    parent = Many2One(label="Parent location",
+                      model='Model.Wms.Location')

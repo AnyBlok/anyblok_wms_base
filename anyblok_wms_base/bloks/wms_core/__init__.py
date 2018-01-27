@@ -18,4 +18,5 @@ class WmsCore(Blok):
     @classmethod
     def import_declaration_module(cls):
         from . import ns  # noqa
-        from . import items  # noqa
+        from . import location  # noqa
+        from . import goods  # noqa

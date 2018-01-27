@@ -11,6 +11,6 @@ from anyblok.tests.testcase import BlokTestCase
 
 class TestCore(BlokTestCase):
 
-    def test_insert_items_type(self):
-        items_type = self.registry.Wms.Items.Type.insert(label="My items type")
-        self.assertEqual(items_type.label, "My items type")
+    def test_insert_goods_type(self):
+        goods_type = self.registry.Wms.Goods.Type.insert(label="My good type")
+        self.assertEqual(goods_type.label, "My good type")
