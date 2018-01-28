@@ -8,10 +8,11 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 """Various constants used throughout WMS applications.
 
-ITEMS_STATES
+GOODS_STATES
 ------------
 
-This is for the ``state`` column of the ``Wms.Items`` model
+This is the enumeration of possible values of the ``state`` column of
+the ``Wms.Goods`` model.
 
 - ``present``:
         means that the represented goods are (supposed to be) actually
@@ -29,4 +30,4 @@ This is for the ``state`` column of the ``Wms.Items`` model
 """
 
 
-ITEMS_STATES = ('past', 'present', 'future')
+GOODS_STATES = ('past', 'present', 'future')
