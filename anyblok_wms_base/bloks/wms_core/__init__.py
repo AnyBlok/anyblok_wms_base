@@ -19,4 +19,7 @@ class WmsCore(Blok):
     def import_declaration_module(cls):
         from . import ns  # noqa
         from . import location  # noqa
+        from . import operation # noqa
         from . import goods  # noqa
+
+    # TODO reload

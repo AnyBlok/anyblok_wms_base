@@ -61,6 +61,9 @@ class Goods:
     properties = Many2One(label="Properties",
                           model='Model.Wms.Goods.Properties')
     location = Many2One(model=Model.Wms.Location, nullable=False)
+    reason = Many2One(label="The operation that is the reason why "
+                      "these goods are here",
+                      model=Model.Wms.Operation, nullable=False)
 
 
 @register(Model.Wms.Goods)

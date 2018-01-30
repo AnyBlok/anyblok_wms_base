@@ -11,6 +11,25 @@ from anyblok.tests.testcase import BlokTestCase
 
 class TestCore(BlokTestCase):
 
-    def test_insert_goods_type(self):
-        goods_type = self.registry.Wms.Goods.Type.insert(label="My good type")
+    def test_minimal(self):
+        Wms = self.registry.Wms
+        goods_type = Wms.Goods.Type.insert(label="My good type")
         self.assertEqual(goods_type.label, "My good type")
+
+        loc = Wms.Location.insert(label="Root location")
+        arrival = Wms.Operation.Arrival.insert(goods_type=goods_type,
+                                               location=loc,
+                                               state='done',
+                                               quantity=3)
+        # basic test of polymorphism
+        op = Wms.Operation.query().get(arrival.id)
+        self.assertEqual(op, arrival)
+        self.assertEqual(op.state, 'done')
+        self.assertEqual(op.location, loc)
+        self.assertEqual(op.quantity, 3)
+        goods = Wms.Goods.insert(quantity=3,
+                                 type=goods_type,
+                                 location=loc,
+                                 state='present',
+                                 reason=arrival)
+        self.assertEqual(goods.reason, op)
