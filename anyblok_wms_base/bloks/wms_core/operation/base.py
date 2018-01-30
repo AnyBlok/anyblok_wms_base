@@ -10,6 +10,7 @@
 from anyblok import Declarations
 from anyblok.column import String
 from anyblok.column import Integer
+from anyblok.relationship import Many2Many
 
 register = Declarations.register
 Model = Declarations.Model
@@ -37,12 +38,40 @@ class Operation:
     - comment: free field to store details of how it went, or motivation
                for the operation (downstream libraries implementing scheduling
                should better use columns rather than this field).
+    - follows:
+        the operations that are the direct reasons
+        for the presence of Goods the present one is about.
+        This is a Many2Many relationship because there might be
+        several Goods involved in the operation, but for each of them,
+        it'll be exactly one operation, namely the latest before
+        the present one. In other words, operations history is a directed
+        acyclic graph, whose edges are encoded by this Many2Many.
+
+        This field can be empty in case of initial operations.
+
+        Examples:
+
+             + a move of a bottle of milk that follows the unpacking
+               of a 6-pack, which itself follows a move from somewhere
+               else
+             + a parcel packing operation that follows exactly one move
+               to the shipping area for each Goods to be packed.
+               They themselves would follow more operations.
+             + an Arrival typically doesn't follow anything (but might be due
+               to some kind of purchase order).
+
     """
     id = Integer(label="Identifier, shared with specific tables",
                  primary_key=True)
     type = String(label="Operation Type", nullable=False)  # TODO enum ?
     state = String(label="State", nullable=False)  # TODO enum ?
     comment = String(label="Comment")
+    follows = Many2Many(model='Model.Wms.Operation',
+                        m2m_remote_columns='parent_id',
+                        m2m_local_columns='child_id',
+                        join_table='wms_operation_history',
+                        label="Immediate preceding operations",
+                        )
 
     @classmethod
     def define_mapper_args(cls):
