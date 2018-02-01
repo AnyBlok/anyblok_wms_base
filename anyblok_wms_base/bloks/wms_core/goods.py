@@ -93,6 +93,7 @@ class Type:
     """
     id = Integer(label="Identifier", primary_key=True)
     label = String(label=u"Label")
+    behaviours = Jsonb(label="Behaviours in operations")
 
 
 @register(Model.Wms.Goods)
