@@ -16,6 +16,9 @@ virtualenv:
 services:
   - postgresql
 
+addons:
+  postgresql: "9.6"
+
 install:
   - pip install flake8
   - pip install coverage
