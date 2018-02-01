@@ -9,10 +9,13 @@
 
 from anyblok import Declarations
 from anyblok.column import String
+from anyblok.column import Selection
 from anyblok.column import Integer
 from anyblok.column import Decimal
 from anyblok.relationship import Many2One
 from anyblok_postgres.column import Jsonb
+
+from anyblok_wms_base.constants import GOODS_STATES
 
 register = Declarations.register
 Model = Declarations.Model
@@ -57,7 +60,10 @@ class Goods:
     id = Integer(label="Identifier", primary_key=True)
     quantity = Decimal(label="Quantity")  # TODO non negativity constraint
     code = String(label="Identifying code")  # TODO index
-    state = String(label="State of existence")  # TODO consider switch to Enum
+    # TODO consider switch to Enum
+    state = Selection(label="State of existence",
+                      selections=GOODS_STATES,
+                      )
     properties = Many2One(label="Properties",
                           model='Model.Wms.Goods.Properties')
     location = Many2One(model=Model.Wms.Location, nullable=False)

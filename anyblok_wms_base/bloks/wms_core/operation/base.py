@@ -9,8 +9,11 @@
 
 from anyblok import Declarations
 from anyblok.column import String
+from anyblok.column import Selection
 from anyblok.column import Integer
 from anyblok.relationship import Many2Many
+
+from anyblok_wms_base.constants import OPERATION_STATES, OPERATION_TYPES
 
 register = Declarations.register
 Model = Declarations.Model
@@ -82,8 +85,15 @@ class Operation:
     """
     id = Integer(label="Identifier, shared with specific tables",
                  primary_key=True)
-    type = String(label="Operation Type", nullable=False)  # TODO enum ?
-    state = String(label="State", nullable=False)  # TODO enum ?
+    # TODO enums ?
+    type = Selection(label="Operation Type",
+                     selections=OPERATION_TYPES,
+                     nullable=False,
+                     )
+    state = Selection(label="State of operation",
+                      selections=OPERATION_STATES,
+                      nullable=False,
+                      )
     comment = String(label="Comment")
     follows = Many2Many(model='Model.Wms.Operation',
                         m2m_remote_columns='parent_id',
