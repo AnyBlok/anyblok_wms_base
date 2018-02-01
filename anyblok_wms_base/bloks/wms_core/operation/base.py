@@ -32,7 +32,9 @@ class Operation:
     to satisfy their auditing needs (some notion of "user" or "operator" comes
     to mind).
 
-    More column semantics:
+    Column semantics
+    ----------------
+
     - id: is equal to the id of the concrete operations model
     - state: see mod:`constants`
     - comment: free field to store details of how it went, or motivation
@@ -60,6 +62,23 @@ class Operation:
              + an Arrival typically doesn't follow anything (but might be due
                to some kind of purchase order).
 
+    API
+    ---
+        Downstream applications and libraries should never call ``insert()``
+        in their main code, and must use :meth:`create` instead.
+
+        as this is Python, they still can, but that requires
+        the developper to exactly know what they are doing, much like issuing
+        INSERT statements in the console).
+
+        Keeping ``insert()`` and ``update()`` behaviour as in vanilla
+        SQLAlchemy has the advantage of making them easily usable in
+        ``wms_core`` internal implementation without side effects.
+
+        Downstream developers should feel free to use ``insert()`` and
+        ``update()`` in their unit or integration tests. The fact that they
+        are inert should help reproduce weird situations (yes, the same could
+        be achieved by forcing the class in use).
     """
     id = Integer(label="Identifier, shared with specific tables",
                  primary_key=True)
@@ -87,3 +106,78 @@ class Operation:
             })
 
         return mapper_args
+
+    @classmethod
+    def create(cls, state='planned', follows=None, **kwargs):
+        """Main method for creation of operations
+
+        In contrast with ``insert()``, it performs some Wms specific logic,
+        e.g, creation of Goods, but that's up to the specific subclasses.
+        """
+        if follows is not None:
+            raise ValueError("'follows' should not be passed in kwargs, as it "
+                             "is automatically computed upon "
+                             "operation creation. Other kwargs: %r)" % kwargs)
+        follows = cls.find_parent_operations(**kwargs)
+        cls.check_create_conditions(state, **kwargs)
+        op = cls.insert(state=state, **kwargs)
+        op.follows.extend(follows)
+        op.after_insert()
+        return op
+
+    def execute(self):
+        """Execute the operation.
+
+        This is an idempotent call: if the operation is already done,
+        nothing happens.
+        """
+        if self.state == 'done':
+            return
+        self.check_execute_conditions()
+        self.execute_planned()
+        self.state = 'done'
+
+    @classmethod
+    def check_create_conditions(cls, state, **kwargs):
+        """Used during creation to check that the Operation is indeed doable.
+
+        The given state obviously plays a role, and this pre insertion check
+        can spare us some costly operations.
+
+        To be implemented in subclasses, by raising exceptions if something's
+        wrong.
+        """
+        raise NotImplementedError
+
+    @classmethod
+    def find_parent_operations(cls, **kwargs):
+        """Return the list or tuple of operations that this one follows
+
+        To be implemented in subclasses.
+        """
+        raise NotImplementedError
+
+    def after_insert(self):
+        """Perform specific logic after insert during creation process
+
+        To be implemented in subclasses.
+        """
+        raise NotImplementedError
+
+    @classmethod
+    def check_execute_conditions(cls, **kwargs):
+        """Used during execution to check that the Operation is indeed doable.
+
+        To be implemented in subclasses, by raising an exception if something's
+        wrong.
+        """
+        raise NotImplementedError
+
+    def execute_planned(self):
+        """Execute an operation that's up to now in the 'planned' state.
+
+        This method does not have to care about the Operation state.
+
+        To be implemented in subclasses.
+        """
+        raise NotImplementedError

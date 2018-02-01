@@ -41,3 +41,30 @@ class Arrival(Operation):
     goods_type = Many2One(model='Model.Wms.Goods.Type')
     location = Many2One(model='Model.Wms.Location')
     quantity = Decimal(label="Quantity")  # TODO non negativity constraint
+
+    @classmethod
+    def check_create_conditions(cls, state, **kwargs):
+        """An Arrival does not have preconditions."""
+
+    @classmethod
+    def find_parent_operations(cls, goods=None, **kwargs):
+        """an Arrival does not follow anything."""
+        return ()
+
+    def check_execute_conditions(self):
+        """An Arrival does not have preconditions."""
+
+    def after_insert(self):
+        self.registry.Wms.Goods.insert(
+                location=self.location,
+                quantity=self.quantity,
+                reason=self,
+                state='present' if self.state == 'done' else 'future',
+                type=self.goods_type,
+                # TODO code and properties, see class docstring for open
+                # questions
+        )
+
+    def execute_planned(self):
+        Goods = self.registry.Wms.Goods
+        Goods.query().filter(Goods.reason == self).one().update(state='present')
