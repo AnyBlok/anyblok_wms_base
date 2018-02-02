@@ -32,6 +32,9 @@ class Goods:
           see :class:`Properties`
     - state:
           see :mod:`constants`
+    - reason:
+          this records the Operation that is responsible for the current
+          values of the Goods record, including its state
     - quantity:
           this has been defined as Decimal to cover a broad scope of
           applications. However, for performance reasons, applications are

@@ -85,8 +85,7 @@ class Unpack(Operation):
                        GoodsType.id.in_(type_ids)).all()}
 
         if self.state == 'done':
-            # TODO reason
-            packs.update(state='past')
+            packs.update(state='past', reason=self)
             for outcome in spec:
                 Goods.insert(quantity=outcome['quantity'] * self.quantity,
                              location=packs.location,
