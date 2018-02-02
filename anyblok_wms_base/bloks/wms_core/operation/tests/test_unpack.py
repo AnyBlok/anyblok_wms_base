@@ -19,7 +19,7 @@ class TestUnpack(BlokTestCase):
 
         self.stock = Wms.Location.insert(label="Stock")
 
-    def create_packs(self, type_behaviours=None):
+    def create_packs(self, type_behaviours=None, properties=None):
         self.packed_goods_type = self.Goods.Type.insert(
             label="Pack",
             behaviours=type_behaviours)
@@ -31,16 +31,31 @@ class TestUnpack(BlokTestCase):
             state='planned',
             quantity=3)
 
+        if properties is None:
+            props = None
+        else:
+            props = self.Goods.Properties.insert(**properties)
         self.packs = self.Goods.insert(quantity=5,
                                        type=self.packed_goods_type,
                                        location=self.stock,
                                        state='future',
+                                       properties=props,
                                        reason=self.arrival)
 
-    def test_whole_done_one_unpacked_type(self):
+    def test_whole_done_one_unpacked_type_props(self):
         unpacked_type = self.Goods.Type.insert(label="Unpacked")
-        self.create_packs(type_behaviours=dict(
-            unpack=[(unpacked_type.id, 3)]))
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(
+                outcomes=[
+                    dict(type=unpacked_type.id,
+                         quantity=3,
+                         forward_properties=['foo', 'bar'],
+                         required_properties=['foo'],
+                         )
+                ],
+            )),
+            properties=dict(flexible=dict(foo=3)),
+            )
         self.packs.update(state='present')
         unp = self.Unpack.create(quantity=5,
                                  state='done',
@@ -54,3 +69,59 @@ class TestUnpack(BlokTestCase):
         unpacked_goods = unpacked_goods[0]
         self.assertEqual(unpacked_goods.quantity, 15)
         self.assertEqual(unpacked_goods.type, unpacked_type)
+
+    def test_whole_done_one_unpacked_type_missing_props(self):
+        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(
+                outcomes=[
+                    dict(type=unpacked_type.id,
+                         quantity=3,
+                         forward_properties=['foo', 'bar'],
+                         required_properties=['foo'],
+                         )
+                ],
+            )),
+            )
+
+        def unpack():
+            self.packs.update(state='present')
+            self.Unpack.create(quantity=5,
+                               state='done',
+                               goods=self.packs)
+
+        # No property at all, we don't fail
+        with self.assertRaises(ValueError):
+            unpack()
+
+        # Having properties, still missing the required one
+        self.packs.properties = self.Goods.Properties.insert(
+            flexible=dict(bar=1))
+
+        with self.assertRaises(ValueError):
+            unpack()
+
+    def test_whole_done_one_unpacked_type_no_props(self):
+        """Unpacking operation, forwarding no properties."""
+        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        self.create_packs(type_behaviours=dict(unpack=dict(
+                outcomes=[
+                    dict(type=unpacked_type.id,
+                         quantity=3,
+                         )
+                ]
+        )))
+        self.packs.update(state='present')
+        unp = self.Unpack.create(quantity=5,
+                                 state='done',
+                                 goods=self.packs)
+        self.assertEqual(unp.follows, [self.arrival])
+
+        unpacked_goods = self.Goods.query().filter(
+            self.Goods.type == unpacked_type).all()
+
+        self.assertEqual(len(unpacked_goods), 1)
+        unpacked_goods = unpacked_goods[0]
+        self.assertEqual(unpacked_goods.quantity, 15)
+        self.assertEqual(unpacked_goods.type, unpacked_type)
+        self.assertEqual(unpacked_goods.properties, None)
