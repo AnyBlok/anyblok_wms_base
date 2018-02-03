@@ -6,7 +6,6 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-
 from anyblok import Declarations
 from anyblok.column import String
 from anyblok.column import Selection
@@ -29,7 +28,20 @@ class Goods:
     for all the intents and purposes the WMS is used for.
 
     - properties:
-          see :class:`Properties`
+          Besides its main columns meant to represent handling by the Wms Base
+          modules, this model has a flexible model of data, that can be
+          handled through the :meth:`get_property` and :meth:`set_property`
+          methods.
+
+          As far as ``wms_core`` is concerned, properties can be anything,
+          yet downstream applications and libraries can decide whether to
+          describe them in the database schema or not.
+
+          Technically, this data is deported into the :class:`Properties`
+          Model (see there on how to add additional properties). The properties
+          column value can be None, so that we don't pollute the database with
+          empty lines of Property records, although this is subject to change
+          in the future.
     - state:
           see :mod:`constants`
     - reason:
@@ -73,6 +85,30 @@ class Goods:
     reason = Many2One(label="The operation that is the reason why "
                       "these goods are here",
                       model=Model.Wms.Operation, nullable=False)
+
+    def get_property(self, k):
+        """Property getter.
+
+        API: same as a ``get()`` on a dict.
+
+        Actually I'd prefer to simply implement the dict API, but we can't
+        direcly inherit from UserDict yet. This is good enough to provide
+        the abstraction needed for current internal wms_core calls.
+        """
+        if self.properties is None:
+            return None
+
+        return self.properties.get(k)
+
+    def set_property(self, k, v):
+        """Property setter.
+
+        See remarks on :meth:`get_property`1
+        """
+        if self.properties is None:
+            self.properties = self.registry.Wms.Goods.Properties(
+                flexible=dict())
+        return self.properties.set(k, v)
 
 
 @register(Model.Wms.Goods)
@@ -127,3 +163,11 @@ class Properties:
     """
     id = Integer(label="Identifier", primary_key=True)
     flexible = Jsonb(label="Flexible properties")
+
+    def get(self, k):
+        # TODO non-flexible props (direct columns)
+        return self.flexible.get(k)
+
+    def set(self, k, v):
+        # TODO non-flexible props (direct columns)
+        self.flexible[k] = v
