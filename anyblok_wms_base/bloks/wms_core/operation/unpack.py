@@ -86,52 +86,45 @@ class Unpack(Operation):
 
         if self.state == 'done':
             packs.update(state='past', reason=self)
-            for outcome in spec:
-                Goods.insert(quantity=outcome['quantity'] * self.quantity,
-                             location=packs.location,
-                             type=packs_types[outcome['type']],
-                             reason=self,
-                             properties=self.forward_props(outcome),
-                             state='present')
+            for outcome_spec in spec:
+                outcome = Goods.insert(
+                    quantity=outcome_spec['quantity'] * self.quantity,
+                    location=packs.location,
+                    type=packs_types[outcome_spec['type']],
+                    reason=self,
+                    state='present')
+                self.forward_props(outcome_spec, outcome),
+
         else:
             raise NotImplementedError
 
-    def forward_props(self, outcome):
+    def forward_props(self, spec, outcome):
         """Create a the properties for a given outcome (Goods line)
 
-        :param outcome: the relevant part of behaviour for this outcome
+        :param spec: the relevant part of behaviour for this outcome
+        :param outcome: just-created Goods instance
         :returns: None if no properties are to be created
         """
         packs = self.goods
-        fwd_props = outcome.get('forward_properties', ())
-        req_props = outcome.get('required_properties')
-        pack_props = packs.properties
-        if req_props and not pack_props:
+        fwd_props = spec.get('forward_properties', ())
+        req_props = spec.get('required_properties')
+
+        if req_props and not packs.properties:
             # TODO precise exception
             raise ValueError(
                 "Packs %s have no properties, yet its type %s "
                 "requires these for Unpack operation: %r" % (
                     packs, packs.type, req_props))
         if not fwd_props:
-            outcome_flexible = None
-        else:
-            # TODO non-flexible props (direct columns)
-            outcome_flexible = {}
-            pack_flexible = pack_props.flexible
-            for p in fwd_props:
-                # TODO higher level API for props manipulation on Goods
-                if pack_flexible is None:
-                    o_p = None
-                else:
-                    o_p = pack_flexible.get(p)
-                if o_p is None:
-                    if p not in req_props:
-                        continue
-                    raise ValueError(
-                        "Pack %s lacks the property %r "
-                        "required by its type "
-                        "for Unpack operation" % (packs, p))
-                outcome_flexible[p] = o_p
-        if outcome_flexible:
-            return self.registry.Wms.Goods.Properties.insert(
-                flexible=outcome_flexible)
+            return
+        for pname in fwd_props:
+            pvalue = packs.get_property(pname)
+            if pvalue is None:
+                if pname not in req_props:
+                    continue
+            # TODO precise exception
+                raise ValueError(
+                    "Pack %s lacks the property %r "
+                    "required by its type "
+                    "for Unpack operation" % (packs, pname))
+            outcome.set_property(pname, pvalue)
