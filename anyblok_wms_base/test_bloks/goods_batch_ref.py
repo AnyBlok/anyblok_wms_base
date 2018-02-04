@@ -8,13 +8,6 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok import Declarations
 from anyblok.column import String
-from anyblok.column import Selection
-from anyblok.column import Integer
-from anyblok.column import Decimal
-from anyblok.relationship import Many2One
-from anyblok_postgres.column import Jsonb
-
-from anyblok_wms_base.constants import GOODS_STATES
 
 register = Declarations.register
 Model = Declarations.Model
