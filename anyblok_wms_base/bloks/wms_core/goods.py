@@ -156,18 +156,28 @@ class Properties:
 
     Applications are welcomed to overload this model to add new columns rather
     than storing their meaningful information in the ``flexible`` JSONB column,
-    if it has added value for performance or programmming tightness reasons,
-    but must in that case take care that all operations are modified to
-    handle the new columns properly. We'll try and provide helping mechanisms
-    in the core to that effect, but that's vaporware for the time being.
+    if it has added value for performance or programmming tightness reasons.
+
+    On :class:`Goods`, the ``get_property``/``set_property`` API will treat
+    direct columns and top-level keys of ``flexible`` in the same way, meaning
+    that, as long as all pieces of code use only this API to handle properties,
+    flexible keys can be replaced with columns transparently at any time
+    (assuming of course that any existing data is properly migrated to the new
+    schema)
     """
     id = Integer(label="Identifier", primary_key=True)
     flexible = Jsonb(label="Flexible properties")
 
     def get(self, k):
-        # TODO non-flexible props (direct columns)
+        if k in self.loaded_columns:
+            return getattr(self, k)
         return self.flexible.get(k)
 
     def set(self, k, v):
-        # TODO non-flexible props (direct columns)
-        self.flexible[k] = v
+        if k in ('id', 'flexible'):
+            raise ValueError("The key %k is reserved, and can't be used for "
+                             "properties" % k)
+        if k in self.loaded_columns:
+            setattr(self, k, v)
+        else:
+            self.flexible[k] = v

@@ -11,6 +11,8 @@ from anyblok.tests.testcase import BlokTestCase
 
 class TestGoods(BlokTestCase):
 
+    blok_entry_points = ('bloks', 'test_bloks')
+
     def setUp(self):
         Wms = self.registry.Wms
 
@@ -32,6 +34,22 @@ class TestGoods(BlokTestCase):
         goods.set_property('foo', 1)
         self.assertEqual(goods.get_property('foo'), 1)
 
+    def test_prop_api_column(self):
+        goods = self.Goods.insert(type=self.goods_type, quantity=1,
+                                  reason=self.arrival, location=self.stock)
+
+        goods.set_property('batch', '12345')
+        self.assertEqual(goods.get_property('batch'), '12345')
+
+    def test_prop_api_reserved(self):
+        goods = self.Goods.insert(type=self.goods_type, quantity=1,
+                                  reason=self.arrival, location=self.stock)
+
+        with self.assertRaises(ValueError):
+            goods.set_property('id', 1)
+        with self.assertRaises(ValueError):
+            goods.set_property('flexible', 'foo')
+
     def test_prop_api_internal(self):
         """Internal implementation details of Goods dict API.
 
@@ -43,3 +61,16 @@ class TestGoods(BlokTestCase):
 
         goods.set_property('foo', 2)
         self.assertEqual(goods.properties.flexible, dict(foo=2))
+
+    def test_prop_api_column_internal(self):
+        """Internal implementation details of Goods dict API (case of column)
+
+        Separated to ease maintenance of tests in case it changes in
+        the future.
+        """
+        goods = self.Goods.insert(type=self.goods_type, quantity=1,
+                                  reason=self.arrival, location=self.stock)
+
+        goods.set_property('batch', '2')
+        self.assertEqual(goods.properties.flexible, {})
+        self.assertEqual(goods.properties.batch, '2')
