@@ -70,6 +70,71 @@ class TestUnpack(BlokTestCase):
         self.assertEqual(unpacked_goods.quantity, 15)
         self.assertEqual(unpacked_goods.type, unpacked_type)
 
+    def test_whole_done_one_unpacked_unform(self):
+        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(
+                uniform_outcomes=True,
+                outcomes=[
+                    dict(type=unpacked_type.id,
+                         quantity=3,
+                         )
+                ],
+            )),
+            properties=dict(flexible=dict(foo=3, po_ref='ABC')),
+            )
+        self.packs.update(state='present')
+        unp = self.Unpack.create(quantity=5,
+                                 state='done',
+                                 goods=self.packs)
+        self.assertEqual(unp.follows, [self.arrival])
+
+        unpacked_goods = self.Goods.query().filter(
+            self.Goods.type == unpacked_type).all()
+
+        self.assertEqual(len(unpacked_goods), 1)
+        unpacked_goods = unpacked_goods[0]
+        self.assertEqual(unpacked_goods.quantity, 15)
+        self.assertEqual(unpacked_goods.type, unpacked_type)
+        self.assertEqual(unpacked_goods.properties, self.packs.properties)
+
+    def test_whole_done_non_uniform(self):
+        """Unpack with outcomes defined in pack properties.
+
+        Properties after unpack are forwarded according to configuration
+        on the packs' Goods Type and on the packs' properties.
+        """
+        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(
+                forward_properties=['foo', 'bar'],
+                required_properties=['foo'],
+            )),
+            properties=dict(
+                flexible=dict(foo=3,
+                              baz='second hand',
+                              unpack_outcomes=[
+                                  dict(type=unpacked_type.id,
+                                       quantity=2,
+                                       forward_properties=['bar', 'baz']
+                                       )
+                                  ])))
+        self.packs.update(state='present')
+        unp = self.Unpack.create(quantity=5,
+                                 state='done',
+                                 goods=self.packs)
+        self.assertEqual(unp.follows, [self.arrival])
+
+        unpacked_goods = self.Goods.query().filter(
+            self.Goods.type == unpacked_type).all()
+
+        self.assertEqual(len(unpacked_goods), 1)
+        unpacked_goods = unpacked_goods[0]
+        self.assertEqual(unpacked_goods.quantity, 10)
+        self.assertEqual(unpacked_goods.type, unpacked_type)
+        self.assertEqual(unpacked_goods.get_property('foo'), 3)
+        self.assertEqual(unpacked_goods.get_property('baz'), 'second hand')
+
     def test_whole_done_one_unpacked_type_missing_props(self):
         unpacked_type = self.Goods.Type.insert(label="Unpacked")
         self.create_packs(
