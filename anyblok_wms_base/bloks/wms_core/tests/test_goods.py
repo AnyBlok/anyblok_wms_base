@@ -30,6 +30,7 @@ class TestGoods(BlokTestCase):
                                   reason=self.arrival, location=self.stock)
 
         self.assertIsNone(goods.get_property('foo'))
+        self.assertEqual(goods.get_property('foo', default=-1), -1)
 
         goods.set_property('foo', 1)
         self.assertEqual(goods.get_property('foo'), 1)

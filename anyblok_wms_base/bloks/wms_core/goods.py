@@ -86,7 +86,7 @@ class Goods:
                       "these goods are here",
                       model=Model.Wms.Operation, nullable=False)
 
-    def get_property(self, k):
+    def get_property(self, k, default=None):
         """Property getter.
 
         API: same as a ``get()`` on a dict.
@@ -96,9 +96,9 @@ class Goods:
         the abstraction needed for current internal wms_core calls.
         """
         if self.properties is None:
-            return None
+            return default
 
-        return self.properties.get(k)
+        return self.properties.get(k, default)
 
     def set_property(self, k, v):
         """Property setter.
@@ -168,10 +168,10 @@ class Properties:
     id = Integer(label="Identifier", primary_key=True)
     flexible = Jsonb(label="Flexible properties")
 
-    def get(self, k):
+    def get(self, k, default=None):
         if k in self.loaded_columns:
             return getattr(self, k)
-        return self.flexible.get(k)
+        return self.flexible.get(k, default)
 
     def set(self, k, v):
         if k in ('id', 'flexible'):
