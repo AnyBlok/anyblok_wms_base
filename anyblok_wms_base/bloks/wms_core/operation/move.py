@@ -81,17 +81,18 @@ class Move(Operation):
             self.registry.flush()
             goods.update(reason=self)
         else:
-            # TODO check for some kind of copy() API on SQLA
-            # TODO forgot same problem of bias of stock levels as for Split!
-            # actually we'd need a split of the whole ;-)
-            self.registry.Wms.Goods.insert(
-                location=self.destination,
-                quantity=self.quantity,
-                reason=self,
-                state='future',
-                type=goods.type,
-                code=goods.code,
-                properties=goods.properties)
+            fields = dict(reason=self,
+                          state='future',
+                          type=goods.type,
+                          code=goods.code,
+                          properties=goods.properties)
+            Goods = self.registry.Wms.Goods
+            Goods.insert(location=self.destination,
+                         quantity=self.quantity,
+                         **fields)
+            Goods.insert(location=goods.location,
+                         quantity=-self.quantity,
+                         **fields)
 
     def check_execute_conditions(self):
         goods = self.goods
@@ -103,18 +104,21 @@ class Move(Operation):
                     self.quantity, goods, goods.quantity))
 
     def execute_planned(self):
+        Goods = self.registry.Wms.Goods
         goods = self.goods
         follows = self.follows
         split = follows[0] if len(follows) == 1 else None
         if split and split.type == 'wms_split' and split.state != 'done':
             split.execute()  # TODO bypass checks ?
+        else:
+            Goods.query().filter(
+                Goods.reason == self).filter(Goods.quantity < 0).delete()
 
         if goods.state != 'present':
             raise ValueError("Can't excute a Move for goods "
                              "%r because of their state %r" % (goods,
                                                                goods.state))
 
-        Goods = self.registry.Wms.Goods
         after_move = Goods.query().filter(Goods.reason == self).one()
         after_move.update(state='present')
         before_move = self.goods
