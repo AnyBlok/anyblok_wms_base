@@ -71,6 +71,20 @@ class Unpack(Operation):
             raise NotImplementedError(
                 "Sorry not able to split Goods records yet")
 
+    def check_execute_conditions(self):
+        goods = self.goods
+        if goods.state != 'present':
+            raise ValueError("Can't excute an Unpack for goods "
+                             "%r because of their state %r" % (goods,
+                                                               goods.state))
+
+    def execute_planned(self):
+        # TODO adapt to splitting
+        Goods = self.registry.Wms.Goods
+        for outcome in Goods.query().filter(Goods.reason == self).all():
+            outcome.state = 'present'
+        self.goods.state = 'past'
+
     def after_insert(self):
         # TODO implement splitting
         Goods = self.registry.Wms.Goods
@@ -84,19 +98,17 @@ class Unpack(Operation):
         packs_types = {gt.id: gt for gt in GoodsType.query().filter(
                        GoodsType.id.in_(type_ids)).all()}
 
+        outcome_state = 'present' if self.state == 'done' else 'future'
         if self.state == 'done':
             packs.update(state='past', reason=self)
-            for outcome_spec in spec:
-                outcome = Goods.insert(
-                    quantity=outcome_spec['quantity'] * self.quantity,
-                    location=packs.location,
-                    type=packs_types[outcome_spec['type']],
-                    reason=self,
-                    state='present')
-                self.forward_props(outcome_spec, outcome),
-
-        else:
-            raise NotImplementedError
+        for outcome_spec in spec:
+            outcome = Goods.insert(
+                quantity=outcome_spec['quantity'] * self.quantity,
+                location=packs.location,
+                type=packs_types[outcome_spec['type']],
+                reason=self,
+                state=outcome_state)
+            self.forward_props(outcome_spec, outcome),
 
     def forward_props(self, spec, outcome):
         """Handle the properties for a given outcome (Goods record)

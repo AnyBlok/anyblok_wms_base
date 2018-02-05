@@ -190,3 +190,43 @@ class TestUnpack(BlokTestCase):
         self.assertEqual(unpacked_goods.quantity, 15)
         self.assertEqual(unpacked_goods.type, unpacked_type)
         self.assertEqual(unpacked_goods.properties, None)
+
+    def test_whole_plan_execute(self):
+        """Plan an Unpack (non uniform scenario), then execute it
+        """
+        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(
+                forward_properties=['foo', 'bar'],
+                required_properties=['foo'],
+            )),
+            properties=dict(
+                flexible=dict(foo=3,
+                              baz='second hand',
+                              unpack_outcomes=[
+                                  dict(type=unpacked_type.id,
+                                       quantity=2,
+                                       forward_properties=['bar', 'baz']
+                                       )
+                                  ])))
+        unp = self.Unpack.create(quantity=5,
+                                 state='planned',
+                                 goods=self.packs)
+        self.assertEqual(unp.follows, [self.arrival])
+
+        unpacked_goods = self.Goods.query().filter(
+            self.Goods.type == unpacked_type).all()
+
+        self.assertEqual(len(unpacked_goods), 1)
+        unpacked_goods = unpacked_goods[0]
+        self.assertEqual(unpacked_goods.quantity, 10)
+        self.assertEqual(unpacked_goods.state, 'future')
+        self.assertEqual(unpacked_goods.type, unpacked_type)
+        self.assertEqual(unpacked_goods.get_property('foo'), 3)
+        self.assertEqual(unpacked_goods.get_property('baz'), 'second hand')
+        self.assertEqual(unpacked_goods.reason, unp)
+
+        self.packs.state = 'present'
+        unp.execute()
+        self.assertEqual(unpacked_goods.state, 'present')
+        self.assertEqual(self.packs.state, 'past')
