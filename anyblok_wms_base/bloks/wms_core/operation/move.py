@@ -101,7 +101,9 @@ class Move(Operation):
         Goods = self.registry.Wms.Goods
         after_move = Goods.query().filter(Goods.reason == self).one()
         after_move.update(state='present')
-        if after_move != self.goods:
+        before_move = self.goods
+        if after_move != before_move:
             # this should alway be true in case of a move planned, then
             # executed, but let's be safe for now
-            self.goods.update(state='past')
+            self.goods = after_move
+            before_move.delete()

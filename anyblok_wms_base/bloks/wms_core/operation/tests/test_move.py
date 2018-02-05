@@ -15,17 +15,17 @@ class TestMove(BlokTestCase):
         Wms = self.registry.Wms
         Operation = Wms.Operation
         goods_type = Wms.Goods.Type.insert(label="My good type")
-        incoming_loc = Wms.Location.insert(label="Incoming location")
+        self.incoming_loc = Wms.Location.insert(label="Incoming location")
         self.stock = Wms.Location.insert(label="Stock")
 
         self.arrival = Operation.Arrival.insert(goods_type=goods_type,
-                                                location=incoming_loc,
+                                                location=self.incoming_loc,
                                                 state='planned',
                                                 quantity=3)
 
         self.goods = Wms.Goods.insert(quantity=3,
                                       type=goods_type,
-                                      location=incoming_loc,
+                                      location=self.incoming_loc,
                                       state='future',
                                       reason=self.arrival)
         self.Move = Operation.Move
@@ -41,11 +41,14 @@ class TestMove(BlokTestCase):
         self.goods.update(state='present')
 
         move.execute()
+        self.assertEqual(move.state, 'done')
         moved = self.Goods.query().filter(self.Goods.reason == move).all()
         self.assertEqual(len(moved), 1)
         moved = moved[0]
         self.assertEqual(moved.state, 'present')
-        self.assertEqual(self.goods.state, 'past')
+        self.assertEqual(moved.reason, move)
+        self.assertEqual(self.Goods.query().filter(
+            self.Goods.location == self.incoming_loc).count(), 0)
 
     def test_whole_planned_execute_but_not_ready(self):
         move = self.Move.create(destination=self.stock,
