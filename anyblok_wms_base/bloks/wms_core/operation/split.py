@@ -63,8 +63,6 @@ class Split(Operation):
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
     goods = Many2One(model='Model.Wms.Goods', nullable=False)
     quantity = Decimal(label="Quantity")  # TODO non negativity constraint
-    future = Many2One(model='Model.Wms.Goods')
-    compensation = Many2One(model='Model.Wms.Goods')
 
     @classmethod
     def find_parent_operations(cls, goods=None, **kwargs):
@@ -121,13 +119,9 @@ class Split(Operation):
         else:
             new_goods['state'] = 'future'
             # TODO check for some kind of copy() API on SQLA
-            future = Goods.insert(quantity=qty, **new_goods)
-            compensation = Goods.insert(quantity=-qty, **new_goods)
-            self.registry.flush()
-            self.future = future
-            self.compensation = compensation
-            self.registry.flush()
-            return future
+            split = Goods.insert(quantity=qty, **new_goods)
+            Goods.insert(quantity=-qty, **new_goods)
+            return split
 
     def check_execute_conditions(self):
         if self.quantity > self.goods.quantity:
@@ -138,11 +132,8 @@ class Split(Operation):
 
     def execute_planned(self):
         self.goods.quantity -= self.quantity
-        # don't use reason because moves would have changed it already
-        self.future.state = 'present'
-        self.future = None
-        comp = self.compensation
-        self.compensation = None
-        self.registry.flush()
-        comp.delete()
-        self.registry.flush()
+        Goods = self.registry.Wms.Goods
+        query = Goods.query().filter(Goods.reason == self)
+        query.filter(Goods.quantity < 0).delete()
+        for created in query.filter(Goods.quantity > 0).all():
+            created.state = 'present'

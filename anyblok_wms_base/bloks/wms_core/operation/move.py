@@ -108,8 +108,13 @@ class Move(Operation):
         goods = self.goods
         follows = self.follows
         split = follows[0] if len(follows) == 1 else None
+        # TODO stronger criteria that the split has been induced by the
+        # present move
         if split and split.type == 'wms_split' and split.state != 'done':
-            split.execute()  # TODO bypass checks ?
+            split.execute()
+            # This Move took responsibility for goods' state by setting
+            # itself as reason, split.execute() can't see it any more
+            goods.state = 'present'
         else:
             Goods.query().filter(
                 Goods.reason == self).filter(Goods.quantity < 0).delete()

@@ -116,3 +116,4 @@ class TestMove(BlokTestCase):
         self.assertEqual(after_move.quantity, 1)
         self.assertEqual(after_move.location, self.stock)
         self.assertEqual(after_move.reason, move)
+        self.assertEqual(after_move.state, 'present')
