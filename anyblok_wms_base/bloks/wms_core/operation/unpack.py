@@ -12,12 +12,15 @@ from anyblok.column import Decimal
 from anyblok.column import Integer
 from anyblok.relationship import Many2One
 
+from anyblok_wms_base.exceptions import OperationGoodsError
+
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
+SingleGoods = Declarations.Mixin.WmsSingleGoodsOperation
 
 
 @register(Operation)
-class Unpack(Operation):
+class Unpack(SingleGoods, Operation):
     """Unpacking some Goods, creating new Goods records.
 
     What happens during unpacking is specified as behaviours of the
@@ -41,42 +44,23 @@ class Unpack(Operation):
     quantity = Decimal(label="Quantity")  # TODO non negativity constraint
 
     @classmethod
-    def find_parent_operations(cls, goods=None, **kwargs):
-        if goods is None:
-            raise ValueError(
-                "'goods' kwarg must be passed to Unpack.create()")
-        return [goods.reason]
-
-    @classmethod
     def check_create_conditions(cls, state, goods=None, quantity=None,
                                 **kwargs):
-        if goods is None:
-            raise ValueError("'goods' kwarg must be passed to Unpack.create()")
-        if quantity is None:
-            raise ValueError("'quantity' kwarg must be passed "
-                             "to Unpack.create()")
-        if state == 'done' and goods.state != 'present':
-            raise ValueError("Can't create an Unpack in state 'done' "
-                             "for goods %r because of their state %r" % (
-                                 goods, goods.state))
-        assert 'unpack' in goods.type.behaviours
+        super(Unpack, cls).check_create_conditions(
+            state, goods=goods,
+            quantity=quantity,
+            **kwargs)
 
-        # TODO specific exceptions
-        if quantity > goods.quantity:
-            raise ValueError(
-                "Can't unpack a greater quantity (%r) "
-                "than held in goods %r (which have quantity=%r)" % (
-                    quantity, goods, goods.quantity))
+        if 'unpack' not in goods.type.behaviours:
+            raise OperationGoodsError(
+                cls,
+                "Can't create an Unpack for Goods {goods} "
+                "because their type {type} doesn't have the 'unpack' "
+                "behaviour", goods=goods, type=goods.type)
+
         if quantity != goods.quantity:
             raise NotImplementedError(
                 "Sorry not able to split Goods records yet")
-
-    def check_execute_conditions(self):
-        goods = self.goods
-        if goods.state != 'present':
-            raise ValueError("Can't excute an Unpack for goods "
-                             "%r because of their state %r" % (goods,
-                                                               goods.state))
 
     def execute_planned(self):
         # TODO adapt to splitting

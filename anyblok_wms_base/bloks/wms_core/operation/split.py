@@ -14,10 +14,11 @@ from anyblok.relationship import Many2One
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
+SingleGoods = Declarations.Mixin.WmsSingleGoodsOperation
 
 
 @register(Operation)
-class Split(Operation):
+class Split(SingleGoods, Operation):
     """A split of Goods record.
 
     Splits are operations of a special kind, that have to be considered
@@ -64,29 +65,6 @@ class Split(Operation):
     goods = Many2One(model='Model.Wms.Goods', nullable=False)
     quantity = Decimal(label="Quantity")  # TODO non negativity constraint
 
-    @classmethod
-    def find_parent_operations(cls, goods=None, **kwargs):
-        if goods is None:
-            raise ValueError("goods kwarg must be passed to Operation.create()")
-        return [goods.reason]
-
-    @classmethod
-    def check_create_conditions(cls, state, goods=None, quantity=None,
-                                **kwargs):
-        if goods is None:
-            raise ValueError("goods kwarg must be passed to Split.create()")
-        if quantity is None:
-            raise ValueError("quantity kwarg must be passed to Split.create()")
-        if state == 'done' and goods.state != 'present':
-            raise ValueError("Can't create a Split in state 'done' for goods "
-                             "%r because of their state %r" % (goods,
-                                                               goods.state))
-        # TODO specific exception
-        if quantity > goods.quantity:
-            raise ValueError("Can't split a greater quantity (%r) than "
-                             "held in goods %r (which have quantity=%r)" % (
-                                 quantity, goods, goods.quantity))
-
     def after_insert(self):
         """Business logic after the inert insertion
 
@@ -122,13 +100,6 @@ class Split(Operation):
             split = Goods.insert(quantity=qty, **new_goods)
             Goods.insert(quantity=-qty, **new_goods)
             return split
-
-    def check_execute_conditions(self):
-        if self.quantity > self.goods.quantity:
-            raise ValueError(
-                "Can't split (%r) from goods %r (which have quantity=%r), "
-                "although it's been planned in operation %r" % (
-                    self.quantity, self.goods, self))
 
     def execute_planned(self):
         self.goods.quantity -= self.quantity

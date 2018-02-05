@@ -8,16 +8,16 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 
 from anyblok import Declarations
-from anyblok.column import Decimal
 from anyblok.column import Integer
 from anyblok.relationship import Many2One
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
+SingleGoods = Declarations.Mixin.WmsSingleGoodsOperation
 
 
 @register(Operation)
-class Move(Operation):
+class Move(SingleGoods, Operation):
     """A stock move
     """
     TYPE = 'wms_move'
@@ -26,32 +26,7 @@ class Move(Operation):
                  primary_key=True,
                  autoincrement=False,
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
-    goods = Many2One(model='Model.Wms.Goods', nullable=False)
     destination = Many2One(model='Model.Wms.Location')
-    quantity = Decimal(label="Quantity")  # TODO non negativity constraint
-
-    @classmethod
-    def find_parent_operations(cls, goods=None, **kwargs):
-        if goods is None:
-            raise ValueError("goods kwarg must be passed to Operation.create()")
-        return [goods.reason]
-
-    @classmethod
-    def check_create_conditions(cls, state, goods=None, quantity=None,
-                                **kwargs):
-        if goods is None:
-            raise ValueError("goods kwarg must be passed to Move.create()")
-        if quantity is None:
-            raise ValueError("quantity kwarg must be passed to Move.create()")
-        if state == 'done' and goods.state != 'present':
-            raise ValueError("Can't create a Move in state 'done' for goods "
-                             "%r because of their state %r" % (goods,
-                                                               goods.state))
-        # TODO specific exception
-        if quantity > goods.quantity:
-            raise ValueError("Can't move a greater quantity (%r) than held in "
-                             "goods %r (which have quantity=%r)" % (
-                                 quantity, goods, goods.quantity))
 
     def after_insert(self):
         partial = self.quantity < self.goods.quantity
@@ -120,7 +95,7 @@ class Move(Operation):
                 Goods.reason == self).filter(Goods.quantity < 0).delete()
 
         if goods.state != 'present':
-            raise ValueError("Can't excute a Move for goods "
+            raise ValueError("Can't execute a Move for goods "
                              "%r because of their state %r" % (goods,
                                                                goods.state))
 
@@ -129,5 +104,6 @@ class Move(Operation):
         before_move = self.goods
         if after_move != before_move:
             self.goods = after_move
+            self.registry.flush()
             before_move.delete()
         self.registry.flush()

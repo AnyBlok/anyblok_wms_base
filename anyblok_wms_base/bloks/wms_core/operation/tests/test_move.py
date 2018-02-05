@@ -50,16 +50,6 @@ class TestMove(BlokTestCase):
         self.assertEqual(self.Goods.query().filter(
             self.Goods.location == self.incoming_loc).count(), 0)
 
-    def test_whole_planned_execute_but_not_ready(self):
-        move = self.Move.create(destination=self.stock,
-                                quantity=3,
-                                state='planned',
-                                goods=self.goods)
-        self.assertEqual(move.follows, [self.arrival])
-        self.assertEqual(move.goods, self.goods)
-        with self.assertRaises(ValueError):
-            move.execute()
-
     def test_whole_done(self):
         self.goods.update(state='present')
         move = self.Move.create(destination=self.stock,
@@ -67,13 +57,6 @@ class TestMove(BlokTestCase):
                                 state='done',
                                 goods=self.goods)
         self.assertEqual(move.follows, [self.arrival])
-
-    def test_whole_done_but_not_ready(self):
-        with self.assertRaises(ValueError):
-            self.Move.create(destination=self.stock,
-                             quantity=3,
-                             state='done',
-                             goods=self.goods)
 
     def test_partial_done(self):
         self.goods.update(state='present')
@@ -104,6 +87,7 @@ class TestMove(BlokTestCase):
         split = move.follows[0]
         self.assertEqual(split.type, 'wms_split')
 
+        self.goods.state = 'present'
         self.registry.flush()
         move.execute()
 
@@ -117,3 +101,70 @@ class TestMove(BlokTestCase):
         self.assertEqual(after_move.location, self.stock)
         self.assertEqual(after_move.reason, move)
         self.assertEqual(after_move.state, 'present')
+
+
+class TestSingleGoodsOperation(BlokTestCase):
+    """Test the WmsSingleGoodOperation mixin
+
+    In these test cases, Operation.Move is considered the canonical example of
+    the mixin.
+    """
+    def setUp(self):
+        Wms = self.registry.Wms
+        Operation = Wms.Operation
+        goods_type = Wms.Goods.Type.insert(label="My good type")
+        self.incoming_loc = Wms.Location.insert(label="Incoming location")
+        self.stock = Wms.Location.insert(label="Stock")
+
+        self.arrival = Operation.Arrival.insert(goods_type=goods_type,
+                                                location=self.incoming_loc,
+                                                state='planned',
+                                                quantity=3)
+
+        self.goods = Wms.Goods.insert(quantity=3,
+                                      type=goods_type,
+                                      location=self.incoming_loc,
+                                      state='future',
+                                      reason=self.arrival)
+        self.Move = Operation.Move
+        self.Goods = Wms.Goods
+
+    def test_whole_done_but_not_ready(self):
+        # TODO now check precise exception
+        with self.assertRaises(ValueError):
+            self.Move.create(destination=self.stock,
+                             quantity=3,
+                             state='done',
+                             goods=self.goods)
+
+    def test_missing_quantity(self):
+        self.goods.state = 'present'
+        with self.assertRaises(ValueError):
+            self.Move.create(destination=self.stock,
+                             state='done',
+                             goods=self.goods)
+
+    def test_missing_goods(self):
+        self.goods.state = 'present'
+        with self.assertRaises(ValueError):
+            self.Move.create(destination=self.stock,
+                             state='done',
+                             quantity=3)
+
+    def test_too_much(self):
+        self.goods.state = 'present'
+        with self.assertRaises(ValueError):
+            self.Move.create(destination=self.stock,
+                             quantity=7,
+                             state='done',
+                             goods=self.goods)
+
+    def test_whole_planned_execute_but_not_ready(self):
+        move = self.Move.create(destination=self.stock,
+                                quantity=3,
+                                state='planned',
+                                goods=self.goods)
+        self.assertEqual(move.follows, [self.arrival])
+        self.assertEqual(move.goods, self.goods)
+        with self.assertRaises(ValueError):
+            move.execute()
