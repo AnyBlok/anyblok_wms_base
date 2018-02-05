@@ -74,3 +74,45 @@ class TestMove(BlokTestCase):
                              quantity=3,
                              state='done',
                              goods=self.goods)
+
+    def test_partial_done(self):
+        self.goods.update(state='present')
+        move = self.Move.create(destination=self.stock,
+                                quantity=1,
+                                state='done',
+                                goods=self.goods)
+        self.assertEqual(len(move.follows), 1)
+        split = move.follows[0]
+        self.assertEqual(split.type, 'wms_split')
+
+        self.assertEqual(self.goods.quantity, 2)
+
+        after_move = self.Goods.query().filter(self.Goods.reason == move).all()
+        self.assertEqual(len(after_move), 1)
+
+        after_move = after_move[0]
+        self.assertEqual(after_move.quantity, 1)
+        self.assertEqual(after_move.location, self.stock)
+        self.assertEqual(after_move.reason, move)
+
+    def test_partial_planned_execute(self):
+        move = self.Move.create(destination=self.stock,
+                                quantity=1,
+                                state='planned',
+                                goods=self.goods)
+        self.assertEqual(len(move.follows), 1)
+        split = move.follows[0]
+        self.assertEqual(split.type, 'wms_split')
+
+        self.registry.flush()
+        move.execute()
+
+        self.assertEqual(self.goods.quantity, 2)
+
+        after_move = self.Goods.query().filter(self.Goods.reason == move).all()
+        self.assertEqual(len(after_move), 1)
+
+        after_move = after_move[0]
+        self.assertEqual(after_move.quantity, 1)
+        self.assertEqual(after_move.location, self.stock)
+        self.assertEqual(after_move.reason, move)

@@ -103,6 +103,7 @@ OPERATION_STATES = dict(planned="wms_op_states_planned",
                         )
 
 OPERATION_TYPES = dict(wms_move="wms_op_types_move",
+                       wms_split="wms_op_types_split",
                        wms_unpack="wms_op_types_unpack",
                        wms_pack="wms_op_types_pack",
                        wms_arrival="wms_op_types_arrival",

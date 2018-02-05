@@ -52,14 +52,23 @@ class Move(Operation):
             raise ValueError("Can't move a greater quantity (%r) than held in "
                              "goods %r (which have quantity=%r)" % (
                                  quantity, goods, goods.quantity))
-        if quantity != goods.quantity:
-            raise NotImplementedError(
-                "Sorry not able to split Goods records yet")
 
     def after_insert(self):
-        # TODO implement splitting
+        partial = self.quantity < self.goods.quantity
+        if partial:
+            # TODO maybe override create() itself at this point
+            # it's simpler than **inserting** the split in the history
+            Split = self.registry.Wms.Operation.Split
+            split = Split.insert(goods=self.goods, quantity=self.quantity,
+                                 state=self.state)
+            split.follows.append(self.goods.reason)
+            self.follows.pop()
+            self.follows.append(split)
+            self.registry.flush()
+            self.goods = split.after_insert()
+
         goods = self.goods
-        if self.state == 'done':
+        if partial or self.state == 'done':
             # well, yeah, in PostgreSQL, this has about the same cost
             # as copying the row, but at least we don't transmit it
             goods.update(location=self.destination)
@@ -69,10 +78,12 @@ class Move(Operation):
             # not to flush now if possible. Is it possible to give indications?
             # so far for being mildly more efficient, now we have two UPDATE
             # queries…
-            self.registry.session.flush()
+            self.registry.flush()
             goods.update(reason=self)
         else:
             # TODO check for some kind of copy() API on SQLA
+            # TODO forgot same problem of bias of stock levels as for Split!
+            # actually we'd need a split of the whole ;-)
             self.registry.Wms.Goods.insert(
                 location=self.destination,
                 quantity=self.quantity,
@@ -84,26 +95,30 @@ class Move(Operation):
 
     def check_execute_conditions(self):
         goods = self.goods
+        if self.quantity != goods.quantity:
+            raise ValueError(
+                "Can't move a different quantity (%r) than held in "
+                "goods %r (which have quantity=%r). For lesser quantities "
+                "a split should have occured first " % (
+                    self.quantity, goods, goods.quantity))
+
+    def execute_planned(self):
+        goods = self.goods
+        follows = self.follows
+        split = follows[0] if len(follows) == 1 else None
+        if split and split.type == 'wms_split' and split.state != 'done':
+            split.execute()  # TODO bypass checks ?
+
         if goods.state != 'present':
             raise ValueError("Can't excute a Move for goods "
                              "%r because of their state %r" % (goods,
                                                                goods.state))
-        if self.quantity > goods.quantity:
-            raise ValueError("Can't move a greater quantity (%r) than held in "
-                             "goods %r (which have quantity=%r)" % (
-                                 self.quantity, goods, goods.quantity))
-        if self.quantity != goods.quantity:
-            raise NotImplementedError(
-                "Sorry not able to split Goods records yet")
 
-    def execute_planned(self):
-        # TODO adapt to splitting
         Goods = self.registry.Wms.Goods
         after_move = Goods.query().filter(Goods.reason == self).one()
         after_move.update(state='present')
         before_move = self.goods
         if after_move != before_move:
-            # this should alway be true in case of a move planned, then
-            # executed, but let's be safe for now
             self.goods = after_move
             before_move.delete()
+        self.registry.flush()

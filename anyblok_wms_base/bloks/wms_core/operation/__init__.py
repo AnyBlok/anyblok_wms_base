@@ -10,5 +10,6 @@
 
 from . import base
 from . import arrival
+from . import split
 from . import move
 from . import unpack
