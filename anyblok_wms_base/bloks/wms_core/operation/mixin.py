@@ -61,7 +61,7 @@ class WmsSingleGoodsOperation:
         goods = self.goods
         if self.quantity > goods.quantity:
             raise OperationQuantityError(
-                self.__class__,
+                self,
                 "Can't split {op.qty} from goods {goods} "
                 "(which have quantity={goods.quantity}), "
                 "although it's been successfully planned in operation {op}",
@@ -69,7 +69,7 @@ class WmsSingleGoodsOperation:
 
         if goods.state != 'present':
             raise OperationGoodsError(
-                self.__class__,
+                self,
                 "Can't execute for goods {goods} "
                 "because their state {state} is not 'present'",
                 goods=goods,
