@@ -7,6 +7,9 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok.tests.testcase import BlokTestCase
+from anyblok_wms_base.exceptions import (
+    OperationGoodsError,
+)
 
 
 class TestUnpack(BlokTestCase):
@@ -155,16 +158,26 @@ class TestUnpack(BlokTestCase):
                                state='done',
                                goods=self.packs)
 
-        # No property at all, we don't fail
-        with self.assertRaises(ValueError):
+        # No property at all, we fail explicitely
+        with self.assertRaises(OperationGoodsError) as arc:
             unpack()
+        str(arc.exception)
+        repr(arc.exception)
+        self.assertEqual(arc.exception.kwargs,
+                         dict(packs=self.packs,
+                              req_props=['foo'],
+                              type=self.packed_goods_type))
 
         # Having properties, still missing the required one
         self.packs.properties = self.Goods.Properties.insert(
             flexible=dict(bar=1))
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(OperationGoodsError) as arc:
             unpack()
+        str(arc.exception)
+        repr(arc.exception)
+        self.assertEqual(arc.exception.kwargs, dict(prop='foo',
+                                                    packs=self.packs))
 
     def test_whole_done_one_unpacked_type_no_props(self):
         """Unpacking operation, forwarding no properties."""
@@ -280,3 +293,21 @@ class TestUnpack(BlokTestCase):
         self.assertEqual(after_split.quantity, 4)
         self.assertEqual(
             packs_query.filter(Goods.state == 'future').count(), 0)
+
+    def test_no_outcomes(self):
+        """Unpacking with no outcomes should be hard errors."""
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(outcomes=[])),
+        )
+        self.packs.update(state='present')
+        with self.assertRaises(OperationGoodsError) as arc:
+            self.Unpack.create(quantity=5,
+                               state='done',
+                               goods=self.packs)
+        str(arc.exception)
+        repr(arc.exception)
+        self.assertEqual(arc.exception.kwargs,
+                         dict(type=self.packed_goods_type,
+                              packs=self.packs,
+                              behaviour=dict(outcomes=[]),
+                              specific=()))

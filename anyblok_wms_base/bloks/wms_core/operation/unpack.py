@@ -69,9 +69,6 @@ class Unpack(SingleGoodsSplitter, Operation):
         GoodsType = Goods.Type
         packs = self.goods
         spec = self.get_outcome_specs()
-        if spec is None:
-            return
-
         type_ids = set(outcome['type'] for outcome in spec)
         packs_types = {gt.id: gt for gt in GoodsType.query().filter(
                        GoodsType.id.in_(type_ids)).all()}
@@ -103,11 +100,11 @@ class Unpack(SingleGoodsSplitter, Operation):
         req_props = spec.get('required_properties')
 
         if req_props and not packs.properties:
-            # TODO precise exception
-            raise ValueError(
-                "Packs %s have no properties, yet its type %s "
-                "requires these for Unpack operation: %r" % (
-                    packs, packs.type, req_props))
+            raise OperationGoodsError(
+                self,
+                "Packs {packs} have no properties, yet their type {type} "
+                "requires these for Unpack operation: {req_props}",
+                packs=packs, type=packs.type, req_props=req_props)
         if not fwd_props:
             return
         for pname in fwd_props:
@@ -115,11 +112,11 @@ class Unpack(SingleGoodsSplitter, Operation):
             if pvalue is None:
                 if pname not in req_props:
                     continue
-            # TODO precise exception
-                raise ValueError(
-                    "Pack %s lacks the property %r "
-                    "required by its type "
-                    "for Unpack operation" % (packs, pname))
+                raise OperationGoodsError(
+                    self,
+                    "Packs {packs} lacks the property {prop}"
+                    "required by their type for Unpack operation",
+                    packs=packs, prop=pname)
             outcome.set_property(pname, pvalue)
 
     def get_outcome_specs(self):
@@ -175,19 +172,27 @@ class Unpack(SingleGoodsSplitter, Operation):
         # to propagate mutability to the DB. Not sure how much of it
         # is necessary.
         packs = self.goods
-        behaviours = packs.type.behaviours['unpack']
-        specs = behaviours.get('outcomes', [])[:]
-        if behaviours.get('uniform_outcomes', False):
+        behaviour = packs.type.behaviours['unpack']
+        specs = behaviour.get('outcomes', [])[:]
+        if behaviour.get('uniform_outcomes', False):
             for outcome in specs:
                 outcome['forward_properties'] = 'clone'
             return specs
 
-        specs.extend(packs.get_property('unpack_outcomes', default=()))
+        specific_outcomes = packs.get_property('unpack_outcomes', ())
+        specs.extend(specific_outcomes)
         if not specs:
-            return
+            raise OperationGoodsError(
+                self,
+                "unpacking Goods {packs} has no outcomes. "
+                "Type {type} 'unpack' behaviour: {behaviour}, "
+                "specific outcomes from Goods properties: "
+                "{specific}",
+                packs=packs, type=packs.type, behaviour=behaviour,
+                specific=specific_outcomes)
 
-        global_fwd = behaviours.get('forward_properties', ())
-        global_req = behaviours.get('required_properties', ())
+        global_fwd = behaviour.get('forward_properties', ())
+        global_req = behaviour.get('required_properties', ())
         for outcome in specs:
             if outcome.get('forward_properties') == 'clone':
                 continue
