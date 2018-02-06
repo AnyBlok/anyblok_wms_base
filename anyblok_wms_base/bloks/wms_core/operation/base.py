@@ -131,8 +131,8 @@ class Operation:
         e.g, creation of Goods, but that's up to the specific subclasses.
         """
         cls.forbid_follows_in_create(follows, kwargs)
-        follows = cls.find_parent_operations(**kwargs)
         cls.check_create_conditions(state, **kwargs)
+        follows = cls.find_parent_operations(**kwargs)
         op = cls.insert(state=state, **kwargs)
         op.follows.extend(follows)
         op.after_insert()

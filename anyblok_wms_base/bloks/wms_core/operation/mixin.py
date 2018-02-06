@@ -22,12 +22,6 @@ class WmsSingleGoodsOperation:
 
     @classmethod
     def find_parent_operations(cls, goods=None, **kwargs):
-        if goods is None:
-            raise OperationMissingGoodsError(
-                cls,
-                "The 'goods' keyword argument must be passed to the create() "
-                "method")
-
         return [goods.reason]
 
     @classmethod
