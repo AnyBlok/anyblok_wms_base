@@ -70,8 +70,8 @@ class Unpack(SingleGoodsSplitter, Operation):
         packs = self.goods
         spec = self.get_outcome_specs()
         type_ids = set(outcome['type'] for outcome in spec)
-        packs_types = {gt.id: gt for gt in GoodsType.query().filter(
-                       GoodsType.id.in_(type_ids)).all()}
+        outcome_types = {gt.id: gt for gt in GoodsType.query().filter(
+            GoodsType.id.in_(type_ids)).all()}
 
         outcome_state = 'present' if self.state == 'done' else 'future'
         if self.state == 'done':
@@ -80,10 +80,10 @@ class Unpack(SingleGoodsSplitter, Operation):
             outcome = Goods.insert(
                 quantity=outcome_spec['quantity'] * self.quantity,
                 location=packs.location,
-                type=packs_types[outcome_spec['type']],
+                type=outcome_types[outcome_spec['type']],
                 reason=self,
                 state=outcome_state)
-            self.forward_props(outcome_spec, outcome),
+            self.forward_props(outcome_spec, outcome)
 
     def forward_props(self, spec, outcome):
         """Handle the properties for a given outcome (Goods record)
