@@ -57,24 +57,22 @@ class Move(SingleGoodsSplitter, Operation):
                          **fields)
 
     def execute_planned(self):
-        Goods = self.registry.Wms.Goods
         goods = self.goods
         if self.partial:
             split = self.follows[0]
             split.execute()
             # This Move took responsibility for goods' state by setting
-            # itself as reason, split.execute() can't find its outcome
-            # any more
+            # itself early as reason, split.execute() can't have updated it
+            # because it couldn't find it any more
             goods.state = 'present'
-        else:
-            Goods.query().filter(
-                Goods.reason == self).filter(Goods.quantity < 0).delete()
-
-        after_move = Goods.query().filter(Goods.reason == self).one()
-        after_move.update(state='present')
-        before_move = self.goods
-        if after_move != before_move:
-            self.goods = after_move
             self.registry.flush()
-            before_move.delete()
-        self.registry.flush()
+            return
+
+        Goods = self.registry.Wms.Goods
+        query = Goods.query().filter(Goods.reason == self)
+        query.filter(Goods.quantity < 0).delete()
+
+        after_move = query.one()
+        after_move.state = 'present'
+        self.goods = after_move
+        goods.delete()
