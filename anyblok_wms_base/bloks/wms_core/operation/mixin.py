@@ -135,3 +135,10 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleGoodsOperation):
         op.follows.extend(follows)
         op.after_insert()
         return op
+
+    def execute_planned(self):
+        if self.partial:
+            split_op = self.follows[0]
+            split_op.execute()
+        self.execute_planned_after_split()
+        self.registry.flush()
