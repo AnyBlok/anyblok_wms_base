@@ -10,6 +10,10 @@
 from anyblok import Declarations
 from anyblok.column import Integer
 from anyblok.relationship import Many2One
+from anyblok_wms_base.exceptions import (
+    OperationGoodsError,
+    OperationQuantityError,
+)
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
@@ -72,11 +76,13 @@ class Move(SingleGoods, Operation):
     def check_execute_conditions(self):
         goods = self.goods
         if self.quantity != goods.quantity:
-            raise ValueError(
-                "Can't move a different quantity (%r) than held in "
-                "goods %r (which have quantity=%r). For lesser quantities "
-                "a split should have occured first " % (
-                    self.quantity, goods, goods.quantity))
+            raise OperationQuantityError(
+                self,
+                "Can't execute planned move for a different quantity {qty} "
+                "than held in goods {goods} "
+                "(which have quantity={goods.quantity}). "
+                "For lesser quantities, a split should have occured first ",
+                goods=self.goods, quantity=self.quantity)
 
     def execute_planned(self):
         Goods = self.registry.Wms.Goods
@@ -95,9 +101,12 @@ class Move(SingleGoods, Operation):
                 Goods.reason == self).filter(Goods.quantity < 0).delete()
 
         if goods.state != 'present':
-            raise ValueError("Can't execute a Move for goods "
-                             "%r because of their state %r" % (goods,
-                                                               goods.state))
+            raise OperationGoodsError(
+                self,
+                "Can't execute for goods {goods} "
+                "because of their state {state} ",
+                goods=goods,
+                state=repr(goods.state))
 
         after_move = Goods.query().filter(Goods.reason == self).one()
         after_move.update(state='present')

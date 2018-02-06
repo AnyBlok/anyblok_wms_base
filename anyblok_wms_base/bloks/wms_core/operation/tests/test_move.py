@@ -7,6 +7,12 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok.tests.testcase import BlokTestCase
+from anyblok_wms_base.exceptions import (
+    OperationGoodsError,
+    OperationMissingGoodsError,
+    OperationQuantityError,
+    OperationMissingQuantityError,
+)
 
 
 class TestMove(BlokTestCase):
@@ -128,36 +134,48 @@ class TestSingleGoodsOperation(BlokTestCase):
                                       reason=self.arrival)
         self.Move = Operation.Move
         self.Goods = Wms.Goods
+        self.op_model_name = 'Model.Wms.Operation.Move'
 
     def test_whole_done_but_not_ready(self):
-        # TODO now check precise exception
-        with self.assertRaises(ValueError):
+        self.assertEqual(self.goods.state, 'future')
+        with self.assertRaises(OperationGoodsError) as arc:
             self.Move.create(destination=self.stock,
                              quantity=3,
                              state='done',
                              goods=self.goods)
+        exc = arc.exception
+        self.assertEqual(exc.model_name, self.op_model_name)
+        self.assertEqual(exc.kwargs.get('goods'), self.goods)
 
     def test_missing_quantity(self):
         self.goods.state = 'present'
-        with self.assertRaises(ValueError):
+        with self.assertRaises(OperationMissingQuantityError) as arc:
             self.Move.create(destination=self.stock,
                              state='done',
                              goods=self.goods)
+        exc = arc.exception
+        self.assertEqual(exc.model_name, self.op_model_name)
 
     def test_missing_goods(self):
         self.goods.state = 'present'
-        with self.assertRaises(ValueError):
+        with self.assertRaises(OperationMissingGoodsError) as arc:
             self.Move.create(destination=self.stock,
                              state='done',
                              quantity=3)
+        exc = arc.exception
+        self.assertEqual(exc.model_name, self.op_model_name)
 
     def test_too_much(self):
         self.goods.state = 'present'
-        with self.assertRaises(ValueError):
+        with self.assertRaises(OperationQuantityError) as arc:
             self.Move.create(destination=self.stock,
                              quantity=7,
                              state='done',
                              goods=self.goods)
+        exc = arc.exception
+        self.assertEqual(exc.model_name, self.op_model_name)
+        self.assertEqual(exc.kwargs.get('quantity'), 7)
+        self.assertEqual(exc.kwargs.get('goods'), self.goods)
 
     def test_whole_planned_execute_but_not_ready(self):
         move = self.Move.create(destination=self.stock,
@@ -166,5 +184,8 @@ class TestSingleGoodsOperation(BlokTestCase):
                                 goods=self.goods)
         self.assertEqual(move.follows, [self.arrival])
         self.assertEqual(move.goods, self.goods)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(OperationGoodsError) as arc:
             move.execute()
+        exc = arc.exception
+        self.assertEqual(exc.model_name, self.op_model_name)
+        self.assertEqual(exc.kwargs.get('goods'), self.goods)
