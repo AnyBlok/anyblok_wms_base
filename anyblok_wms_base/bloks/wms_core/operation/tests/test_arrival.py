@@ -7,6 +7,7 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok.tests.testcase import BlokTestCase
+from anyblok_wms_base.exceptions import OperationCreateArgFollows
 
 
 class TestArrival(BlokTestCase):
@@ -50,3 +51,34 @@ class TestArrival(BlokTestCase):
         self.assertEqual(goods.location, self.incoming_loc)
         self.assertEqual(goods.quantity, 3)
         self.assertEqual(goods.type, self.goods_type)
+
+
+class TestOperationBase(BlokTestCase):
+    """Test the Operation base class
+
+    In these test cases, Operation.Move is considered the canonical example
+    to test some corner cases in the base Operation model.
+    """
+
+    def setUp(self):
+        Wms = self.registry.Wms
+        self.goods_type = Wms.Goods.Type.insert(label="My good type")
+        self.incoming_loc = Wms.Location.insert(label="Incoming location")
+        self.stock = Wms.Location.insert(label="Stock")
+        self.Arrival = Wms.Operation.Arrival
+        self.Goods = Wms.Goods
+
+    def test_execute_idempotency(self):
+        op = self.Arrival.create(location=self.incoming_loc,
+                                 quantity=3,
+                                 state='planned',
+                                 goods_type=self.goods_type)
+        op.state = 'done'
+        op.execute_planned = lambda: self.fail("Should not be called")
+        op.execute()
+
+    def test_forbidfollows(self):
+        with self.assertRaises(OperationCreateArgFollows) as arc:
+            self.Arrival.create(follows='anything triggers', state='whatever')
+        str(arc.exception)
+        repr(arc.exception)

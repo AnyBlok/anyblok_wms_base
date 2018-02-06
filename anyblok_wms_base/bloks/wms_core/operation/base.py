@@ -14,6 +14,7 @@ from anyblok.column import Integer
 from anyblok.relationship import Many2Many
 
 from anyblok_wms_base.constants import OPERATION_STATES, OPERATION_TYPES
+from anyblok_wms_base.exceptions import OperationCreateArgFollows
 
 register = Declarations.register
 Model = Declarations.Model
@@ -120,9 +121,7 @@ class Operation:
     @classmethod
     def forbid_follows_in_create(cls, follows, kwargs):
         if follows is not None:
-            raise ValueError("'follows' should not be passed in kwargs, as it "
-                             "is automatically computed upon "
-                             "operation creation. Other kwargs: %r)" % kwargs)
+            raise OperationCreateArgFollows(cls, kwargs)
 
     @classmethod
     def create(cls, state='planned', follows=None, **kwargs):
