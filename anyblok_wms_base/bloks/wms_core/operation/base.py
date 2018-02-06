@@ -157,7 +157,7 @@ class Operation:
         To be implemented in subclasses, by raising exceptions if something's
         wrong.
         """
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     @classmethod
     def find_parent_operations(cls, **kwargs):
@@ -165,14 +165,14 @@ class Operation:
 
         To be implemented in subclasses.
         """
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def after_insert(self):
         """Perform specific logic after insert during creation process
 
         To be implemented in subclasses.
         """
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     @classmethod
     def check_execute_conditions(cls, **kwargs):
@@ -181,7 +181,7 @@ class Operation:
         To be implemented in subclasses, by raising an exception if something's
         wrong.
         """
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def execute_planned(self):
         """Execute an operation that's up to now in the 'planned' state.
@@ -190,4 +190,4 @@ class Operation:
 
         To be implemented in subclasses.
         """
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
