@@ -60,9 +60,14 @@ class Unpack(SingleGoodsSplitter, Operation):
 
     def execute_planned_after_split(self):
         Goods = self.registry.Wms.Goods
-        for outcome in Goods.query().filter(Goods.reason == self).all():
+        packs = self.goods
+        touched = Goods.query().filter(Goods.reason == self)
+        # TODO PERF direct update query would probably be faster
+        for outcome in touched.filter(Goods.type != packs.type).all():
             outcome.state = 'present'
         self.goods.state = 'past'
+        if self.partial:
+            touched.filter(Goods.quantity < 0).delete()
 
     def after_insert(self):
         Goods = self.registry.Wms.Goods
@@ -76,6 +81,13 @@ class Unpack(SingleGoodsSplitter, Operation):
         outcome_state = 'present' if self.state == 'done' else 'future'
         if self.state == 'done':
             packs.update(state='past', reason=self)
+        else:
+            # don't bias the future stock levels
+            Goods.insert(type=packs.type,
+                         location=packs.location,
+                         quantity=-packs.quantity,
+                         state='future',
+                         reason=self)
         for outcome_spec in spec:
             outcome = Goods.insert(
                 quantity=outcome_spec['quantity'] * self.quantity,

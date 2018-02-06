@@ -239,6 +239,10 @@ class TestUnpack(BlokTestCase):
         self.assertEqual(unpacked_goods.get_property('baz'), 'second hand')
         self.assertEqual(unpacked_goods.reason, unp)
 
+        self.assertEqual(
+            self.stock.quantity(self.packed_goods_type, goods_state='future'),
+            0)
+
         self.packs.state = 'present'
         unp.execute()
         self.assertEqual(unpacked_goods.state, 'present')
@@ -276,6 +280,10 @@ class TestUnpack(BlokTestCase):
         self.assertEqual(unpacked_goods.state, 'future')
         self.assertEqual(unpacked_goods.type, unpacked_type)
         self.assertEqual(unpacked_goods.get_property('foo'), 7)
+
+        self.assertEqual(
+            self.stock.quantity(self.packed_goods_type, goods_state='future'),
+            1)
 
         self.packs.state = 'present'
         packs_query = self.Goods.query().filter(
