@@ -230,3 +230,53 @@ class TestUnpack(BlokTestCase):
         unp.execute()
         self.assertEqual(unpacked_goods.state, 'present')
         self.assertEqual(self.packs.state, 'past')
+
+    def test_partial_plan_execute(self):
+        """Plan a partial Unpack (uniform scenario), then execute it
+        """
+        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(
+                uniform_outcomes=True,
+                outcomes=[
+                    dict(type=unpacked_type.id,
+                         quantity=6,
+                         ),
+                ],
+            )),
+            properties=dict(flexible=dict(foo=7)))
+
+        unp = self.Unpack.create(quantity=4,
+                                 state='planned',
+                                 goods=self.packs)
+        self.assertEqual(unp.follows[0].type, 'wms_split')
+        self.assertEqual(unp.partial, True)
+
+        Goods = self.Goods
+        unpacked_goods = Goods.query().filter(
+            Goods.type == unpacked_type).all()
+
+        self.assertEqual(len(unpacked_goods), 1)
+        unpacked_goods = unpacked_goods[0]
+        self.assertEqual(unpacked_goods.reason, unp)
+        self.assertEqual(unpacked_goods.quantity, 24)
+        self.assertEqual(unpacked_goods.state, 'future')
+        self.assertEqual(unpacked_goods.type, unpacked_type)
+        self.assertEqual(unpacked_goods.get_property('foo'), 7)
+
+        self.packs.state = 'present'
+        packs_query = self.Goods.query().filter(
+            self.Goods.type == self.packed_goods_type)
+        unp.execute()
+
+        self.assertEqual(unpacked_goods.state, 'present')
+        self.assertEqual(self.packs.quantity, 1)
+
+        # check intermediate objects no leftover intermediate packs
+        self.assertEqual(
+            packs_query.filter(Goods.state == 'present').one(),
+            self.packs)
+        after_split = packs_query.filter(Goods.state == 'past').one()
+        self.assertEqual(after_split.quantity, 4)
+        self.assertEqual(
+            packs_query.filter(Goods.state == 'future').count(), 0)

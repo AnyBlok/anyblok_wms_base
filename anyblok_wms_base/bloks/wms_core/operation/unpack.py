@@ -16,11 +16,11 @@ from anyblok_wms_base.exceptions import OperationGoodsError
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
-SingleGoods = Declarations.Mixin.WmsSingleGoodsOperation
+SingleGoodsSplitter = Declarations.Mixin.WmsSingleGoodsSplitterOperation
 
 
 @register(Operation)
-class Unpack(SingleGoods, Operation):
+class Unpack(SingleGoodsSplitter, Operation):
     """Unpacking some Goods, creating new Goods records.
 
     What happens during unpacking is specified as behaviours of the
@@ -58,19 +58,13 @@ class Unpack(SingleGoods, Operation):
                 "because their type {type} doesn't have the 'unpack' "
                 "behaviour", goods=goods, type=goods.type)
 
-        if quantity != goods.quantity:
-            raise NotImplementedError(
-                "Sorry not able to split Goods records yet")
-
-    def execute_planned(self):
-        # TODO adapt to splitting
+    def execute_planned_after_split(self):
         Goods = self.registry.Wms.Goods
         for outcome in Goods.query().filter(Goods.reason == self).all():
             outcome.state = 'present'
         self.goods.state = 'past'
 
     def after_insert(self):
-        # TODO implement splitting
         Goods = self.registry.Wms.Goods
         GoodsType = Goods.Type
         packs = self.goods
