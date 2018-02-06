@@ -118,16 +118,20 @@ class Operation:
         return mapper_args
 
     @classmethod
+    def forbid_follows_in_create(cls, follows, kwargs):
+        if follows is not None:
+            raise ValueError("'follows' should not be passed in kwargs, as it "
+                             "is automatically computed upon "
+                             "operation creation. Other kwargs: %r)" % kwargs)
+
+    @classmethod
     def create(cls, state='planned', follows=None, **kwargs):
         """Main method for creation of operations
 
         In contrast with ``insert()``, it performs some Wms specific logic,
         e.g, creation of Goods, but that's up to the specific subclasses.
         """
-        if follows is not None:
-            raise ValueError("'follows' should not be passed in kwargs, as it "
-                             "is automatically computed upon "
-                             "operation creation. Other kwargs: %r)" % kwargs)
+        cls.forbid_follows_in_create(follows, kwargs)
         follows = cls.find_parent_operations(**kwargs)
         cls.check_create_conditions(state, **kwargs)
         op = cls.insert(state=state, **kwargs)

@@ -10,18 +10,14 @@
 from anyblok import Declarations
 from anyblok.column import Integer
 from anyblok.relationship import Many2One
-from anyblok_wms_base.exceptions import (
-    OperationGoodsError,
-    OperationQuantityError,
-)
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
-SingleGoods = Declarations.Mixin.WmsSingleGoodsOperation
+SingleGoodsSplitter = Declarations.Mixin.WmsSingleGoodsSplitterOperation
 
 
 @register(Operation)
-class Move(SingleGoods, Operation):
+class Move(SingleGoodsSplitter, Operation):
     """A stock move
     """
     TYPE = 'wms_move'
@@ -33,21 +29,8 @@ class Move(SingleGoods, Operation):
     destination = Many2One(model='Model.Wms.Location')
 
     def after_insert(self):
-        partial = self.quantity < self.goods.quantity
-        if partial:
-            # TODO maybe override create() itself at this point
-            # it's simpler than **inserting** the split in the history
-            Split = self.registry.Wms.Operation.Split
-            split = Split.insert(goods=self.goods, quantity=self.quantity,
-                                 state=self.state)
-            split.follows.append(self.goods.reason)
-            self.follows.pop()
-            self.follows.append(split)
-            self.registry.flush()
-            self.goods = split.after_insert()
-
         goods = self.goods
-        if partial or self.state == 'done':
+        if self.partial or self.state == 'done':
             # well, yeah, in PostgreSQL, this has about the same cost
             # as copying the row, but at least we don't transmit it
             goods.update(location=self.destination)
@@ -73,40 +56,19 @@ class Move(SingleGoods, Operation):
                          quantity=-self.quantity,
                          **fields)
 
-    def check_execute_conditions(self):
-        goods = self.goods
-        if self.quantity != goods.quantity:
-            raise OperationQuantityError(
-                self,
-                "Can't execute planned move for a different quantity {qty} "
-                "than held in goods {goods} "
-                "(which have quantity={goods.quantity}). "
-                "For lesser quantities, a split should have occured first ",
-                goods=self.goods, quantity=self.quantity)
-
     def execute_planned(self):
         Goods = self.registry.Wms.Goods
         goods = self.goods
-        follows = self.follows
-        split = follows[0] if len(follows) == 1 else None
-        # TODO stronger criteria that the split has been induced by the
-        # present move
-        if split and split.type == 'wms_split' and split.state != 'done':
+        if self.partial:
+            split = self.follows[0]
             split.execute()
             # This Move took responsibility for goods' state by setting
-            # itself as reason, split.execute() can't see it any more
+            # itself as reason, split.execute() can't find its outcome
+            # any more
             goods.state = 'present'
         else:
             Goods.query().filter(
                 Goods.reason == self).filter(Goods.quantity < 0).delete()
-
-        if goods.state != 'present':
-            raise OperationGoodsError(
-                self,
-                "Can't execute for goods {goods} "
-                "because of their state {state} ",
-                goods=goods,
-                state=repr(goods.state))
 
         after_move = Goods.query().filter(Goods.reason == self).one()
         after_move.update(state='present')

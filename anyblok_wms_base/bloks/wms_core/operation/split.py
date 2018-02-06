@@ -75,6 +75,7 @@ class Split(SingleGoods, Operation):
         direcly, but this Operation's siblings are entitled to it (unit tested
         together, and this can spare some verifications).
         """
+        self.registry.flush()
         goods = self.goods
         Goods = self.registry.Wms.Goods
         qty = self.quantity
@@ -100,6 +101,13 @@ class Split(SingleGoods, Operation):
             split = Goods.insert(quantity=qty, **new_goods)
             Goods.insert(quantity=-qty, **new_goods)
             return split
+
+    def get_outcome(self):
+        Goods = self.registry.Wms.Goods
+        return Goods.query().filter(
+            Goods.reason == self).filter(
+                Goods.id != self.goods.id).filter(
+                    Goods.quantity > 0).one()
 
     def execute_planned(self):
         self.goods.quantity -= self.quantity
