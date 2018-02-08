@@ -51,4 +51,5 @@ class Location:
         else:
             # this is where we'd be really happy with an Enum
             query = query.filter(Goods.state == goods_state)
-        return query.one()[0]
+        res = query.one()[0]
+        return 0 if res is None else res

@@ -46,3 +46,7 @@ class TestGoods(BlokTestCase):
         self.assertQuantity(D('1.5'), goods_state='present')
         self.assertQuantity(D('3.5'), goods_state='future')
         self.assertQuantity(1, goods_state='past')
+
+    def test_no_match(self):
+        """Test that quantity is not None if no Goods match the criteria."""
+        self.assertQuantity(0)
