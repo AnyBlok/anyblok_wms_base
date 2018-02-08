@@ -11,6 +11,7 @@
 from . import base
 from . import mixin
 from . import arrival
+from . import departure
 from . import split
 from . import move
 from . import unpack
