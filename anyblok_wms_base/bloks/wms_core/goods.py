@@ -71,19 +71,26 @@ class Goods:
 
     TODO: add indexes and constraints
     """
-    type = Many2One(model='Model.Wms.Goods.Type', nullable=False)
+    type = Many2One(model='Model.Wms.Goods.Type', nullable=False, index=True)
     id = Integer(label="Identifier", primary_key=True)
     quantity = Decimal(label="Quantity")  # TODO non negativity constraint
-    code = String(label="Identifying code")  # TODO index
+    code = String(label="Identifying code",
+                  index=True)
     # TODO consider switch to Enum
     state = Selection(label="State of existence",
+                      # TODO nullable=False
                       selections=GOODS_STATES,
+                      index=True,
                       )
     properties = Many2One(label="Properties",
+                          index=True,
                           model='Model.Wms.Goods.Properties')
-    location = Many2One(model=Model.Wms.Location, nullable=False)
+    location = Many2One(model=Model.Wms.Location,
+                        nullable=False,
+                        index=True)
     reason = Many2One(label="The operation that is the reason why "
                       "these goods are here",
+                      index=True,
                       model=Model.Wms.Operation, nullable=False)
 
     def get_property(self, k, default=None):
@@ -131,7 +138,7 @@ class Type:
     Goods Types.
     """
     id = Integer(label="Identifier", primary_key=True)
-    code = String(label=u"Identifying code")
+    code = String(label=u"Identifying code", index=True)
     label = String(label=u"Label")
     behaviours = Jsonb(label="Behaviours in operations")
 
