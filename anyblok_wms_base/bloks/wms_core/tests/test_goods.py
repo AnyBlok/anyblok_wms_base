@@ -17,7 +17,7 @@ class TestGoods(BlokTestCase):
         Wms = self.registry.Wms
 
         self.Goods = Wms.Goods
-        self.goods_type = self.Goods.Type.insert(label="My goods")
+        self.goods_type = self.Goods.Type.insert(label="My goods", code="MG")
         self.stock = Wms.Location.insert(label="Stock")
         self.arrival = Wms.Operation.Arrival.insert(
             goods_type=self.goods_type,

@@ -131,6 +131,7 @@ class Type:
     Goods Types.
     """
     id = Integer(label="Identifier", primary_key=True)
+    code = String(label=u"Identifying code")
     label = String(label=u"Label")
     behaviours = Jsonb(label="Behaviours in operations")
 
