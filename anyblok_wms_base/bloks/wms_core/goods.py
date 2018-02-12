@@ -93,6 +93,14 @@ class Goods:
                       index=True,
                       model=Model.Wms.Operation, nullable=False)
 
+    def __str__(self):
+        return ("(id={self.id}, state={self.state!r}, "
+                "type={self.type})".format(self=self))
+
+    def __repr__(self):
+        return ("Wms.Goods(id={self.id}, state={self.state!r}, "
+                "type={self.type!r})".format(self=self))
+
     def get_property(self, k, default=None):
         """Property getter.
 
@@ -141,6 +149,12 @@ class Type:
     code = String(label=u"Identifying code", index=True)
     label = String(label=u"Label")
     behaviours = Jsonb(label="Behaviours in operations")
+
+    def __str__(self):
+        return "(id={self.id}, code={self.code!r})".format(self=self)
+
+    def __repr__(self):
+        return "Wms.Goods.Type" + str(self)
 
 
 @register(Model.Wms.Goods)

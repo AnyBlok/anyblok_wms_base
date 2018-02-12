@@ -35,6 +35,19 @@ class TestGoods(BlokTestCase):
         goods.set_property('foo', 1)
         self.assertEqual(goods.get_property('foo'), 1)
 
+    def test_str(self):
+        gt = self.goods_type
+        goods = self.Goods.insert(type=gt, quantity=1,
+                                  state='future',
+                                  reason=self.arrival, location=self.stock)
+        self.assertEqual(repr(goods),
+                         "Wms.Goods(id=%d, state='future', type="
+                         "Wms.Goods.Type(id=%d, code='MG'))" % (
+                             goods.id, gt.id))
+        self.assertEqual(str(goods),
+                         "(id=%d, state='future', type="
+                         "(id=%d, code='MG'))" % (goods.id, gt.id))
+
     def test_prop_api_column(self):
         goods = self.Goods.insert(type=self.goods_type, quantity=1,
                                   reason=self.arrival, location=self.stock)
