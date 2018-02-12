@@ -70,5 +70,6 @@ class Departure(SingleGoodsSplitter, Operation):
 
     def execute_planned_after_split(self):
         Goods = self.registry.Wms.Goods
-        Goods.query().filter(Goods.reason == self, Goods.quantity < 0).delete()
+        Goods.query().filter(Goods.reason == self, Goods.quantity < 0).delete(
+            synchronize_session='fetch')
         self.depart()

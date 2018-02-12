@@ -65,9 +65,10 @@ class Move(SingleGoodsSplitter, Operation):
 
         Goods = self.registry.Wms.Goods
         query = Goods.query().filter(Goods.reason == self)
-        query.filter(Goods.quantity < 0).delete()
+        query.filter(Goods.quantity < 0).delete(synchronize_session='fetch')
 
         after_move = query.one()
         after_move.state = 'present'
         self.goods = after_move
+        self.registry.flush()
         goods.delete()

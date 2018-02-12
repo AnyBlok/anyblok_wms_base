@@ -113,6 +113,6 @@ class Split(SingleGoods, Operation):
         self.goods.quantity -= self.quantity
         Goods = self.registry.Wms.Goods
         query = Goods.query().filter(Goods.reason == self)
-        query.filter(Goods.quantity < 0).delete()
+        query.filter(Goods.quantity < 0).delete(synchronize_session='fetch')
         for created in query.filter(Goods.quantity > 0).all():
             created.state = 'present'

@@ -67,7 +67,8 @@ class Unpack(SingleGoodsSplitter, Operation):
             outcome.state = 'present'
         self.goods.state = 'past'
         if self.partial:
-            touched.filter(Goods.quantity < 0).delete()
+            touched.filter(Goods.quantity < 0).delete(
+                synchronize_session='fetch')
 
     def after_insert(self):
         Goods = self.registry.Wms.Goods
