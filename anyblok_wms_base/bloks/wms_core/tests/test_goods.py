@@ -55,6 +55,20 @@ class TestGoods(BlokTestCase):
         goods.set_property('batch', '12345')
         self.assertEqual(goods.get_property('batch'), '12345')
 
+    def test_prop_api_duplication(self):
+        goods = self.Goods.insert(type=self.goods_type, quantity=1,
+                                  reason=self.arrival, location=self.stock)
+
+        goods.set_property('batch', '12345')
+        self.assertEqual(goods.get_property('batch'), '12345')
+
+        goods2 = self.Goods.insert(type=self.goods_type, quantity=3,
+                                   reason=self.arrival, location=self.stock,
+                                   properties=goods.properties)
+        goods2.set_property('batch', '6789')
+        self.assertEqual(goods.get_property('batch'), '12345')
+        self.assertEqual(goods2.get_property('batch'), '6789')
+
     def test_prop_api_reserved(self):
         goods = self.Goods.insert(type=self.goods_type, quantity=1,
                                   reason=self.arrival, location=self.stock)

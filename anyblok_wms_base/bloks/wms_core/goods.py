@@ -6,6 +6,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from sqlalchemy.orm.attributes import flag_modified
+
 from anyblok import Declarations
 from anyblok.column import String
 from anyblok.column import Selection
@@ -118,12 +120,19 @@ class Goods:
     def set_property(self, k, v):
         """Property setter.
 
-        See remarks on :meth:`get_property`1
+        See remarks on :meth:`get_property`
         """
-        if self.properties is None:
+        existing_props = self.properties
+        if existing_props is None:
             self.properties = self.registry.Wms.Goods.Properties(
                 flexible=dict())
-        return self.properties.set(k, v)
+        elif existing_props.get(k) != v:
+            cls = self.__class__
+            if cls.query(cls.id).filter(
+                    cls.properties == existing_props,
+                    cls.id != self.id).limit(1).count():
+                self.properties = existing_props.duplicate()
+        self.properties.set(k, v)
 
 
 @register(Model.Wms.Goods)
@@ -199,7 +208,15 @@ class Properties:
         if k in ('id', 'flexible'):
             raise ValueError("The key %k is reserved, and can't be used for "
                              "properties" % k)
-        if k in self.loaded_columns:
+        if k in self.fields_description():
             setattr(self, k, v)
         else:
             self.flexible[k] = v
+            flag_modified(self, '__anyblok_field_flexible')
+
+    def duplicate(self):
+        fields = {k: getattr(self, k)
+                  for k in self.fields_description().keys()
+                  }
+        fields.pop('id')
+        return self.insert(**fields)
