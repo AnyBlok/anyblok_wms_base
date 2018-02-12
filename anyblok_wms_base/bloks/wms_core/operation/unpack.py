@@ -90,13 +90,17 @@ class Unpack(SingleGoodsSplitter, Operation):
                          state='future',
                          reason=self)
         for outcome_spec in spec:
-            outcome = Goods.insert(
-                quantity=outcome_spec['quantity'] * self.quantity,
-                location=packs.location,
-                type=outcome_types[outcome_spec['type']],
-                reason=self,
-                state=outcome_state)
-            self.forward_props(outcome_spec, outcome)
+            fields = dict(quantity=outcome_spec['quantity'] * self.quantity,
+                          location=packs.location,
+                          type=outcome_types[outcome_spec['type']],
+                          reason=self,
+                          state=outcome_state)
+            clone = outcome_spec.get('forward_properties') == 'clone'
+            if clone:
+                fields['properties'] = packs.properties
+            outcome = Goods.insert(**fields)
+            if not clone:
+                self.forward_props(outcome_spec, outcome)
 
     def forward_props(self, spec, outcome):
         """Handle the properties for a given outcome (Goods record)
@@ -106,10 +110,6 @@ class Unpack(SingleGoodsSplitter, Operation):
         """
         packs = self.goods
         fwd_props = spec.get('forward_properties', ())
-        if fwd_props == 'clone':
-            outcome.properties = packs.properties
-            return
-
         req_props = spec.get('required_properties')
 
         if req_props and not packs.properties:
