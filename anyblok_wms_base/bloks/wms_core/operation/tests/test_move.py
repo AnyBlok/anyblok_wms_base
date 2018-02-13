@@ -189,3 +189,18 @@ class TestSingleGoodsOperation(BlokTestCase):
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
         self.assertEqual(exc.kwargs.get('goods'), self.goods)
+
+    def test_quantity_changed(self):
+        move = self.Move.create(destination=self.stock,
+                                quantity=3,
+                                state='planned',
+                                goods=self.goods)
+        self.assertEqual(move.follows, [self.arrival])
+        self.assertEqual(move.goods, self.goods)
+        self.goods.state = 'present'
+        self.goods.quantity = 2
+        with self.assertRaises(OperationQuantityError) as arc:
+            move.execute()
+        exc = arc.exception
+        self.assertEqual(exc.model_name, self.op_model_name)
+        self.assertEqual(exc.kwargs.get('goods'), self.goods)
