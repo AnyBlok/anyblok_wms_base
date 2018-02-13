@@ -190,7 +190,11 @@ class TestSingleGoodsOperation(BlokTestCase):
         self.assertEqual(exc.model_name, self.op_model_name)
         self.assertEqual(exc.kwargs.get('goods'), self.goods)
 
-    def test_quantity_changed(self):
+    def test_quantity_changed_no_split(self):
+        """SingleGoodsSplitters raise if quantity of the final op isn't exact.
+
+        This test is for the case without split
+        """
         move = self.Move.create(destination=self.stock,
                                 quantity=3,
                                 state='planned',
@@ -203,4 +207,41 @@ class TestSingleGoodsOperation(BlokTestCase):
             move.execute()
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
+        self.assertEqual(exc.kwargs.get('goods'), self.goods)
+
+    def test_quantity_changed_split(self):
+        """SingleGoodsSplitters raise if quantity of the final op isn't exact.
+
+        This test is for the case with split. We have to alter the split
+        outcome somewhat artificially, to simulate a bug or some external
+        alteration.
+        """
+        move = self.Move.create(destination=self.stock,
+                                quantity=2,
+                                state='planned',
+                                goods=self.goods)
+        self.assertNotEqual(move.goods, self.goods)
+        move.goods.quantity = 3
+
+        self.goods.state = 'present'
+        with self.assertRaises(OperationQuantityError) as arc:
+            move.execute()
+        exc = arc.exception
+        self.assertEqual(exc.model_name, self.op_model_name)
+        self.assertEqual(exc.kwargs.get('goods'), move.goods)
+
+    def test_quantity_too_big_split(self):
+        move = self.Move.create(destination=self.stock,
+                                quantity=2,
+                                state='planned',
+                                goods=self.goods)
+        self.assertEqual(len(move.follows), 1)
+        split = move.follows[0]
+        self.assertEqual(split.goods, self.goods)
+        self.goods.quantity = 1
+
+        with self.assertRaises(OperationQuantityError) as arc:
+            split.execute()
+        exc = arc.exception
+        self.assertEqual(exc.model_name, 'Model.Wms.Operation.Split')
         self.assertEqual(exc.kwargs.get('goods'), self.goods)
