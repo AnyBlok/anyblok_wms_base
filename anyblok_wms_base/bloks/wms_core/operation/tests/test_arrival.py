@@ -24,6 +24,9 @@ class TestArrival(BlokTestCase):
         arrival = self.Arrival.create(location=self.incoming_loc,
                                       quantity=3,
                                       state='planned',
+                                      goods_code='765',
+                                      goods_properties=dict(foo=5,
+                                                            bar='monty'),
                                       goods_type=self.goods_type)
         self.assertEqual(arrival.follows, [])
         arrived = self.Goods.query().filter(self.Goods.reason == arrival).all()
@@ -33,15 +36,24 @@ class TestArrival(BlokTestCase):
         self.assertEqual(goods.location, self.incoming_loc)
         self.assertEqual(goods.quantity, 3)
         self.assertEqual(goods.type, self.goods_type)
+        self.assertEqual(goods.code, '765')
+        self.assertEqual(goods.get_property('foo'), 5)
+        self.assertEqual(goods.get_property('bar'), 'monty')
 
         arrival.execute()
         self.assertEqual(goods.state, 'present')
         self.assertEqual(arrival.state, 'done')
+        self.assertEqual(goods.get_property('foo'), 5)
+        self.assertEqual(goods.get_property('bar'), 'monty')
+        self.assertEqual(goods.code, '765')
 
     def test_create_done(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
                                       quantity=3,
                                       state='done',
+                                      goods_code='x34/7',
+                                      goods_properties=dict(foo=2,
+                                                            monty='python'),
                                       goods_type=self.goods_type)
         self.assertEqual(arrival.follows, [])
         arrived = self.Goods.query().filter(self.Goods.reason == arrival).all()
@@ -51,6 +63,9 @@ class TestArrival(BlokTestCase):
         self.assertEqual(goods.location, self.incoming_loc)
         self.assertEqual(goods.quantity, 3)
         self.assertEqual(goods.type, self.goods_type)
+        self.assertEqual(goods.code, 'x34/7')
+        self.assertEqual(goods.get_property('foo'), 2)
+        self.assertEqual(goods.get_property('monty'), 'python')
 
 
 class TestOperationBase(BlokTestCase):

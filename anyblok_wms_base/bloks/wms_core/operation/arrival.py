@@ -10,6 +10,8 @@
 from anyblok import Declarations
 from anyblok.column import Decimal
 from anyblok.column import Integer
+from anyblok.column import String
+from anyblok_postgres.column import Jsonb
 from anyblok.relationship import Many2One
 
 register = Declarations.register
@@ -23,14 +25,22 @@ class Arrival(Operation):
     This does not encompass all "creations" of goods : only those that
     come in real life from the outside.
 
-    Open functional question : do we need properties on arrivals ?
-    If yes, what would they describe in case of a planned arrival
-    only some subset of expected properties ? And then once the arrival
-    operation is done, are they the actual properties or the original
-    expected ones ? Do we want automatic forwarding of properties to goods ?
-    If yes that means that properties of Goods are expected to diverge
-    from reality and their checking is not part of the Arrival operation.
-    Same question holds actually for quantity.
+    Arrivals store data about the expected or arrived Goods: propeties, code,
+    quantity… These are copied over to the corresponding Goods records in all
+    cases and stay inert after the fact.
+
+    In case the Arrival state is ``planned``,
+    these are obviously only unchecked values,
+    but in case it is ``done``, the actual meaning can depend
+    on the application:
+
+    - maybe the application won't use the ``planned`` state at all, and
+      will only create Arrival after checking them,
+    - maybe the application will inspect the Arrival properties, compare them
+      to reality, update them on the created Goods and cancel downstream
+      operations if needed, before calling :meth:`execute`.
+
+    TODO maybe provide higher level facilities for validation scenarios.
     """
     TYPE = 'wms_arrival'
 
@@ -39,6 +49,8 @@ class Arrival(Operation):
                  autoincrement=False,
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
     goods_type = Many2One(model='Model.Wms.Goods.Type')
+    goods_properties = Jsonb(label="Properties of arrived Goods")
+    goods_code = String(label="Code to set on arrived Goods")
     location = Many2One(model='Model.Wms.Location')
     quantity = Decimal(label="Quantity")  # TODO non negativity constraint
 
@@ -55,14 +67,20 @@ class Arrival(Operation):
         """An Arrival does not have preconditions."""
 
     def after_insert(self):
-        self.registry.Wms.Goods.insert(
-                location=self.location,
-                quantity=self.quantity,
-                reason=self,
-                state='present' if self.state == 'done' else 'future',
-                type=self.goods_type,
-                # TODO code and properties, see class docstring for open
-                # questions
+        Goods = self.registry.Wms.Goods
+        self_props = self.goods_properties
+        if self_props is None:
+            props = None
+        else:
+            props = Goods.Properties.create(**self_props)
+        Goods.insert(
+            location=self.location,
+            quantity=self.quantity,
+            reason=self,
+            state='present' if self.state == 'done' else 'future',
+            type=self.goods_type,
+            properties=props,
+            code=self.goods_code,
         )
 
     def execute_planned(self):
