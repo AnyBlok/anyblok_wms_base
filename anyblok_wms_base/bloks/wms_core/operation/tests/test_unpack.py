@@ -73,6 +73,51 @@ class TestUnpack(BlokTestCase):
         self.assertEqual(unpacked_goods.quantity, 15)
         self.assertEqual(unpacked_goods.type, unpacked_type)
 
+    def test_whole_done_one_clone_one_not_clone(self):
+        unpacked_clone_type = self.Goods.Type.insert(
+            label="Unpacked, clone props")
+        unpacked_fwd_type = self.Goods.Type.insert(
+            label="Unpacked, fwd one prop")
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(
+                outcomes=[
+                    dict(type=unpacked_fwd_type.id,
+                         quantity=3,
+                         forward_properties=['foo', 'bar'],
+                         required_properties=['foo'],
+                         ),
+                    dict(type=unpacked_clone_type.id,
+                         quantity=2,
+                         forward_properties='clone'
+                         )
+                ],
+            )),
+            properties=dict(flexible=dict(foo=3, other='xyz')),
+            )
+        self.packs.update(state='present')
+        unp = self.Unpack.create(quantity=5,
+                                 state='done',
+                                 goods=self.packs)
+        self.assertEqual(unp.follows, [self.arrival])
+
+        unpacked_goods_cloned_props = self.Goods.query().filter(
+            self.Goods.type == unpacked_clone_type).all()
+        self.assertEqual(len(unpacked_goods_cloned_props), 1)
+        unpacked_goods_cloned_props = unpacked_goods_cloned_props[0]
+        self.assertEqual(unpacked_goods_cloned_props.quantity, 10)
+        self.assertEqual(unpacked_goods_cloned_props.properties,
+                         self.packs.properties)
+
+        unpacked_goods_fwd_props = self.Goods.query().filter(
+            self.Goods.type == unpacked_fwd_type).all()
+        self.assertEqual(len(unpacked_goods_fwd_props), 1)
+        unpacked_goods_fwd_props = unpacked_goods_fwd_props[0]
+        self.assertEqual(unpacked_goods_fwd_props.quantity, 15)
+        self.assertNotEqual(unpacked_goods_fwd_props.properties,
+                            self.packs.properties)
+        self.assertIsNone(unpacked_goods_fwd_props.get_property('other'))
+        self.assertEqual(unpacked_goods_fwd_props.get_property('foo'), 3)
+
     def test_whole_done_one_unpacked_unform(self):
         unpacked_type = self.Goods.Type.insert(label="Unpacked")
         self.create_packs(
