@@ -102,3 +102,17 @@ class TestGoods(BlokTestCase):
         goods.set_property('batch', '2')
         self.assertEqual(goods.properties.flexible, {})
         self.assertEqual(goods.properties.batch, '2')
+
+
+class TestGoodsProperties(BlokTestCase):
+
+    def setUp(self):
+        self.Props = self.registry.Wms.Goods.Properties
+
+    def test_create(self):
+        props = self.Props.create(batch='abcd',
+                                  serial=1234, expiry='2018-03-01')
+        self.assertEqual(props.to_dict(),
+                         dict(batch='abcd',
+                              id=props.id,
+                              flexible=dict(serial=1234, expiry='2018-03-01')))

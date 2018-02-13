@@ -220,3 +220,29 @@ class Properties:
                   }
         fields.pop('id')
         return self.insert(**fields)
+
+    @classmethod
+    def create(cls, **props):
+        """Direct creation.
+
+        The caller doesn't have to care about which properties get stored as
+        columns or in the ``flexible`` JSONB.
+
+        This method is a better alternative than
+        insertion followed by calls to :meth:`set`, because it guarantees that
+        only one SQL INSERT will be issued.
+        """
+        fields = cls.fields_description()
+        columns = {}
+        flexible = {}
+        forbidden = ('id', 'flexible')
+        for k, v in props.items():
+            if k in forbidden:
+                raise ValueError(
+                    "The key %r is reserved, and can't be used as "
+                    "a property key" % k)
+            if k in fields:
+                columns[k] = v
+            else:
+                flexible[k] = v
+        return cls.insert(flexible=flexible, **columns)
