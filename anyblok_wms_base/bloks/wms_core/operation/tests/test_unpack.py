@@ -319,3 +319,19 @@ class TestUnpack(BlokTestCase):
                               packs=self.packs,
                               behaviour=dict(outcomes=[]),
                               specific=()))
+
+    def test_no_behaviour(self):
+        """Unpacking with no specified 'unpack' behaviour is an error."""
+        self.create_packs(
+            type_behaviours=dict(other_op=[]),
+        )
+        self.packs.update(state='present')
+        with self.assertRaises(OperationGoodsError) as arc:
+            self.Unpack.create(quantity=5,
+                               state='done',
+                               goods=self.packs)
+        str(arc.exception)
+        repr(arc.exception)
+        self.assertEqual(arc.exception.kwargs,
+                         dict(type=self.packed_goods_type,
+                              goods=self.packs))
