@@ -205,6 +205,10 @@ class Operation:
                  start reversing the whole.
         """
         if self.state != 'done':
+            # TODO actually it'd be nice to cancel or update
+            # planned operations (think of reverting a Move meant for
+            # organisation, but keeping an Unpack that was scheduled
+            # afterwards)
             raise OperationError(
                 self,
                 "Can't plan reversal of {op} because "

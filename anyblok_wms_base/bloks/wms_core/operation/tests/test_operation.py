@@ -126,3 +126,19 @@ class TestOperation(BlokTestCase):
         goods = goods[0]
         self.assertEqual(goods.quantity, 3)
         self.assertEqual(goods.location, self.incoming_loc)
+
+    def test_plan_revert_recurse_wrong_state(self):
+        arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
+                                                location=self.incoming_loc,
+                                                state='done',
+                                                quantity=3)
+
+        goods = self.Goods.query().filter(self.Goods.reason == arrival).one()
+
+        # full moves don't generate splits, that's why the history is linear
+        move = self.Operation.Move.create(goods=goods,
+                                          quantity=3,
+                                          destination=self.stock,
+                                          state='planned')
+        with self.assertRaises(OperationError):
+            move.plan_revert()
