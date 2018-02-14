@@ -54,6 +54,11 @@ class Arrival(Operation):
     location = Many2One(model='Model.Wms.Location')
     quantity = Decimal(label="Quantity")  # TODO non negativity constraint
 
+    def specific_repr(self):
+        return ("goods_type={self.goods_type!r}, "
+                "location={self.location!r}, "
+                "quantity={self.quantity}").format(self=self)
+
     @classmethod
     def check_create_conditions(cls, state, **kwargs):
         """An Arrival does not have preconditions."""

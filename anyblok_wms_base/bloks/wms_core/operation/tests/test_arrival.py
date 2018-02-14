@@ -67,6 +67,17 @@ class TestArrival(BlokTestCase):
         self.assertEqual(goods.get_property('foo'), 2)
         self.assertEqual(goods.get_property('monty'), 'python')
 
+    def test_repr(self):
+        arrival = self.Arrival(location=self.incoming_loc,
+                               quantity=3,
+                               state='done',
+                               goods_code='x34/7',
+                               goods_properties=dict(foo=2,
+                                                     monty='python'),
+                               goods_type=self.goods_type)
+        repr(arrival)
+        str(arrival)
+
 
 class TestOperationBase(BlokTestCase):
     """Test the Operation base class

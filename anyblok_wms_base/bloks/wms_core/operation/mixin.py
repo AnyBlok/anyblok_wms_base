@@ -87,6 +87,10 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleGoodsOperation):
 
     partial = Boolean(label="Operation induced a split")
 
+    def specific_repr(self):
+        return ("goods={self.goods!r}, "
+                "quantity={self.quantity}").format(self=self)
+
     def check_execute_conditions(self):
         goods = self.goods
         if self.quantity != goods.quantity:

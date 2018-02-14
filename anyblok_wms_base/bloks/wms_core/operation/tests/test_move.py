@@ -245,3 +245,11 @@ class TestSingleGoodsOperation(BlokTestCase):
         exc = arc.exception
         self.assertEqual(exc.model_name, 'Model.Wms.Operation.Split')
         self.assertEqual(exc.kwargs.get('goods'), self.goods)
+
+    def test_repr(self):
+        move = self.Move(destination=self.stock,
+                         quantity=3,
+                         state='planned',
+                         goods=self.goods)
+        repr(move)
+        str(move)

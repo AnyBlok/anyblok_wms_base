@@ -118,6 +118,14 @@ class Operation:
 
         return mapper_args
 
+    def __repr__(self):
+        return ("{model_name}(id={self.id}, state={self.state!r}, "
+                "{specific})").format(self=self,
+                                      model_name=self.__registry_name__,
+                                      specific=self.specific_repr())
+
+    __str__ = __repr__
+
     @classmethod
     def forbid_follows_in_create(cls, follows, kwargs):
         if follows is not None:

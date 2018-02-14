@@ -105,3 +105,10 @@ class TestMove(BlokTestCase):
         self.assertEqual(sent.state, 'past')
         self.assertEqual(sent.quantity, 1)
         self.assertQuantities(future=2, present=2, past=1)
+
+    def test_repr(self):
+        dep = self.Departure(quantity=3,
+                             state='planned',
+                             goods=self.goods)
+        repr(dep)
+        str(dep)

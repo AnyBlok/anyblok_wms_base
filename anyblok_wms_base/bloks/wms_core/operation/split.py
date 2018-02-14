@@ -65,6 +65,10 @@ class Split(SingleGoods, Operation):
     goods = Many2One(model='Model.Wms.Goods', nullable=False)
     quantity = Decimal(label="Quantity")  # TODO non negativity constraint
 
+    def specific_repr(self):
+        return ("goods={self.goods!r}, "
+                "quantity={self.quantity}").format(self=self)
+
     def after_insert(self):
         """Business logic after the inert insertion
 

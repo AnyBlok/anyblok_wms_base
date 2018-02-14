@@ -380,3 +380,9 @@ class TestUnpack(BlokTestCase):
         self.assertEqual(arc.exception.kwargs,
                          dict(type=self.packed_goods_type,
                               goods=self.packs))
+
+    def test_repr(self):
+        self.create_packs(type_behaviours={}, properties={})
+        unp = self.Unpack(quantity=5, state='done', goods=self.packs)
+        repr(unp)
+        str(unp)
