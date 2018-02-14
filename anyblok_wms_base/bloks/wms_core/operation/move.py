@@ -106,3 +106,21 @@ class Move(SingleGoodsSplitter, Operation):
         Goods = self.registry.Wms.Goods
         Goods.query().filter(Goods.reason == self).delete(
             synchronize_session='fetch')
+
+    def plan_revert_single(self, follows=()):
+        if not follows:
+            # reversal of an end-of-chain move
+            reason = self
+        else:
+            # A move has at most a single follower, hence
+            # its reversal follows at most one operation, whose
+            # outcome is one Goods record
+            reason = follows[0]
+        Goods = self.registry.Wms.Goods
+        # TODO introduce an outcome() generic API for all operations ?
+        goods = Goods.query().filter(Goods.reason == reason,
+                                     Goods.quantity > 0).one()
+        return self.create(goods=goods,
+                           quantity=self.quantity,
+                           destination=self.origin,
+                           state='planned')

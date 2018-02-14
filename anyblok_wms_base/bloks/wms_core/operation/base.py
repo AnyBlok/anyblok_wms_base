@@ -191,6 +191,41 @@ class Operation:
         self.delete()
         logger.info("Cancelled operation %r", self)
 
+    def plan_revert(self):
+        """Plan operations to revert the present one and its consequences.
+
+        Like :meth:`cancel`, this method is recursive, but it applies only
+        to operations that are in the 'done' state.
+
+        It is expected that some operations can't be reverted, because they
+        are destructive, and in that case an exception will be raised.
+
+        :return: the operation reverting the present one, and
+                 the list of initial operations to be executed to actually
+                 start reversing the whole.
+        """
+        if self.state != 'done':
+            raise OperationError(
+                self,
+                "Can't plan reversal of {op} because "
+                "its state {op.state!r} is not 'done'", op=self)
+        logger.debug("Planning reversal of operation %r", self)
+
+        exec_leafs = []
+        followers_reverts = []
+        for follower in self.followers:
+            follower_revert, follower_exec_leafs = follower.plan_revert()
+            self.registry.flush()
+            followers_reverts.append(follower_revert)
+            exec_leafs.extend(follower_exec_leafs)
+        this_reversal = self.plan_revert_single(follows=followers_reverts)
+        self.registry.flush()
+        if not exec_leafs:
+            exec_leafs.append(this_reversal)
+        logger.info("Planned reversal of operation %r. "
+                    "Execution starts with %r", self, exec_leafs)
+        return this_reversal, exec_leafs
+
     @classmethod
     def check_create_conditions(cls, state, **kwargs):
         """Used during creation to check that the Operation is indeed doable.
@@ -246,6 +281,21 @@ class Operation:
         Downstream applications and libraries are
         not supposed to call this method: they should use :meth:`cancel`,
         which takes care of the necessary recursivity and the final deletion.
+
+        To be implemented in sublasses
+        """
+        raise NotImplementedError(
+            "for %s" % self.__registry_name__)  # pragma: no cover
+
+    def plan_revert_single(self):
+        """Create a planned operation to revert the present one.
+
+        This method assumes that follow-up operations have already been taken
+        care of.
+
+        Downstream applications and libraries are
+        not supposed to call this method: they should use :meth:`plan_revert`,
+        which takes care of the necessary recursivity.
 
         To be implemented in sublasses
         """

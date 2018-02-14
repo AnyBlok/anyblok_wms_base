@@ -86,3 +86,43 @@ class TestOperation(BlokTestCase):
         self.assertEqual(self.Goods.query().filter(
             self.Goods.state == 'future').count(), 0)
         self.assertEqual(self.Operation.query().count(), 0)
+
+    def test_plan_revert_recurse_linear(self):
+        workshop = self.registry.Wms.Location.insert(label="Workshop")
+        arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
+                                                location=self.incoming_loc,
+                                                state='done',
+                                                quantity=3)
+
+        goods = self.Goods.query().filter(self.Goods.reason == arrival).one()
+        Move = self.Operation.Move
+
+        # full moves don't generate splits, that's why the history is linear
+        move1 = Move.create(goods=goods,
+                            quantity=3,
+                            destination=self.stock,
+                            state='done')
+        self.registry.flush()
+        move2 = Move.create(goods=goods,
+                            quantity=3,
+                            destination=workshop,
+                            state='done')
+        move1_rev, rev_leafs = move1.plan_revert()
+        self.assertEqual(len(rev_leafs), 1)
+        move2_rev = rev_leafs[0]
+
+        self.assertEqual(move2_rev.state, 'planned')
+        self.assertEqual(move2_rev.destination, self.stock)
+        self.assertEqual(move2_rev.follows, [move2])
+        self.assertEqual(move1_rev.state, 'planned')
+        self.assertEqual(move1_rev.destination, self.incoming_loc)
+        self.assertEqual(move1_rev.follows, [move2_rev])
+
+        move2_rev.execute()
+        move1_rev.execute()
+
+        goods = self.Goods.query().filter(self.Goods.state != 'past').all()
+        self.assertEqual(len(goods), 1)
+        goods = goods[0]
+        self.assertEqual(goods.quantity, 3)
+        self.assertEqual(goods.location, self.incoming_loc)
