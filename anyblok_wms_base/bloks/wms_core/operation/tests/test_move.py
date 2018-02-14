@@ -49,13 +49,16 @@ class TestMove(BlokTestCase):
 
         move.execute()
         self.assertEqual(move.state, 'done')
-        moved = self.Goods.query().filter(self.Goods.reason == move).all()
+        moved = self.Goods.query().filter(self.Goods.reason == move,
+                                          self.Goods.state != 'past').all()
         self.assertEqual(len(moved), 1)
         moved = moved[0]
         self.assertEqual(moved.state, 'present')
         self.assertEqual(moved.reason, move)
+        self.assertEqual(moved.location, self.stock)
         self.assertEqual(self.Goods.query().filter(
-            self.Goods.location == self.incoming_loc).count(), 0)
+            self.Goods.location == self.incoming_loc,
+            self.Goods.state != 'past').count(), 0)
 
     def test_whole_done(self):
         self.goods.update(state='present')

@@ -48,17 +48,8 @@ class Move(SingleGoodsSplitter, Operation):
         goods = self.goods
         self.origin = self.goods.location
         if self.partial or self.state == 'done':
-            # well, yeah, in PostgreSQL, this has about the same cost
-            # as copying the row, but at least we don't transmit it
-            goods.update(location=self.destination)
-            # TODO if I don't flush now, SQLA complains about a circular
-            # dependency in final flush (ok, I get it, it needs to order its
-            # operations), but it doesn't with a plain insert. I'd prefer
-            # not to flush now if possible. Is it possible to give indications?
-            # so far for being mildly more efficient, now we have two UPDATE
-            # queries…
             self.registry.flush()
-            goods.update(reason=self)
+            goods.update(location=self.destination, reason=self)
         else:
             fields = dict(reason=self,
                           state='future',
@@ -86,9 +77,24 @@ class Move(SingleGoodsSplitter, Operation):
 
         after_move = query.one()
         after_move.state = 'present'
+        self.registry.flush()
         self.goods = after_move
         self.registry.flush()
-        goods.delete()
+        # TODO it'd be maybe nicer if Moves could guarantee continuity of
+        # the Goods record, but then that'd mean updating all the operations
+        # that refer to after_move, and we have no generic way of finding
+        # them at the time being.
+        # One idea would be to traverse the DAG of
+        # follow-ups and change all of them if they have a goods field whose
+        # value is or contains  that move's goods.
+        # Another idea would be to introspect
+        # dynamically all Operation classes having a goods field (m2o or m2m)
+        # None of this would be in favor of privileging operator's reactivity,
+        # by careful preparation of ops.
+
+        # can't goods.delete() because another op might refer it
+        # TODO dates
+        goods.state = 'past'
 
     def cancel_single(self):
         goods = self.goods
