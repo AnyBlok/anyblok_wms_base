@@ -30,6 +30,10 @@ class Location:
     parent = Many2One(label="Parent location",
                       model='Model.Wms.Location')
 
+    def __repr__(self):
+        return ("Wms.Location(id={self.id}, code={self.code!r}, "
+                "label={self.label!r})".format(self=self))
+
     def quantity(self, goods_type, goods_state='present'):
         """Return the full quantity present in location for the given type.
 

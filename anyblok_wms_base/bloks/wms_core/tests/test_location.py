@@ -19,7 +19,7 @@ class TestGoods(BlokTestCase):
 
         self.Goods = Wms.Goods
         self.goods_type = self.Goods.Type.insert(label="My goods")
-        self.stock = Wms.Location.insert(label="Stock")
+        self.stock = Wms.Location.insert(label="Stock", code='STK')
         self.arrival = Wms.Operation.Arrival.insert(
             goods_type=self.goods_type,
             location=self.stock,
@@ -30,6 +30,10 @@ class TestGoods(BlokTestCase):
         self.Goods.insert(type=self.goods_type, quantity=qty,
                           reason=self.arrival, location=self.stock,
                           state=state)
+
+    def test_str_repr(self):
+        self.assertTrue('STK' in repr(self.stock))
+        self.assertTrue('STK' in str(self.stock))
 
     def assertQuantity(self, quantity, **kwargs):
         self.assertEqual(
