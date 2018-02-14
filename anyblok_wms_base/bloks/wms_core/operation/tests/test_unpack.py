@@ -292,6 +292,16 @@ class TestUnpack(BlokTestCase):
         unp.execute()
         self.assertEqual(unpacked_goods.state, 'present')
         self.assertEqual(self.packs.state, 'past')
+        self.assertEqual(self.packs.reason, unp)
+
+        self.assertEqual(
+            self.stock.quantity(self.packed_goods_type, goods_state='future'),
+            0)
+        self.assertEqual(
+            self.Goods.query().filter(
+                self.Goods.type == self.packed_goods_type,
+                self.Goods.state == 'future').count(),
+            0)
 
     def test_partial_plan_execute(self):
         """Plan a partial Unpack (uniform scenario), then execute it

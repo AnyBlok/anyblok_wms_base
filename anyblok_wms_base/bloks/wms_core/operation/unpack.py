@@ -65,10 +65,9 @@ class Unpack(SingleGoodsSplitter, Operation):
         # TODO PERF direct update query would probably be faster
         for outcome in touched.filter(Goods.type != packs.type).all():
             outcome.state = 'present'
-        self.goods.state = 'past'
-        if self.partial:
-            touched.filter(Goods.quantity < 0).delete(
-                synchronize_session='fetch')
+        self.goods.update(state='past', reason=self)
+        touched.filter(Goods.quantity < 0).delete(
+            synchronize_session='fetch')
 
     def after_insert(self):
         Goods = self.registry.Wms.Goods
