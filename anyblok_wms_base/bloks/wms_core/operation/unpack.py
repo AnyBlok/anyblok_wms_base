@@ -212,3 +212,8 @@ class Unpack(SingleGoodsSplitter, Operation):
             outcome.setdefault('forward_properties', []).extend(global_fwd)
             outcome.setdefault('required_properties', []).extend(global_req)
         return specs
+
+    def cancel_single(self):
+        Goods = self.registry.Wms.Goods
+        Goods.query().filter(Goods.reason == self).delete(
+            synchronize_session='fetch')

@@ -7,6 +7,8 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 
+import logging
+
 from anyblok import Declarations
 from anyblok.column import String
 from anyblok.column import Selection
@@ -14,8 +16,12 @@ from anyblok.column import Integer
 from anyblok.relationship import Many2Many
 
 from anyblok_wms_base.constants import OPERATION_STATES, OPERATION_TYPES
-from anyblok_wms_base.exceptions import OperationCreateArgFollows
+from anyblok_wms_base.exceptions import (
+    OperationCreateArgFollows,
+    OperationError,
+    )
 
+logger = logging.getLogger(__name__)
 register = Declarations.register
 Model = Declarations.Model
 
@@ -101,6 +107,7 @@ class Operation:
                         m2m_local_columns='child_id',
                         join_table='wms_operation_history',
                         label="Immediate preceding operations",
+                        many2many="followers",
                         )
 
     @classmethod
@@ -158,6 +165,32 @@ class Operation:
         self.execute_planned()
         self.state = 'done'
 
+    def cancel(self):
+        """Cancel a planned operation and all its consequences.
+
+        This method will recursively cancel all follow-ups of ``self``, before
+        cancelling ``self`` itself.
+
+        The implementation is for now a simple recursion, and hence can
+        lead to :class:`RecursionError` on huge graphs.
+        TODO rewrite using an accumulation logic rather than recursion.
+        """
+        if self.state != 'planned':
+            raise OperationError(
+                self,
+                "Can't cancel {op} because its state {op.state!r} is not "
+                "'planned'", op=self)
+        logger.debug("Cancelling operation %r", self)
+
+        # followers attribute value will mutate during the loop
+        followers = tuple(self.followers)
+        for follower in followers:
+            follower.cancel()
+        self.cancel_single()
+        self.follows.clear()
+        self.delete()
+        logger.info("Cancelled operation %r", self)
+
     @classmethod
     def check_create_conditions(cls, state, **kwargs):
         """Used during creation to check that the Operation is indeed doable.
@@ -202,3 +235,19 @@ class Operation:
         To be implemented in subclasses.
         """
         raise NotImplementedError  # pragma: no cover
+
+    def cancel_single(self):
+        """Cancel just the current operation.
+
+        This method assumes that follow-up operations are already been
+        taken care of. It removes all planned consequences of the operation,
+        without deleting the operation itself.
+
+        Downstream applications and libraries are
+        not supposed to call this method: they should use :meth:`cancel`,
+        which takes care of the necessary recursivity and the final deletion.
+
+        To be implemented in sublasses
+        """
+        raise NotImplementedError(
+            "for %s" % self.__registry_name__)  # pragma: no cover

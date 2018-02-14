@@ -10,6 +10,8 @@
 from anyblok import Declarations
 from anyblok.column import Integer
 from anyblok.relationship import Many2One
+from anyblok_wms_base.exceptions import OperationError
+
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
@@ -26,10 +28,25 @@ class Move(SingleGoodsSplitter, Operation):
                  primary_key=True,
                  autoincrement=False,
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
-    destination = Many2One(model='Model.Wms.Location')
+    destination = Many2One(model='Model.Wms.Location',
+                           nullable=False)
+    origin = Many2One(model='Model.Wms.Location',
+                      label="Set during execution, for cancel/revert/rollback")
+
+    def specific_repr(self):
+        return ("goods={self.goods!r}, "
+                "destination={self.destination!r}").format(self=self)
+
+    @classmethod
+    def check_create_conditions(cls, state, origin=None, **kwargs):
+        if origin is not None:
+            raise OperationError(cls, "The 'origin' field must *not* "
+                                 "be passed to the create() method")
+        super(Move, cls).check_create_conditions(state, **kwargs)
 
     def after_insert(self):
         goods = self.goods
+        self.origin = self.goods.location
         if self.partial or self.state == 'done':
             # well, yeah, in PostgreSQL, this has about the same cost
             # as copying the row, but at least we don't transmit it
@@ -72,3 +89,14 @@ class Move(SingleGoodsSplitter, Operation):
         self.goods = after_move
         self.registry.flush()
         goods.delete()
+
+    def cancel_single(self):
+        goods = self.goods
+        if self.partial:
+            split = self.follows[0]
+            goods.reason = split
+        goods.location = self.origin
+        self.registry.flush()
+        Goods = self.registry.Wms.Goods
+        Goods.query().filter(Goods.reason == self).delete(
+            synchronize_session='fetch')

@@ -73,3 +73,8 @@ class Departure(SingleGoodsSplitter, Operation):
         Goods.query().filter(Goods.reason == self, Goods.quantity < 0).delete(
             synchronize_session='fetch')
         self.depart()
+
+    def cancel_single(self):
+        Goods = self.registry.Wms.Goods
+        Goods.query().filter(Goods.reason == self).delete(
+            synchronize_session='fetch')

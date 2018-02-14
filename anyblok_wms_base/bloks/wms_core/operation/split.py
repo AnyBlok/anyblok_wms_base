@@ -120,3 +120,8 @@ class Split(SingleGoods, Operation):
         query.filter(Goods.quantity < 0).delete(synchronize_session='fetch')
         for created in query.filter(Goods.quantity > 0).all():
             created.state = 'present'
+
+    def cancel_single(self):
+        Goods = self.registry.Wms.Goods
+        Goods.query().filter(Goods.reason == self).delete(
+            synchronize_session='fetch')

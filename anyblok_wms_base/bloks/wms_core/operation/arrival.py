@@ -91,3 +91,8 @@ class Arrival(Operation):
     def execute_planned(self):
         Goods = self.registry.Wms.Goods
         Goods.query().filter(Goods.reason == self).one().update(state='present')
+
+    def cancel_single(self):
+        Goods = self.registry.Wms.Goods
+        Goods.query().filter(Goods.reason == self).delete(
+            synchronize_session='fetch')

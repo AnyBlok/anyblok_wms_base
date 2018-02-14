@@ -347,6 +347,36 @@ class TestUnpack(BlokTestCase):
         self.assertEqual(
             packs_query.filter(Goods.state == 'future').count(), 0)
 
+    def test_partial_cancel(self):
+        """Plan a partial Unpack (uniform scenario), then cancel it
+        """
+        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(
+                uniform_outcomes=True,
+                outcomes=[
+                    dict(type=unpacked_type.id,
+                         quantity=6,
+                         ),
+                ],
+            )),
+            properties=dict(flexible=dict(foo=7)))
+
+        unp = self.Unpack.create(quantity=4,
+                                 state='planned',
+                                 goods=self.packs)
+        self.assertEqual(unp.follows[0].type, 'wms_split')
+        self.assertEqual(unp.partial, True)
+
+        unp.cancel()
+        Goods = self.Goods
+        self.assertEqual(
+            Goods.query().filter(Goods.type == unpacked_type).count(),
+            0)
+        self.assertEqual(
+            self.stock.quantity(self.packed_goods_type, goods_state='future'),
+            5)
+
     def test_no_outcomes(self):
         """Unpacking with no outcomes should be hard errors."""
         self.create_packs(
