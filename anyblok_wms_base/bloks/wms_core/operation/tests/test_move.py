@@ -8,6 +8,7 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok.tests.testcase import BlokTestCase
 from anyblok_wms_base.exceptions import (
+    OperationError,
     OperationGoodsError,
     OperationMissingGoodsError,
     OperationQuantityError,
@@ -63,6 +64,15 @@ class TestMove(BlokTestCase):
                                 state='done',
                                 goods=self.goods)
         self.assertEqual(move.follows, [self.arrival])
+
+    def test_forbid_origin(self):
+        with self.assertRaises(OperationError) as arc:
+            self.Move.create(destination=self.stock,
+                             origin=self.incoming_loc,
+                             quantity=3,
+                             state='done',
+                             goods=self.goods)
+        self.assertTrue("'origin'" in str(arc.exception))
 
     def test_partial_done(self):
         self.goods.update(state='present')
