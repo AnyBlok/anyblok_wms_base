@@ -7,6 +7,9 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok.tests.testcase import BlokTestCase
+from anyblok_wms_base.exceptions import (
+    OperationError,
+    )
 
 
 class TestOperation(BlokTestCase):
@@ -50,6 +53,15 @@ class TestOperation(BlokTestCase):
         self.assertEqual(self.Goods.query().filter(
             self.Goods.state == 'future').count(), 0)
         self.assertEqual(self.Operation.Arrival.query().count(), 0)
+
+    def test_cancel_done(self):
+        """One can't cancel an operation that's already done."""
+        arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
+                                                location=self.incoming_loc,
+                                                state='done',
+                                                quantity=2)
+        with self.assertRaises(OperationError):
+            arrival.cancel()
 
     def test_cancel_recursion(self):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
