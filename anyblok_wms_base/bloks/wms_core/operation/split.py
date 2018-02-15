@@ -46,7 +46,7 @@ class Split(SingleGoods, Operation):
 
     - the first has a positive quantity and is the one that will persist once
       the split will be executed
-    - the second has a positive quantity being the exact negative of the
+    - the second has a quantity being the exact negative of the
       first, so that the operation doesn't biai future on stock levels.
 
     This is good enough for now, if not entirely satisfactory. Once we have
