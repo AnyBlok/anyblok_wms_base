@@ -10,7 +10,6 @@
 from anyblok import Declarations
 from anyblok.column import Decimal
 from anyblok.column import Integer
-from anyblok.relationship import Many2One
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
@@ -62,7 +61,6 @@ class Split(SingleGoods, Operation):
                  primary_key=True,
                  autoincrement=False,
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
-    goods = Many2One(model='Model.Wms.Goods', nullable=False)
     quantity = Decimal(label="Quantity")  # TODO non negativity constraint
 
     def specific_repr(self):
