@@ -2,6 +2,7 @@ from anyblok import Declarations
 from anyblok.column import Decimal
 from anyblok.column import Boolean
 from anyblok.relationship import Many2One
+from anyblok.relationship import Many2Many
 
 from anyblok_wms_base.exceptions import (
     OperationGoodsError,
@@ -140,3 +141,57 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleGoodsOperation):
             split_op.execute()
         self.execute_planned_after_split()
         self.registry.flush()
+
+
+@Declarations.register(Mixin)
+class WmsMultipleGoodsOperation:
+    """Mixin for operations that apply to a several records of Goods.
+
+    We'll use a single table to represent the Many2Many relationship with
+    Goods.
+    """
+
+    goods = Many2Many(model='Model.Wms.Goods',
+                      join_table='join_wms_operation_multiple_goods',
+                      m2m_remote_columns='goods_id',
+                      m2m_local_columns='op_id',
+                      label="Goods record to apply the operation to")
+
+    @classmethod
+    def find_parent_operations(cls, goods=None, **kwargs):
+        return set(g.reason for g in goods)
+
+    @classmethod
+    def check_create_conditions(cls, state, goods=None, **kwargs):
+        if not goods:
+            raise OperationMissingGoodsError(
+                cls,
+                "The 'goods' keyword argument must be passed to the create() "
+                "method, and must not be empty")
+
+        if state == 'done':
+            for record in goods:
+                if record.state != 'present':
+                    raise OperationGoodsError(
+                        cls,
+                        "Can't create in state 'done' for goods {goods} "
+                        "because one of them (id={record.id}) has state "
+                        "{record.state} instead of the expected 'present'",
+                        goods=goods, record=record)
+
+    def check_execute_conditions(self):
+        for record in self.goods:
+            if record.state != 'present':
+                raise OperationGoodsError(
+                    self,
+                    "Can't execute {op} for goods {goods} "
+                    "because one of them (id={record.id}) has state "
+                    "{record.state} instead of the expected 'present'",
+                    goods=self.goods, record=record)
+
+    @classmethod
+    def insert(cls, goods=None, **kwargs):
+        """Helper to pass goods as an iterable directly."""
+        agg = super(WmsMultipleGoodsOperation, cls).insert(**kwargs)
+        agg.goods.extend(goods)
+        return agg

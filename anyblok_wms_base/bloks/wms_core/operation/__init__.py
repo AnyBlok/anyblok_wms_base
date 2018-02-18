@@ -13,5 +13,6 @@ from . import mixin
 from . import arrival
 from . import departure
 from . import split
+from . import aggregate
 from . import move
 from . import unpack
