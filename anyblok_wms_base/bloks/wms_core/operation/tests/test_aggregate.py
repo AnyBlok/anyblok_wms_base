@@ -11,6 +11,9 @@ from anyblok_wms_base.exceptions import (
     OperationGoodsError,
     OperationMissingGoodsError,
 )
+from anyblok_wms_base.constants import (
+    SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR
+)
 
 
 class TestAggregate(BlokTestCase):
@@ -155,3 +158,16 @@ class TestAggregate(BlokTestCase):
         all_goods = self.Goods.query().filter(
             self.Goods.type == self.goods[0].type).all()
         self.assertEqual(set(all_goods), set(self.goods))
+
+    def test_reversibility(self):
+        for record in self.goods:
+            record.state = 'present'
+        agg = self.Agg.create(goods=self.goods, state='done')
+
+        self.assertTrue(agg.is_reversible())
+        gt = self.goods[0].type
+        gt.behaviours = {SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR: True}
+        self.assertFalse(agg.is_reversible())
+
+        gt.behaviours['aggregate'] = dict(reversible=True)
+        self.assertTrue(agg.is_reversible())

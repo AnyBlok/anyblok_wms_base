@@ -10,9 +10,6 @@
 from anyblok import Declarations
 from anyblok.column import Decimal
 from anyblok.column import Integer
-from anyblok_wms_base.exceptions import (
-    OperationIrreversibleError,
-    )
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
@@ -126,10 +123,16 @@ class Split(SingleGoods, Operation):
         Goods.query().filter(Goods.reason == self).delete(
             synchronize_session='fetch')
 
+    def is_reversible(self):
+        """Reversibility depends on the relevant Goods Type.
+
+        See :class:`Operation` for what reversibility exactly means in that
+        context.
+        """
+        return self.goods.type.is_split_reversible()
+
     def plan_revert_single(self, follows=()):
         goods = self.goods
-        if not self.goods.type.is_split_reversible():
-            raise OperationIrreversibleError(self)
         if not follows:
             # reversal of an end-of-chain split
             follows = [self]

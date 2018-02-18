@@ -146,3 +146,12 @@ class Aggregate(MultipleGoods, Operation):
         Goods = self.registry.Wms.Goods
         Goods.query().filter(Goods.reason == self).delete(
             synchronize_session='fetch')
+
+    def is_reversible(self):
+        """Reversibility depends on the relevant Goods Type.
+
+        See :class:`Operation` for what reversibility exactly means in that
+        context.
+        """
+        # that all Good Types are equal is part of pre-creation checks
+        return self.goods[0].type.is_aggregate_reversible()

@@ -79,6 +79,9 @@ class TestSplit(BlokTestCase):
         split = self.Operation.Split.create(state='done',
                                             goods=self.goods,
                                             quantity=2)
+        self.assertFalse(split.is_reversible())
+
+        # This actually implemented by the Operation base class:
         with self.assertRaises(OperationIrreversibleError) as arc:
             split.plan_revert()
         exc = arc.exception

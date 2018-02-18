@@ -107,6 +107,13 @@ class Move(SingleGoodsSplitter, Operation):
         Goods.query().filter(Goods.reason == self).delete(
             synchronize_session='fetch')
 
+    def is_reversible(self):
+        """Moves are always reversible.
+
+        See :class:`Operation` for what this exactly means.
+        """
+        return True
+
     def plan_revert_single(self, follows=()):
         if not follows:
             # reversal of an end-of-chain move

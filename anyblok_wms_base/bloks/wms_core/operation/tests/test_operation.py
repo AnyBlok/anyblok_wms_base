@@ -9,6 +9,7 @@
 from anyblok.tests.testcase import BlokTestCase
 from anyblok_wms_base.exceptions import (
     OperationError,
+    OperationIrreversibleError,
     )
 
 
@@ -142,3 +143,26 @@ class TestOperation(BlokTestCase):
                                           state='planned')
         with self.assertRaises(OperationError):
             move.plan_revert()
+
+    def test_plan_revert_recurse_irreversible(self):
+        arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
+                                                location=self.incoming_loc,
+                                                state='done',
+                                                quantity=3)
+
+        goods = self.Goods.query().filter(self.Goods.reason == arrival).one()
+
+        move = self.Operation.Move.create(goods=goods,
+                                          quantity=2,
+                                          destination=self.stock,
+                                          state='done')
+
+        outgoing = self.Goods.query().filter(self.Goods.reason == move).one()
+        departure = self.Operation.Departure.create(goods=outgoing,
+                                                    quantity=2,
+                                                    state='done')
+        with self.assertRaises(OperationIrreversibleError) as arc:
+            move.plan_revert()
+        exc = arc.exception
+        str(exc)
+        self.assertEqual(exc.kwargs.get('op'), departure)

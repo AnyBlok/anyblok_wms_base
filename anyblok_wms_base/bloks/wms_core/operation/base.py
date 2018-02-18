@@ -19,6 +19,7 @@ from anyblok_wms_base.constants import OPERATION_STATES, OPERATION_TYPES
 from anyblok_wms_base.exceptions import (
     OperationCreateArgFollows,
     OperationError,
+    OperationIrreversibleError,
     )
 
 logger = logging.getLogger(__name__)
@@ -191,6 +192,21 @@ class Operation:
         self.delete()
         logger.info("Cancelled operation %r", self)
 
+    def is_reversible(self):
+        """Tell whether the current operation can be in principle reverted.
+
+        This does not check that actual conditions to plan a revert are met
+        (which would need to plan reversals for all followers first),
+        but only that, in principle, it is possible.
+
+        As there are many irreversible operations, and besides, reversibility
+        has to be implemented for each subclass,
+        the default answer is ``False``.
+
+        :return bool: the answer
+        """
+        return False
+
     def plan_revert(self):
         """Plan operations to revert the present one and its consequences.
 
@@ -213,6 +229,9 @@ class Operation:
                 self,
                 "Can't plan reversal of {op} because "
                 "its state {op.state!r} is not 'done'", op=self)
+        if not self.is_reversible():
+            raise OperationIrreversibleError(self)
+
         logger.debug("Planning reversal of operation %r", self)
 
         exec_leafs = []
