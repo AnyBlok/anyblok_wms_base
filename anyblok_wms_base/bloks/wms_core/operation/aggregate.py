@@ -31,12 +31,20 @@ class Aggregate(MultipleGoods, Operation):
     that have to be considered internal details of wms_core, and are not
     guaranteed to exist in the future.
 
-    While non trivial in the database, they never have any physical
-    counterpart in the real world : they replace some records of
-    Goods with a single one, bearing the total quantity.
+    Aggregates replace some records of Goods at the same location,
+    sharing equal properties with a single one bearing the total quantity.
 
-    We've decided to represent this as an Operation for the sake of
-    consistency, and especially to avoid too much special cases in the code.
+    While non trivial in the database, they may have no physical counterpart in
+    the real world. We call them *formal* in that case.
+
+    Formal Aggregate Operations can always be reverted with Splits,
+    but only some physical Aggregate Operations can be reverted, depending on
+    the Goods Type. See :class:`Model.Wms.Goods.Type` for a full discussion of
+    this, with use cases.
+
+    In the formal case, we've decided to represent this as an Operation
+    for the sake of consistency, and especially to avoid too much special
+    cases implementation of various Operations.
     The benefit is that they appear explicitely in the history.
 
     For the time being, a planned Aggregate creates two records in 'future'
@@ -50,6 +58,12 @@ class Aggregate(MultipleGoods, Operation):
     This is good enough for now, if not entirely satisfactory. Once we have
     visibility time ranges on moves, we might change this and enforce that
     all Goods records have positive quantities.
+
+    TODO for the time being, the result of an Aggregate is a new record of
+    Goods, it might be interesting to precise a target among self.goods,
+    so that reversing a Split can actually become a no-op,
+    restoring the original split Goods record to its initial state (perhaps
+    excluding cases where Split is physical).
     """
     TYPE = 'wms_aggregate'
 

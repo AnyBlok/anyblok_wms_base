@@ -10,6 +10,9 @@
 from anyblok import Declarations
 from anyblok.column import Decimal
 from anyblok.column import Integer
+from anyblok_wms_base.exceptions import (
+    OperationIrreversibleError,
+    )
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
@@ -24,22 +27,21 @@ class Split(SingleGoods, Operation):
     internal details of wms_core, that are not guaranteed to exist in the
     future.
 
+    They replace a Goods record with several ones keeping
+    the same properties and locations, and the same total quantity.
+
     While non trivial in the database, they may have no physical counterpart in
-    the real world : they cut a Record of Goods in two. This can indeed be
-    a physical operation if the Goods are meters of wiring for instance, but
-    it's only a change in representation if the Goods are individual pieces,
-    in which case N>1 records of a given Goods Type with quantity=1 and
-    identical properties are strictly equivalent with one record with
-    quantity=N. Obviously, in the latter case, moving only one of these N
-    Goods needs first a split of the Record.
+    the real world. We call them *formal* in that case.
 
-    We've decided to represent this as an Operation for the sake of
-    consistency, and especially to avoid too much special cases in the code.
-    The benefit is that they appear explicitely in the history.
+    Formal Splits can always be reverted with Aggregate
+    Operations, but only some physical Splits can be reverted, depending on
+    the Goods Type. See :class:`Model.Wms.Goods.Type` for a full discussion of
+    this, with use cases.
 
-    We may introduce in the future markers on the Goods Type model later on
-    to indicate if splits are physical or not, and certainly if they can be
-    reverted.
+    In the formal case, we've decided to represent this as an Operation for
+    the sake of consistency, and especially to avoid too much special cases
+    in implementation of various Operations.
+    The benefit is that Splits appear explicitely in the history.
 
     For the time being, a planned split creates two records in 'future' state:
 
@@ -125,6 +127,9 @@ class Split(SingleGoods, Operation):
             synchronize_session='fetch')
 
     def plan_revert_single(self, follows=()):
+        goods = self.goods
+        if not self.goods.type.is_split_reversible():
+            raise OperationIrreversibleError(self)
         if not follows:
             # reversal of an end-of-chain split
             follows = [self]
@@ -136,7 +141,6 @@ class Split(SingleGoods, Operation):
         to_aggregate = Goods.query().filter(
             Goods.reason_id.in_(set(f.id for f in follows)),
             Goods.quantity > 0).all()
-        goods = self.goods
         if goods not in to_aggregate and goods.state == 'present':
             # our initial goods have not been fully exhausted
             # and hasn't had any downstream operations

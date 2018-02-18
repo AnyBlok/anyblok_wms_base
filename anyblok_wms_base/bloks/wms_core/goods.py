@@ -16,7 +16,11 @@ from anyblok.column import Decimal
 from anyblok.relationship import Many2One
 from anyblok_postgres.column import Jsonb
 
-from anyblok_wms_base.constants import GOODS_STATES
+from anyblok_wms_base.constants import (
+    GOODS_STATES,
+    SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR
+)
+
 
 register = Declarations.register
 Model = Declarations.Model
@@ -153,6 +157,43 @@ class Type:
     Goods Types, with potential packing/unpacking Operations.
     On the other hand, there's usually no point attaching pictures on
     Goods Types.
+
+    Goods Tyoes have a flexible (JSONB) behaviours field, that's used to
+    specify how various Operations will treat the represented Goods.
+
+    Notably, the behaviours specify whether Split and Aggregate are physical
+    (represent something happening in reality), and if that's the case if they
+    are reversible, using``{"reversible": true}``, defaulting to ``false``,
+    in the ``split`` and ``aggregate`` behaviours, respectively.
+
+    We don't want to impose reversibility to be equal for both directions,
+    as we don't feel confident it would be true in all use cases (it is indeed
+    in the ones presented below).
+
+    Reality of Split and Aggregate and their reversibilitues can be queried
+    using :meth:`are_split_aggregate_physical`,
+    :meth:`is_split_reversible` and :meth:`is_aggregate_reversible`
+
+    Use cases:
+
+    * if the represented goods come as individual pieces in reality, then all
+      quantities are integers, and there's no difference in reality
+      between N>1 records of a given Goods Type with quantity=1 having
+      identical properties and locations on one hand, and a
+      record with quantity=N at the same location with the same properties, on
+      the other hand.
+
+      .. note:: This use case is so frequent that we are considering moving
+                all notions of quantities together with Split and Aggregate
+                Operations out of ``wms-core`` in a separate Blok.
+
+    * if the represented goods are meters of wiring, then Splits are physical,
+      they mean cutting the wires, but Aggregates probably can't happen
+      in reality, and therefore Splits are irreversible.
+    * if the represented goods are kilograms of sand, kept in bulk,
+      then Splits mean in reality shoveling some out of, while Aggregates mean
+      shoveling some in (associated with Move operations, obviously).
+      Both operations are certainly reversible in reality.
     """
     id = Integer(label="Identifier", primary_key=True)
     code = String(label=u"Identifying code", index=True)
@@ -164,6 +205,60 @@ class Type:
 
     def __repr__(self):
         return "Wms.Goods.Type" + str(self)
+
+    def get_behaviour(self, key, default=None):
+        behaviours = self.behaviours
+        if behaviours is None:
+            return default
+        return behaviours.get(key, default)
+
+    def are_split_aggregate_physical(self):
+        """Tell if Split/Aggregate operations are physical.
+
+        by default, these operations are considered to be purely formal,
+        but a behaviour can be set to specify otherwise. This has impact
+        at least on reversibility.
+
+        Downstream libraries and applications should use the
+        ``SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR`` constant.
+
+        :returns bool: the answer.
+        """
+        return self.get_behaviour(SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR, False)
+
+    def _is_op_reversible(self, op_beh):
+        """Common impl for question about reversibility of some operations.
+
+        :param op_beh: name of the behaviour for the given operation
+        """
+        if not self.are_split_aggregate_physical():
+            return True
+        split = self.get_behaviour(op_beh)
+        if split is None:
+            return False
+        return split.get('reversible', False)
+
+    def is_split_reversible(self):
+        """Tell whether Split can be reverted for this Goods Type.
+
+        By default, Split is considered to be formal, hence the result is
+        ``True``. Otherwise, that depends on the ``reversible`` flag in the
+        ``split`` behaviour.
+
+        :returns bool: the answer.
+        """
+        return self._is_op_reversible('split')
+
+    def is_aggregate_reversible(self):
+        """Tell whether Aggregate can be reverted for this Goods Type.
+
+        By default, Aggregate is considered to be formal, hence the result is
+        ``True``. Otherwise, that depends on the ``reversible`` flag in the
+        ``aggregate`` behaviour.
+
+        :returns bool: the answer.
+        """
+        return self._is_op_reversible('aggregate')
 
 
 @register(Model.Wms.Goods)

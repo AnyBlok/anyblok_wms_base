@@ -7,6 +7,12 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok.tests.testcase import BlokTestCase
+from anyblok_wms_base.constants import (
+    SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR
+    )
+from anyblok_wms_base.exceptions import (
+    OperationIrreversibleError,
+    )
 
 
 class TestSplit(BlokTestCase):
@@ -62,6 +68,22 @@ class TestSplit(BlokTestCase):
             # for French speakers with math background)
             self.assertTrue(outcome.quantity > 0)
             self.assertEqual(outcome.state, 'present')
+
+    def test_irreversible(self):
+        """A case in which Splits are irreversible."""
+        self.goods_type.behaviours = {SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR: True}
+        # if that fails, then the issue is not in Split implementation:
+        self.assertEqual(self.goods_type.is_split_reversible(), False)
+
+        self.goods.state = 'present'
+        split = self.Operation.Split.create(state='done',
+                                            goods=self.goods,
+                                            quantity=2)
+        with self.assertRaises(OperationIrreversibleError) as arc:
+            split.plan_revert()
+        exc = arc.exception
+        str(exc)
+        self.assertEqual(exc.kwargs.get('op'), split)
 
     def test_revert_final(self):
         """Test reversal of a Split that's the latest operation on goods.

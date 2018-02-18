@@ -48,3 +48,12 @@ class OperationQuantityError(OperationGoodsError):
 
 class OperationMissingQuantityError(OperationGoodsError):
     """Used if the operation requires some quantity that's not passed."""
+
+
+class OperationIrreversibleError(OperationError):
+    """Raised if trying to revert an irreversible operation."""
+
+    def __init__(self, op, **kw):
+        OperationError.__init__(
+            self, op, "this can depend on the Operation class or "
+            "on the present instance: {op}", op=op)

@@ -7,6 +7,9 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok.tests.testcase import BlokTestCase
+from anyblok_wms_base.constants import (
+    SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR
+)
 
 
 class TestGoods(BlokTestCase):
@@ -120,3 +123,29 @@ class TestGoodsProperties(BlokTestCase):
     def test_reserved(self):
         with self.assertRaises(ValueError):
             self.Props.create(batch='abcd', flexible=True)
+
+
+class TestGoodsTypes(BlokTestCase):
+
+    def setUp(self):
+        self.GoodsType = self.registry.Wms.Goods.Type
+
+    def test_split_reversible(self):
+        gt = self.GoodsType(code='MG')
+        self.assertTrue(gt.is_split_reversible())
+
+        gt.behaviours = {SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR: True}
+        self.assertFalse(gt.is_split_reversible())
+
+        gt.behaviours['split'] = dict(reversible=True)
+        self.assertTrue(gt.is_split_reversible())
+
+    def test_aggregate_reversible(self):
+        gt = self.GoodsType(code='MG')
+        self.assertTrue(gt.is_aggregate_reversible())
+
+        gt.behaviours = {SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR: True}
+        self.assertFalse(gt.is_aggregate_reversible())
+
+        gt.behaviours['aggregate'] = dict(reversible=True)
+        self.assertTrue(gt.is_aggregate_reversible())

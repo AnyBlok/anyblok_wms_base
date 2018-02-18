@@ -110,3 +110,5 @@ OPERATION_TYPES = dict(wms_move="wms_op_types_move",
                        wms_arrival="wms_op_types_arrival",
                        wms_departure="wms_op_types_departure",
                        )
+
+SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR = 'split_aggregate_physical'
