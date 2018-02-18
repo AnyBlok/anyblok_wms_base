@@ -123,3 +123,23 @@ class Split(SingleGoods, Operation):
         Goods = self.registry.Wms.Goods
         Goods.query().filter(Goods.reason == self).delete(
             synchronize_session='fetch')
+
+    def plan_revert_single(self, follows=()):
+        if not follows:
+            # reversal of an end-of-chain split
+            follows = [self]
+        Wms = self.registry.Wms
+        Goods = Wms.Goods
+        # TODO introduce an outcome() generic API for all operations ?
+        # here in that case, that's for multiple operations
+        # in_ is not implemented for Many2Ones
+        to_aggregate = Goods.query().filter(
+            Goods.reason_id.in_(set(f.id for f in follows)),
+            Goods.quantity > 0).all()
+        goods = self.goods
+        if goods not in to_aggregate and goods.state == 'present':
+            # our initial goods have not been fully exhausted
+            # and hasn't had any downstream operations
+            to_aggregate.append(self.goods)
+        return Wms.Operation.Aggregate.create(goods=to_aggregate,
+                                              state='planned')
