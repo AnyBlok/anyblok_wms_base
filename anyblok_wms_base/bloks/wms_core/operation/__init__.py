@@ -9,7 +9,8 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 
 from . import base
-from . import mixin
+from . import on_goods
+from . import splitter
 from . import arrival
 from . import departure
 from . import split
