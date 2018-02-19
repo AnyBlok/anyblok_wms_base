@@ -49,6 +49,7 @@ class TestMove(BlokTestCase):
 
         move.execute()
         self.assertEqual(move.state, 'done')
+        self.assertEqual(self.goods.reason, move)
         moved = self.Goods.query().filter(self.Goods.reason == move,
                                           self.Goods.state != 'past').all()
         self.assertEqual(len(moved), 1)

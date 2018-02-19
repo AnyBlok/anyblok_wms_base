@@ -95,6 +95,7 @@ class Move(SingleGoodsSplitter, Operation):
         # can't goods.delete() because another op might refer it
         # TODO dates
         goods.state = 'past'
+        goods.reason = self
 
     def cancel_single(self):
         goods = self.goods
