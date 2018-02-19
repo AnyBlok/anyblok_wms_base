@@ -270,12 +270,17 @@ of the core, but should be moved to a distinct blok. Let's call it
    pallets or containers that it counterbalances the overhead of all
    those Splits.
 
+   Thery are also impaired by traceability requirements, for instance
+   if the related properties have consequent variability. In the extreme
+   case, if we track serial numbers for all goods, then we'll end up
+   with each Goods record having ``quantity=1``.
+
    In many use cases, including the most prominent one at the inception of WMS
    Base, several identical goods almost never get shipped to final
    customers, so it's guaranteed that the overwhelming majority of
    these lines of Goods with quantities greater that 1 would be
    split down to quantity 1, and even if we'd defined the Unpacks
-   oucomes to have single Goods lines with quantity equal to 1, it
+   outcomes to have single Goods lines with quantity equal to 1, it
    would still not be the worth carrying around the code that decides
    whether to split or not.
 
@@ -286,7 +291,7 @@ would probably create a rift in the implementations.
 Namely, ``wms-aggregated-goods`` would have to override much of
 ``wms-core`` and I fear that it'd become under-used, which would
 either impair its compatibility with downstream libraries and
-applications, or become a needless development burden on these latter.
+applications, or become a needless development burden on these latter ones.
 
 .. _improvement_federation:
 

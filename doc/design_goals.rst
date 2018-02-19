@@ -52,11 +52,12 @@ and that will probably take the form of a separate ``wms-reservation``
 Blok, at least until we are convinced it's generic enough to land into
 ``wms-core``, if ever.
 
-So, for, instance, you won't find any user interface within Anyblok /
+So, in particular, you won't find any user interface within Anyblok /
 WMS Base. Actually we don't want to even assume that the end
 application has a notion of user. Similarly, we don't want to assume
 that the application is actually about selling, buying or making
-goods, even if, obviously, most will be.
+goods, even if, obviously, most will be. Finally, WMS Base does not
+intend to provide a concept of picking, at least not in ``wms-core``.
 
 This statement does not imply that we, as a team, won't provide in the
 future some fully integrated library or application that would handle some
@@ -127,10 +128,10 @@ As an obvious fact, Stock and Logistics applications can but
 should be rich enough to encompass events of the real world, such as
 the accidental destruction of some goods.
 
-This also implies that care should be taken to define what the data
-actually means. We're trying to be very explicit about that, but it's
-all intents, as it also depends on the usage the concrete application
-will make of that library. For an example, see the meaning of the
+This also implies that care must be taken to define what the data
+should actually means. We're trying to be very explicit about that, but it's
+all about intents, as it also depends on the usage the concrete application
+will make of that library. For a concrete example, see the meaning of the
 data about Goods that :ref:`op_arrival` operation carries.
 
 Logistics systems also try and predict or planify the future, yet
@@ -203,7 +204,7 @@ doing it.
 
 Quality
 -------
-This is an obvious benefit of having ocused goals: we can afford
+This is an obvious benefit of having focused goals: we can afford
 greater efforts towards quality in the scope of WMS Base than we would
 for a complete system.
 
@@ -219,9 +220,9 @@ after the fact.
 
 Thanks to the flexibility of Anyblok, downstream developers are free to
 override anything from WMS Base, be it for quick workarounds or
-features. This means that we have no need to rush for anythin we'd
-missed, bug or feature, even if it's crucial for one application that
-we happen to maintain.
+features. This means that within WMS Base, we have no need to rush
+for anythin we'd missed, bug or feature, even if it's crucial for one
+application that we happen to maintain.
 
 In the case of features that end developers feel should be
 part of WMS Base, they can upstreamed later through pull requests,
