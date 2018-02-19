@@ -29,6 +29,7 @@ anyblok_init = [
 requirements = [
     'anyblok>=0.16.2',
     'anyblok_postgres',
+    'SQLAlchemy==1.2.2',  # temporary
     'psycopg2'
 ]
 
