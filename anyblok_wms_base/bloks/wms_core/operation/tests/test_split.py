@@ -6,7 +6,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok.tests.testcase import BlokTestCase
+from .testcase import WmsTestCase
+
 from anyblok_wms_base.constants import (
     SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR
     )
@@ -15,7 +16,7 @@ from anyblok_wms_base.exceptions import (
     )
 
 
-class TestSplit(BlokTestCase):
+class TestSplit(WmsTestCase):
     """Specific testing of Wms.Operation.Split
 
     This may look very partial, but most of the testing of Split is
@@ -25,11 +26,6 @@ class TestSplit(BlokTestCase):
     TODO for the sake of clarity and granularity of tests, complete this
     testcase so that Split can have an independent development life.
     """
-
-    def single_result(self, query):
-        results = query.all()
-        self.assertEqual(len(results), 1)
-        return results[0]
 
     def setUp(self):
         Wms = self.registry.Wms
@@ -161,3 +157,23 @@ class TestSplit(BlokTestCase):
             self.Goods.query().filter(self.Goods.quantity < 0).count(), 0)
         self.assertEqual(
             self.Goods.query().filter(self.Goods.state == 'future').count(), 0)
+
+    def test_obliviate_final(self):
+        """Test oblivion of a Split that's the latest operation on goods.
+
+        Starting point of the test is exactly the same as in
+        :meth:`test_create_done`, we don't repeat assertions about that.
+        """
+        self.goods.state = 'present'
+        split = self.Operation.Split.create(state='done',
+                                            goods=self.goods,
+                                            quantity=2)
+
+        split.obliviate()
+        new_goods = self.single_result(self.Goods.query())
+        self.assertEqual(new_goods.quantity, 3)
+        # TODO would be neat for the outcome to actually be self.goods,
+        # i.e., the Goods record we started with
+        self.assertEqual(new_goods.location, self.goods.location)
+        self.assertEqual(new_goods.type, self.goods.type)
+        self.assertEqual(new_goods.properties, self.goods.properties)

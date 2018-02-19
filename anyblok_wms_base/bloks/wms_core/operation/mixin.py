@@ -1,5 +1,6 @@
 from anyblok import Declarations
 from anyblok.column import Decimal
+from anyblok.column import Integer
 from anyblok.column import Boolean
 from anyblok.relationship import Many2One
 from anyblok.relationship import Many2Many
@@ -143,6 +144,31 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleGoodsOperation):
         self.registry.flush()
 
 
+@Declarations.register(Declarations.Model.Wms.Operation)
+class GoodsOriginalReason:
+    """Internal table to help reconcile followed operations with their goods.
+
+    For Operations with multiple goods, tracking the followed operations and
+    the goods is not enough: we also need to record the original association
+    between them.
+    use case: oblivion.
+
+    TODO this can probably be done by enriching the ``follows`` Many2Many
+    ifself, but that's a bit more complicated at first glance (would
+    certainly look more consistent though)
+    """
+    # TODO apparently, I can't readily construct a multiple primary key
+    # from the m2o relationships
+    id = Integer(primary_key=True)
+    goods = Many2One(model='Model.Wms.Goods',
+                     foreign_key_options={'ondelete': 'cascade'})
+    acting_op = Many2One(model='Model.Wms.Operation',
+                         index=True,
+                         foreign_key_options={'ondelete': 'cascade'})
+    reason = Many2One(model='Model.Wms.Operation',
+                      foreign_key_options={'ondelete': 'cascade'})
+
+
 @Declarations.register(Mixin)
 class WmsMultipleGoodsOperation:
     """Mixin for operations that apply to a several records of Goods.
@@ -191,7 +217,45 @@ class WmsMultipleGoodsOperation:
 
     @classmethod
     def insert(cls, goods=None, **kwargs):
-        """Helper to pass goods as an iterable directly."""
-        agg = super(WmsMultipleGoodsOperation, cls).insert(**kwargs)
-        agg.goods.extend(goods)
-        return agg
+        """Helper to pass goods directly, and take care of follow details.
+
+        :param goods: any iterable of Goods records.
+        TODO this is band-aid for the follow details, which should be handled
+        otherwise.
+        """
+        op = super(WmsMultipleGoodsOperation, cls).insert(**kwargs)
+        op.goods.extend(goods)
+        GOR = cls.registry.Wms.Operation.GoodsOriginalReason
+        for record in goods:
+            GOR.insert(goods=record,
+                       acting_op=op,
+                       reason=record.reason)
+        return op
+
+    def iter_goods_original_reasons(self):
+        """List incoming goods together with their original reasons.
+
+        Depending on the needs, it might be interesting to avoid
+        actually fetching all those records.
+
+        :return: a generator of pairs (goods, their original reasons)
+        """
+        GOR = self.registry.Wms.Operation.GoodsOriginalReason
+        return ((gor.goods, gor.reason)
+                for gor in GOR.query().filter(GOR.acting_op == self).all())
+
+    def reset_goods_original_reasons(self, state=None):
+        """Reset all input Goods to their original reason and state if passed.
+
+        :param state: if not None, will be state on the input Goods
+
+        TODO PERF: it should be more efficient not to fetch the goods and
+        their records, but work directly on ids (and maybe do this in one pass
+        with a clever UPDATE query).
+        TODO: consider generalization to the base class to simplify
+        implementation of all Operation subclasses.
+        """
+        for goods, reason in self.iter_goods_original_reasons():
+            if state is not None:
+                goods.state = state
+            goods.reason = reason

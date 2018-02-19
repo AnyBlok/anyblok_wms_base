@@ -78,3 +78,8 @@ class Departure(SingleGoodsSplitter, Operation):
         Goods = self.registry.Wms.Goods
         Goods.query().filter(Goods.reason == self).delete(
             synchronize_session='fetch')
+
+    def obliviate_single(self):
+        self.goods.update(state='present', reason=self.follows[0])
+        # TODO restore dates
+        self.registry.flush()

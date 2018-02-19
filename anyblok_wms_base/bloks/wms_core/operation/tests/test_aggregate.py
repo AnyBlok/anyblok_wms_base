@@ -21,17 +21,17 @@ class TestAggregate(BlokTestCase):
     def setUp(self):
         Wms = self.registry.Wms
         Operation = Wms.Operation
-        goods_type = Wms.Goods.Type.insert(label="My good type")
+        self.goods_type = Wms.Goods.Type.insert(label="My good type")
         self.loc = Wms.Location.insert(label="Incoming location")
 
         # The arrival fields doesn't matter, we'll insert goods directly
-        self.arrival = Operation.Arrival.insert(goods_type=goods_type,
+        self.arrival = Operation.Arrival.insert(goods_type=self.goods_type,
                                                 location=self.loc,
                                                 state='planned',
                                                 quantity=17)
 
         self.goods = [Wms.Goods.insert(quantity=qty,
-                                       type=goods_type,
+                                       type=self.goods_type,
                                        location=self.loc,
                                        state='future',
                                        reason=self.arrival)
@@ -73,6 +73,60 @@ class TestAggregate(BlokTestCase):
         old_props = props.to_dict()
         old_props.pop('id')
         self.assertEqual(new_props, old_props)
+
+    def assertBackToBeginning(self, state='present', props=None):
+        new_goods = self.Goods.query().filter().all()
+        self.assertEqual(len(new_goods), 2)
+        if props is not None:
+            old_props = props.to_dict()
+            old_props.pop('id')
+            for line in new_goods:
+                new_props = line.properties.to_dict()
+                new_props.pop('id')
+                self.assertEqual(new_props, old_props)
+
+        for line in new_goods:
+            self.assertEqual(line.type, self.goods_type)
+            self.assertEqual(line.location, self.loc)
+            self.assertEqual(line.state, 'present')
+            self.assertEqual(line.reason, self.arrival)
+        self.assertEqual(set(line.quantity for line in new_goods), set((1, 2)))
+
+    def test_create_done_equal_props_obliviate(self):
+        for record in self.goods:
+            props = self.Goods.Properties.insert(flexible=dict(foo='bar'))
+            record.update(state='present', properties=props)
+        agg = self.Agg.create(goods=self.goods, state='done')
+        agg.obliviate()
+        self.assertBackToBeginning(state='present', props=props)
+
+    def test_create_done_several_follows_obliviate(self):
+        """Test that oblivion doesn't shuffle original reasons.
+
+        TODO this test has one chance over 2 to pass by accident.
+        make a better one, and label it as a MultipleGoods mixin test, by
+        issuing more goods and reasons and pairing them randomly so that
+        chances of passing by coincidence are really low.
+        """
+        for record in self.goods:
+            record.state = 'present'
+        Operation = self.registry.Wms.Operation
+        other_reason = Operation.Arrival.insert(goods_type=self.goods_type,
+                                                location=self.loc,
+                                                state='done',
+                                                quantity=35)
+        self.goods[0].reason = other_reason
+        agg = self.Agg.create(goods=self.goods, state='done')
+        self.assertEqual(set(agg.follows), set((self.arrival, other_reason)))
+        agg.obliviate()
+        new_goods = self.Goods.query().filter().all()
+        self.assertEqual(len(new_goods), 2)
+        for goods in new_goods:
+            exp_reason = other_reason if goods.quantity == 1 else self.arrival
+            self.assertEqual(goods.reason, exp_reason)
+
+        # CASCADE options did the necessary cleanups
+        self.assertEqual(Operation.GoodsOriginalReason.query().count(), 0)
 
     def test_forbid_differences(self):
         other_loc = self.registry.Wms.Location.insert(label="Other location")
@@ -148,6 +202,18 @@ class TestAggregate(BlokTestCase):
         self.assertEqual(new_goods.quantity, 3)
         self.assertEqual(new_goods.location, self.loc)
         self.assertEqual(new_goods.properties, props)
+
+    def test_execute_obliviate(self):
+        props = self.Goods.Properties.insert(flexible=dict(foo='bar'))
+        for record in self.goods:
+            record.update(state='present', properties=props)
+
+        agg = self.Agg.create(goods=self.goods, state='planned')
+        self.assertEqual(agg.goods, self.goods)
+
+        agg.execute()
+        agg.obliviate()
+        self.assertBackToBeginning(state='present', props=props)
 
     def test_cancel(self):
         agg = self.Agg.create(goods=self.goods, state='planned')

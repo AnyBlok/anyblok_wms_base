@@ -108,6 +108,15 @@ class Move(SingleGoodsSplitter, Operation):
         Goods.query().filter(Goods.reason == self).delete(
             synchronize_session='fetch')
 
+    def obliviate_single(self):
+        self.goods.update(location=self.origin,
+                          reason=self.follows[0],
+                          state='present')
+        self.registry.flush()
+        Goods = self.registry.Wms.Goods
+        Goods.query().filter(Goods.reason == self).delete(
+            synchronize_session='fetch')
+
     def is_reversible(self):
         """Moves are always reversible.
 

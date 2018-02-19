@@ -123,6 +123,14 @@ class Split(SingleGoods, Operation):
         Goods.query().filter(Goods.reason == self).delete(
             synchronize_session='fetch')
 
+    def obliviate_single(self):
+        self.goods.quantity += self.quantity
+        self.goods.reason = self.follows[0]
+        self.registry.flush()
+        Goods = self.registry.Wms.Goods
+        Goods.query().filter(Goods.reason == self).delete(
+            synchronize_session='fetch')
+
     def is_reversible(self):
         """Reversibility depends on the relevant Goods Type.
 

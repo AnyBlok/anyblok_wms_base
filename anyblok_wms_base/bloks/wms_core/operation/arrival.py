@@ -96,3 +96,5 @@ class Arrival(Operation):
         Goods = self.registry.Wms.Goods
         Goods.query().filter(Goods.reason == self).delete(
             synchronize_session='fetch')
+
+    obliviate_single = cancel_single

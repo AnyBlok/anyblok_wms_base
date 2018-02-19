@@ -67,6 +67,29 @@ class TestArrival(BlokTestCase):
         self.assertEqual(goods.get_property('foo'), 2)
         self.assertEqual(goods.get_property('monty'), 'python')
 
+    def test_arrival_done_obliviate(self):
+        arrival = self.Arrival.create(location=self.incoming_loc,
+                                      quantity=3,
+                                      state='done',
+                                      goods_code='x34/7',
+                                      goods_properties=dict(foo=2,
+                                                            monty='python'),
+                                      goods_type=self.goods_type)
+        arrival.obliviate()
+        self.assertEqual(self.Goods.query().count(), 0)
+
+    def test_arrival_planned_execute_obliviate(self):
+        arrival = self.Arrival.create(location=self.incoming_loc,
+                                      quantity=3,
+                                      state='planned',
+                                      goods_code='x34/7',
+                                      goods_properties=dict(foo=2,
+                                                            monty='python'),
+                                      goods_type=self.goods_type)
+        arrival.execute()
+        arrival.obliviate()
+        self.assertEqual(self.Goods.query().count(), 0)
+
     def test_repr(self):
         arrival = self.Arrival(location=self.incoming_loc,
                                quantity=3,

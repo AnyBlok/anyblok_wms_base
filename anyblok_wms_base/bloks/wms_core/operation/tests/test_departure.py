@@ -9,7 +9,13 @@
 from anyblok.tests.testcase import BlokTestCase
 
 
-class TestMove(BlokTestCase):
+class TestDeparture(BlokTestCase):
+
+    def single_result(self, query):
+        # TODO mutualize in a base class
+        results = query.all()
+        self.assertEqual(len(results), 1)
+        return results[0]
 
     def setUp(self):
         Wms = self.registry.Wms
@@ -60,6 +66,19 @@ class TestMove(BlokTestCase):
 
         self.assertQuantities(future=0, present=0, past=3)
 
+    def test_whole_planned_execute_obliviate(self):
+        self.goods.state = 'present'
+        dep = self.Departure.create(quantity=3,
+                                    state='planned',
+                                    goods=self.goods)
+        dep.execute()
+        dep.obliviate()
+
+        new_goods = self.single_result(self.Goods.query())
+        self.assertEqual(new_goods.state, 'present')
+        self.assertEqual(new_goods.quantity, 3)
+        self.assertEqual(new_goods.location, self.incoming_loc)
+
     def test_whole_done(self):
         self.goods.update(state='present')
         dep = self.Departure.create(quantity=3,
@@ -70,6 +89,17 @@ class TestMove(BlokTestCase):
         self.assertEqual(dep.goods, self.goods)
         self.assertQuantities(future=0, present=0, past=3)
         self.assertEqual(self.goods.reason, dep)
+
+    def test_done_obliviate(self):
+        self.goods.update(state='present')
+        dep = self.Departure.create(quantity=3,
+                                    state='done',
+                                    goods=self.goods)
+        dep.obliviate()
+        new_goods = self.single_result(self.Goods.query())
+        self.assertEqual(new_goods.state, 'present')
+        self.assertEqual(new_goods.quantity, 3)
+        self.assertEqual(new_goods.location, self.incoming_loc)
 
     def test_partial_done(self):
         self.goods.state = 'present'

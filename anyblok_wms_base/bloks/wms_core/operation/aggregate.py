@@ -147,6 +147,13 @@ class Aggregate(MultipleGoods, Operation):
         Goods.query().filter(Goods.reason == self).delete(
             synchronize_session='fetch')
 
+    def obliviate_single(self):
+        self.reset_goods_original_reasons(state='present')
+        self.registry.flush()
+        Goods = self.registry.Wms.Goods
+        Goods.query().filter(Goods.reason == self).delete(
+            synchronize_session='fetch')
+
     def is_reversible(self):
         """Reversibility depends on the relevant Goods Type.
 

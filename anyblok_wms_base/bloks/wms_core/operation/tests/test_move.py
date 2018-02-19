@@ -7,6 +7,7 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok.tests.testcase import BlokTestCase
+from .testcase import WmsTestCase
 from anyblok_wms_base.exceptions import (
     OperationError,
     OperationGoodsError,
@@ -16,7 +17,7 @@ from anyblok_wms_base.exceptions import (
 )
 
 
-class TestMove(BlokTestCase):
+class TestMove(WmsTestCase):
 
     def setUp(self):
         Wms = self.registry.Wms
@@ -37,6 +38,14 @@ class TestMove(BlokTestCase):
                                       reason=self.arrival)
         self.Move = Operation.Move
         self.Goods = Wms.Goods
+
+    def assertBackToBeginning(self):
+        new_goods = self.single_result(self.Goods.query())
+        self.assertEqual(new_goods.quantity, 3)
+        self.assertEqual(new_goods.location, self.incoming_loc)
+        self.assertEqual(new_goods.state, 'present')
+        self.assertEqual(new_goods.reason, self.arrival)
+        # TODO also check that id did not change once we can make it True
 
     def test_whole_planned_execute(self):
         move = self.Move.create(destination=self.stock,
@@ -68,6 +77,32 @@ class TestMove(BlokTestCase):
                                 state='done',
                                 goods=self.goods)
         self.assertEqual(move.follows, [self.arrival])
+
+        # TODO continuity of Goods line
+        new_goods = self.single_result(self.Goods.query())
+        self.assertEqual(new_goods.quantity, 3)
+        self.assertEqual(new_goods.location, self.stock)
+        self.assertEqual(new_goods.state, 'present')
+        self.assertEqual(new_goods.reason, move)
+
+    def test_whole_done_obliviate(self):
+        self.goods.state = 'present'
+        move = self.Move.create(destination=self.stock,
+                                quantity=3,
+                                state='done',
+                                goods=self.goods)  # result already tested
+        move.obliviate()
+        self.assertBackToBeginning()
+
+    def test_whole_planned_execute_obliviate(self):
+        move = self.Move.create(destination=self.stock,
+                                quantity=3,
+                                state='planned',
+                                goods=self.goods)
+        self.goods.update(state='present')
+        move.execute()  # result already tested
+        move.obliviate()
+        self.assertBackToBeginning()
 
     def test_forbid_origin(self):
         with self.assertRaises(OperationError) as arc:

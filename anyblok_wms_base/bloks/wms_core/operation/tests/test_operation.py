@@ -166,3 +166,43 @@ class TestOperation(BlokTestCase):
         exc = arc.exception
         str(exc)
         self.assertEqual(exc.kwargs.get('op'), departure)
+
+    def test_obliviate_planned(self):
+        arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
+                                                location=self.incoming_loc,
+                                                state='planned',
+                                                quantity=3)
+        # No need to go in detail, we'll probably want to fallback to cancel()
+        # actually in that case
+        with self.assertRaises(OperationError):
+            arrival.obliviate()
+
+    def test_obliviate_recurse_linear(self):
+        workshop = self.registry.Wms.Location.insert(label="Workshop")
+        arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
+                                                location=self.incoming_loc,
+                                                state='done',
+                                                quantity=3)
+
+        goods = self.Goods.query().filter(self.Goods.reason == arrival).one()
+        Move = self.Operation.Move
+
+        # full moves don't generate splits, that's why the history is linear
+        move1 = Move.create(goods=goods,
+                            quantity=3,
+                            destination=self.stock,
+                            state='done')
+        self.registry.flush()
+        Move.create(goods=goods,
+                    quantity=3,
+                    destination=workshop,
+                    state='done')
+        move1.obliviate()
+
+        goods = self.Goods.query().filter(self.Goods.state != 'past').all()
+        self.assertEqual(len(goods), 1)
+        goods = goods[0]
+        self.assertEqual(goods.quantity, 3)
+        self.assertEqual(goods.location, self.incoming_loc)
+
+        self.assertEqual(Move.query().count(), 0)

@@ -251,6 +251,59 @@ class Operation:
                     "Execution starts with %r", self, exec_leafs)
         return this_reversal, exec_leafs
 
+    def obliviate(self):
+        """Totally forget about an executed Operation and all its consequences.
+
+        This is intended for cases where an Operation has been recorded by
+        mistake (bug or human error), but did not happen at all in reality.
+
+        We chose the word "obliviate" because it has a stronger feeling that
+        simply "forget" and also sound more specific.
+
+        This is not to be confused with reversals, which try and create a
+        chain of Operations to perform to revert the effect of some Operations.
+
+        If one reverts a Move that has been done by mistake,
+        that means one performs a Move back (takes some time, can go wrong).
+        If one obliviates a Move, that means one
+        acknowledges that the Move never happened: its mere existence in the
+        database is itself the mistake.
+
+        Also, some Operations cannot be reverted in reality, whereas oblivion
+        in our sense have no effect on reality.
+
+        This method will recursively obliviate all follow-ups of ``self``,
+        before ``self`` itself.
+
+        The implementation is for now a simple recursion, and hence can
+        lead to :class:`RecursionError` on huge graphs.
+        TODO rewrite using an accumulation logic rather than recursion.
+        TODO it is also very much a duplication of :meth:`cancel`. The
+        recursion logic itself should probably be factorized in a common
+        method.
+
+        TODO For the time being, the implementation insists on all Operations
+        to be in the ``done`` state, but it should probably accept those
+        that are in the ``planned`` state, and call :meth:`cancel` on them,
+        maybe this could become an option if we can't decide.
+        """
+        if self.state != 'done':
+            raise OperationError(
+                self,
+                "Can't obliviate {op} because its state {op.state!r} is not "
+                "'obliviate'", op=self)
+        logger.debug("Obliviating operation %r", self)
+
+        # followers attribute value will mutate during the loop
+        followers = tuple(self.followers)
+        for follower in followers:
+            follower.obliviate()
+        self.obliviate_single()
+        self.follows.clear()
+
+        self.delete()
+        logger.info("Obliviated operation %r", self)
+
     @classmethod
     def check_create_conditions(cls, state, **kwargs):
         """Used during creation to check that the Operation is indeed doable.
@@ -305,6 +358,22 @@ class Operation:
 
         Downstream applications and libraries are
         not supposed to call this method: they should use :meth:`cancel`,
+        which takes care of the necessary recursivity and the final deletion.
+
+        To be implemented in sublasses
+        """
+        raise NotImplementedError(
+            "for %s" % self.__registry_name__)  # pragma: no cover
+
+    def obliviate_single(self):
+        """Oblivate just the current operation.
+
+        This method assumes that follow-up operations are already been
+        taken care of. It removes all consequences of the operation,
+        without deleting the operation itself.
+
+        Downstream applications and libraries are
+        not supposed to call this method: they should use :meth:`obliviate`,
         which takes care of the necessary recursivity and the final deletion.
 
         To be implemented in sublasses
