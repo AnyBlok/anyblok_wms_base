@@ -199,11 +199,13 @@ class Operation:
         (which would need to plan reversals for all followers first),
         but only that, in principle, it is possible.
 
-        As there are many irreversible operations, and besides, reversibility
-        has to be implemented for each subclass,
-        the default answer is ``False``.
-
         :return bool: the answer
+
+        As there are many irreversible operations, and besides, reversibility
+        has to be implemented for each subclass, the default implementation
+        returns ``False``. Subclasses implementing reversibility have to
+        override this.
+
         """
         return False
 
