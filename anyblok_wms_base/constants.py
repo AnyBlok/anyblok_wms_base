@@ -53,44 +53,7 @@ the :class:`Wms.Operation
 <anyblok_wms_base.bloks.wms_core.operation.base.Operation>` Model and its
 subclasses.
 
-- ``planned``:
-       this means that the operation is considered for the future. Upon
-       creation in this state, the system will already create the necessary
-       objects (in particular Goods and other Operation records), with
-       appropriate states so that the whole system view is consistent for the
-       present time as well as future times.
-- ``started``:
-       In real life, operations are never atomic, and often cannot be
-       cancelled any more once started.
-
-       In this state, outcomes of the operation are not already
-       there, but the operation cannot be cancelled. The Goods being the
-       object of the operation should be completely locked to represent that
-       they are actually not available any more.
-
-       It would be probably too expensive to systematically use this state,
-       therefore, it should be used only if the real life operation takes
-       a really long time to conclude.
-
-       Examples:
-
-       + longer distance moves. If this is really frequent, you can also
-         consider splitting them in two steps, e.g, moving to a location
-         representing some kind of vehicle (even if it is a cart),
-         then moving from the vehicle to the final location. This can be
-         more consistent and explicit than having thousands Goods, still
-         attached to their original locations, but hard lock to represent
-         that they aren't there any more.
-       + unpacking or manufacturing operations. Here also, you can reduce
-         the usage by representing unpacking of manufacturing areas.
-- ``done``:
-     Most operations can be created already in their ``done`` state, usually
-     after the real-life fact happened or simultaneously (for a good enough
-     definition of simultaneity).
-
-     In this case, the consequences are enforced within the same transaction.
-     This state is also the outcome of the ``execute()`` method.
-
+See :ref:`op_states` for a full discussion of these values.
 """
 
 OPERATION_TYPES = dict(wms_move="wms_op_types_move",

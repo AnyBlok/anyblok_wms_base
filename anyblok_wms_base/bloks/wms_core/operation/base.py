@@ -51,7 +51,7 @@ class Operation:
     Fields semantics:
 
     - id: is equal to the id of the concrete operations model
-    - state: see :ref:`op_create_execute`
+    - state: see :ref:`op_states`
     - comment:
         free field to store details of how it went, or motivation
         for the operation (downstream libraries implementing scheduling
