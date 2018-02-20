@@ -30,8 +30,10 @@ Model = Declarations.Model
 class Goods:
     """Main data type to represent physical objects managed by the system.
 
-    This represents a certain amount (``quantity``) of indistinguishable goods,
-    for all the intents and purposes the WMS is used for.
+    This represents a certain amount (:attr:`quantity`) of indistinguishable
+    goods, for all the intents and purposes the WMS is used for.
+
+    Fields semantics:
 
     - properties:
           Besides its main columns meant to represent handling by the Wms Base
@@ -48,11 +50,16 @@ class Goods:
           column value can be None, so that we don't pollute the database with
           empty lines of Property records, although this is subject to change
           in the future.
+
+          The :meth:`set_property` takes implements the necessary Copy-on-Write
+          mechanism to avoid unintentionnally modify the properties of many
+          Goods records.
     - state:
-          see :mod:`constants`
+          see :mod:`anyblok_wms_base.constants`
     - reason:
           this records the Operation that is responsible for the current
-          values of the Goods record, including its state
+          values of the Goods record, including its state. In practice it is
+          simply the latest Operation that did anything to these Goods.
     - quantity:
           this has been defined as Decimal to cover a broad scope of
           applications. However, for performance reasons, applications are
@@ -74,8 +81,6 @@ class Goods:
             those thirds of pies alongside those representing the whole pies,
             and represent the first cutting of a slice as an
             unpacking operation)
-
-    TODO: add indexes and constraints
     """
     type = Many2One(model='Model.Wms.Goods.Type', nullable=False, index=True)
     id = Integer(label="Identifier", primary_key=True)
@@ -124,7 +129,11 @@ class Goods:
     def set_property(self, k, v):
         """Property setter.
 
-        See remarks on :meth:`get_property`
+        See remarks on :meth:`get_property`.
+
+        This method implements a simple Copy-on-Write mechanism. Namely,
+        if the properties are referenced by other Goods records, it
+        will duplicate them before actually setting the wished value.
         """
         existing_props = self.properties
         if existing_props is None:
@@ -143,25 +152,13 @@ class Goods:
 class Type:
     """Types of Goods.
 
-    Applications or downstream libraries may want to tie them (typically as a
-    Many2One relationship) to a broader notion of "product", but we
-    don't assume one in the ``anyblok_wms``.
+    Goods Types have a flexible (JSONB) :attr:`behaviours` field, whose main
+    purpose is to specify how various Operations will treat the represented
+    Goods.
 
-    You may think of these types of goods as encoding all the informations
-    expected of "products" for logistics purposes. This can be both more
-    and less than a general purpose "product" might convey.
-
-    For instance, if the overall environment has a notion of a ham product,
-    you should consider whole hams,
-    5-slice vaccuum packs, crates and pallets of the latter to be all different
-    Goods Types, with potential packing/unpacking Operations.
-    On the other hand, there's usually no point attaching pictures on
-    Goods Types.
-
-    Goods Tyoes have a flexible (JSONB) behaviours field, that's used to
-    specify how various Operations will treat the represented Goods.
-
-    Notably, the behaviours specify whether Split and Aggregate are physical
+    Notably, the behaviours specify whether
+    :class:`Split <.operation.split.Split>` and
+    :class:`Aggregate <.operation.aggregate.Aggregate>` Operations are physical
     (represent something happening in reality), and if that's the case if they
     are reversible, using``{"reversible": true}``, defaulting to ``false``,
     in the ``split`` and ``aggregate`` behaviours, respectively.
@@ -187,6 +184,8 @@ class Type:
                 all notions of quantities together with Split and Aggregate
                 Operations out of ``wms-core`` in a separate Blok.
 
+                See :ref:`improvement_no_quantities` for more on this.
+
     * if the represented goods are meters of wiring, then Splits are physical,
       they mean cutting the wires, but Aggregates probably can't happen
       in reality, and therefore Splits are irreversible.
@@ -194,6 +193,7 @@ class Type:
       then Splits mean in reality shoveling some out of, while Aggregates mean
       shoveling some in (associated with Move operations, obviously).
       Both operations are certainly reversible in reality.
+
     """
     id = Integer(label="Identifier", primary_key=True)
     code = String(label=u"Identifying code", index=True)
@@ -207,20 +207,25 @@ class Type:
         return "Wms.Goods.Type" + str(self)
 
     def get_behaviour(self, key, default=None):
+        """Get the value of the behaviour with given key.
+
+        This is shortcut to avoid testing over and over if :attr:`behaviours`
+        is ``None``.
+        """
         behaviours = self.behaviours
         if behaviours is None:
             return default
         return behaviours.get(key, default)
 
     def are_split_aggregate_physical(self):
-        """Tell if Split/Aggregate operations are physical.
+        """Tell if Split and Aggregate operations are physical.
 
-        by default, these operations are considered to be purely formal,
+        By default, these operations are considered to be purely formal,
         but a behaviour can be set to specify otherwise. This has impact
         at least on reversibility.
 
-        Downstream libraries and applications should use the
-        ``SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR`` constant.
+        Downstream libraries and applications should use
+        :const:`SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR` as this behaviour name.
 
         :returns bool: the answer.
         """
@@ -239,18 +244,20 @@ class Type:
         return split.get('reversible', False)
 
     def is_split_reversible(self):
-        """Tell whether Split can be reverted for this Goods Type.
+        """Tell whether :class:`Split <.operation.split.Split>` can be reverted
+        for this Goods Type.
 
-        By default, Split is considered to be formal, hence the result is
-        ``True``. Otherwise, that depends on the ``reversible`` flag in the
-        ``split`` behaviour.
+        By default, the Split Operation is considered to be formal,
+        hence the result is ``True``. Otherwise, that depends on the
+        ``reversible`` flag in the ``split`` behaviour.
 
         :returns bool: the answer.
         """
         return self._is_op_reversible('split')
 
     def is_aggregate_reversible(self):
-        """Tell whether Aggregate can be reverted for this Goods Type.
+        """Tell whether :class:`Aggregate <.operation.aggregate.Aggregate>`
+        can be reverted for this Goods Type.
 
         By default, Aggregate is considered to be formal, hence the result is
         ``True``. Otherwise, that depends on the ``reversible`` flag in the
@@ -263,9 +270,9 @@ class Type:
 
 @register(Model.Wms.Goods)
 class Properties:
-    """Properties of goods.
+    """Properties of Goods.
 
-    This is kept in a separate model/table for the following reasons:
+    This is kept in a separate Model and table for the following reasons:
 
     - properties are typically seldom written, whereas the columns directly
       present on Goods are often written, and we want these latter writes
@@ -274,20 +281,21 @@ class Properties:
       because some sets of properties are in real life indeed identical for
       large counts of items lines, or to take 'future' items into account.
 
-    The ``flexible`` JSONB column is expected to be a mapping, whose key/values
-    ``anyblok_wms_core`` will consider to be property names and values.
+    The :attr:`flexible` field is expected to be a mapping, whose key/values
+    ``wms_core`` will consider to be property names and values.
     Namely, all property operations defined in the core will handle the
     properties by name, and be indifferent of the values.
 
-
-    Applications are welcomed to overload this model to add new columns rather
-    than storing their meaningful information in the ``flexible`` JSONB column,
+    Applications are welcome to overload this model to add new fields rather
+    than storing their meaningful information in the ``flexible`` JSONB field,
     if it has added value for performance or programmming tightness reasons.
+    This has the obvious drawback of defining some properties for all Goods,
+    regardless of their Types, so it should not be abused.
 
     On :class:`Goods`, the ``get_property``/``set_property`` API will treat
-    direct columns and top-level keys of ``flexible`` in the same way, meaning
+    direct fields and top-level keys of ``flexible`` in the same way, meaning
     that, as long as all pieces of code use only this API to handle properties,
-    flexible keys can be replaced with columns transparently at any time
+    flexible keys can be replaced with fields transparently at any time
     (assuming of course that any existing data is properly migrated to the new
     schema)
     """
@@ -310,6 +318,7 @@ class Properties:
             flag_modified(self, '__anyblok_field_flexible')
 
     def duplicate(self):
+        """Insert a copy of ``self`` and return its id."""
         fields = {k: getattr(self, k)
                   for k in self.fields_description().keys()
                   }
@@ -321,7 +330,7 @@ class Properties:
         """Direct creation.
 
         The caller doesn't have to care about which properties get stored as
-        columns or in the ``flexible`` JSONB.
+        columns or in the :attr:`flexible` field.
 
         This method is a better alternative than
         insertion followed by calls to :meth:`set`, because it guarantees that

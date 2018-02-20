@@ -140,17 +140,18 @@ class Unpack(SingleGoodsSplitter, Operation):
 
         This accomodates various use cases:
 
-        - fixed outcomes: a 6-pack of orange juice bottles gets unpacked
-                          as 6 bottles
-        - fully variable outcomes: a parcel with described contents
-        - variable outcomes: a packaging with parts always present and some
-                             varying.
+        - fixed outcomes:
+            a 6-pack of orange juice bottles gets unpacked as 6 bottles
+        - fully variable outcomes:
+            a parcel with described contents
+        - variable outcomes:
+            a packaging with parts always present and some varying.
 
         The properties on outcomes are set from those of ``self.goods``
         according to the ``forward_properties`` and ``required_properties``
         of the outcomes, unless again if ``uniform_outcomes`` is set to
         ``True``, in which case the properties of the packs (``self.goods``)
-         aren't even read, they but simply
+        aren't even read, they but simply
         cloned (referenced again) in the outcomes. This should be better
         for performance in high volume operation.
         The same can be achieved on a given outcome by specifying the

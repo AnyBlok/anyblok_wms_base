@@ -32,7 +32,7 @@ class Operation:
     """A stock operation.
 
     The Operation model encodes the common part of all precise operations,
-    which themselves have dedicated models. This implemented through the
+    which themselves have dedicated models. This is implemented with the
     polymorphic features of SQLAlchemy and AnyBlok.
 
     The main purpose of this separation is to simplify auditing purposes: the
@@ -43,14 +43,14 @@ class Operation:
     to satisfy their auditing needs (some notion of "user" or "operator" comes
     to mind).
 
-    Column semantics
-    ----------------
+    Fields semantics:
 
     - id: is equal to the id of the concrete operations model
-    - state: see mod:`constants`
-    - comment: free field to store details of how it went, or motivation
-               for the operation (downstream libraries implementing scheduling
-               should better use columns rather than this field).
+    - state: see :const:`anyblok_wms_base.constants.OPERATION_STATES`
+    - comment:
+        free field to store details of how it went, or motivation
+        for the operation (downstream libraries implementing scheduling
+        should better use columns rather than this field).
     - follows:
         the operations that are the direct reasons
         for the presence of Goods the present one is about.
@@ -64,32 +64,32 @@ class Operation:
 
         Examples:
 
-             + a move of a bottle of milk that follows the unpacking
-               of a 6-pack, which itself follows a move from somewhere
-               else
-             + a parcel packing operation that follows exactly one move
-               to the shipping area for each Goods to be packed.
-               They themselves would follow more operations.
-             + an Arrival typically doesn't follow anything (but might be due
-               to some kind of purchase order).
+        + a move of a bottle of milk that follows the unpacking
+          of a 6-pack, which itself follows a move from somewhere else
+        + a parcel packing operation that follows exactly one move
+          to the shipping area for each Goods to be packed.
+          they themselves would follow more operations.
+        + an :class:`Arrival <.arrival.Arrival>` typically doesn't
+          follow anything (but might be due to some kind of purchase order).
 
-    API
-    ---
-        Downstream applications and libraries should never call ``insert()``
-        in their main code, and must use :meth:`create` instead.
+    API usage notes:
 
-        as this is Python, they still can, but that requires
-        the developper to exactly know what they are doing, much like issuing
-        INSERT statements in the console).
+    Downstream applications and libraries should never call :meth:`insert`
+    in their main code, and must use :meth:`create` instead.
 
-        Keeping ``insert()`` and ``update()`` behaviour as in vanilla
-        SQLAlchemy has the advantage of making them easily usable in
-        ``wms_core`` internal implementation without side effects.
+    As this is Python, they still can, but that requires
+    the developper to exactly know what they are doing, much like issuing
+    INSERT statements in the console).
 
-        Downstream developers should feel free to use ``insert()`` and
-        ``update()`` in their unit or integration tests. The fact that they
-        are inert should help reproduce weird situations (yes, the same could
-        be achieved by forcing the class in use).
+    Keeping :meth:`insert` and :meth:`update()` behave as in vanilla
+    SQLAlchemy has the advantage of making them easily usable in
+    ``wms_core`` internal implementation without side effects.
+
+    On the other hand, downstream developers should feel free to
+    :meth:`insert` and :meth:`update` in their unit or integration tests.
+    The fact that they are inert should help reproduce weird situations
+    (yes, the same could be achieved by forcing to use the Model class
+    methods instead).
     """
     id = Integer(label="Identifier, shared with specific tables",
                  primary_key=True)
