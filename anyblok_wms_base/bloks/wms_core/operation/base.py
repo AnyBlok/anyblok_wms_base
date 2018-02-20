@@ -31,6 +31,11 @@ Model = Declarations.Model
 class Operation:
     """A stock operation.
 
+    .. warning:: downstream applications and libraries should never issue
+                 :meth:`insert` for Operations in their main code, and must use
+                 :meth:`create` instead. See the documention of :meth:`create`
+                 for more about this.
+
     The Operation model encodes the common part of all precise operations,
     which themselves have dedicated models. This is implemented with the
     polymorphic features of SQLAlchemy and AnyBlok.
@@ -46,7 +51,7 @@ class Operation:
     Fields semantics:
 
     - id: is equal to the id of the concrete operations model
-    - state: see :const:`anyblok_wms_base.constants.OPERATION_STATES`
+    - state: see :ref:`op_create_execute`
     - comment:
         free field to store details of how it went, or motivation
         for the operation (downstream libraries implementing scheduling
@@ -71,25 +76,6 @@ class Operation:
           they themselves would follow more operations.
         + an :class:`Arrival <.arrival.Arrival>` typically doesn't
           follow anything (but might be due to some kind of purchase order).
-
-    API usage notes:
-
-    Downstream applications and libraries should never call :meth:`insert`
-    in their main code, and must use :meth:`create` instead.
-
-    As this is Python, they still can, but that requires
-    the developper to exactly know what they are doing, much like issuing
-    INSERT statements in the console).
-
-    Keeping :meth:`insert` and :meth:`update()` behave as in vanilla
-    SQLAlchemy has the advantage of making them easily usable in
-    ``wms_core`` internal implementation without side effects.
-
-    On the other hand, downstream developers should feel free to
-    :meth:`insert` and :meth:`update` in their unit or integration tests.
-    The fact that they are inert should help reproduce weird situations
-    (yes, the same could be achieved by forcing to use the Model class
-    methods instead).
     """
     id = Integer(label="Identifier, shared with specific tables",
                  primary_key=True)
@@ -143,8 +129,25 @@ class Operation:
     def create(cls, state='planned', follows=None, **kwargs):
         """Main method for creation of operations
 
-        In contrast with ``insert()``, it performs some Wms specific logic,
+        In contrast with :meth:`insert`, this class method performs
+        some Wms specific logic,
         e.g, creation of Goods, but that's up to the specific subclasses.
+
+        In principle, downstream developers should never call :meth:`insert`.
+
+        As this is Python, nothing really forbids them for doing so, but they
+        must then exactly know what they are doing, much like issuing
+        INSERT statements to the database).
+
+        Keeping :meth:`insert` as in vanilla SQLAlchemy has the advantage of
+        making them easily usable in
+        ``wms_core`` internal implementation without side effects.
+
+        On the other hand, downstream developers should feel free to
+        :meth:`insert` and :meth:`update` in their unit or integration tests.
+        The fact that they are inert should help reproduce weird situations
+        (yes, the same could be achieved by forcing to use the Model class
+        methods instead).
         """
         cls.forbid_follows_in_create(follows, kwargs)
         cls.check_create_conditions(state, **kwargs)

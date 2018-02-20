@@ -19,10 +19,7 @@ SingleGoodsSplitter = Declarations.Mixin.WmsSingleGoodsSplitterOperation
 
 @register(Operation)
 class Departure(SingleGoodsSplitter, Operation):
-    """Operation to describe physical departure of goods
-
-    This does not encompass all "removals" of goods : only those that due
-    to shipping to the outside.
+    """Operation to represent Goods physically leaving the system.
 
     Departures can be partial, i.e., there's no need to match the exact
     quantity held in the Goods record. An automatic Split will occur if needed.

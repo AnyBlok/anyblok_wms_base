@@ -22,10 +22,7 @@ Operation = Declarations.Model.Wms.Operation
 class Arrival(Operation):
     """Operation to describe physical arrival of goods in some location.
 
-    This does not encompass all "creations" of goods : only those that
-    come in real life from the outside.
-
-    Arrivals store data about the expected or arrived Goods: propeties, code,
+    Arrivals store data about the expected or arrived Goods: properties, code,
     quantity… These are copied over to the corresponding Goods records in all
     cases and stay inert after the fact.
 
