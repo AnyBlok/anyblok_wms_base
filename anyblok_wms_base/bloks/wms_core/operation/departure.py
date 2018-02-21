@@ -45,38 +45,25 @@ class Departure(SingleGoodsSplitter, Operation):
 
     def depart(self):
         """Common logic for final departure step."""
-        self.registry.flush()
-        self.goods.update(state='past', reason=self)
-        # TODO dates
+        self.goods.update(state='past', reason=self, dt_until=self.dt_execution)
 
     def after_insert(self):
         """Either finish right away, or represent the future decrease."""
+        self.orig_goods_dt_until = self.goods.dt_until
+        self.registry.flush()
         if self.state == 'done':
-            return self.depart()
-
-        Goods = self.registry.Wms.Goods
-        goods = self.goods
-        # TODO copy
-        Goods.insert(location=goods.location,
-                     quantity=-self.quantity,
-                     reason=self,
-                     state='future',
-                     type=goods.type,
-                     code=goods.code,
-                     properties=goods.properties)
+            self.depart()
+        else:
+            self.goods.dt_until = self.dt_execution
 
     def execute_planned_after_split(self):
-        Goods = self.registry.Wms.Goods
-        Goods.query().filter(Goods.reason == self, Goods.quantity < 0).delete(
-            synchronize_session='fetch')
+        self.registry.flush()
         self.depart()
 
     def cancel_single(self):
-        Goods = self.registry.Wms.Goods
-        Goods.query().filter(Goods.reason == self).delete(
-            synchronize_session='fetch')
+        self.goods.dt_until = self.orig_goods_dt_until
 
     def obliviate_single(self):
-        self.goods.update(state='present', reason=self.follows[0])
-        # TODO restore dates
+        self.goods.update(state='present', reason=self.follows[0],
+                          dt_until=self.orig_goods_dt_until)
         self.registry.flush()

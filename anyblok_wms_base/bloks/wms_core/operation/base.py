@@ -8,11 +8,13 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 
 import logging
+from datetime import datetime
 
 from anyblok import Declarations
 from anyblok.column import String
 from anyblok.column import Selection
 from anyblok.column import Integer
+from anyblok.column import DateTime
 from anyblok.relationship import Many2Many
 
 from anyblok_wms_base.constants import OPERATION_STATES, OPERATION_TYPES
@@ -96,6 +98,53 @@ class Operation:
                         label="Immediate preceding operations",
                         many2many="followers",
                         )
+    dt_execution = DateTime(label="date and time of execution",
+                            nullable=False)
+    """Date and time of execution.
+
+    For Operations in state ``done``, this represents the time at which the
+    Operation has been completed, i.e., has reached that state.
+
+    For Operations in states ``planned`` and ``started``,
+    this represents the time at which the execution is supposed to complete.
+    This has consequences on the :attr:`dt_from
+    <anyblok_wms_base.bloks.wms_core.goods.Goods.dt_from>` and :attr:`dt_until
+    <anyblok_wms_base.bloks.wms_core.goods.Goods.dt_until>` fields of
+    the Goods affected by this Operation, to avoid summing up
+    records representing in the same physical goods while :meth:`peeking at
+    quantities in the future
+    <anyblok_wms_base.bloks.wms_core.location.Location.quantity>`,
+    but has no other strong meaning within
+    ``wms-core``: if the end application does some serious time prediction,
+    it can use it about freely. The actual execution can
+    occur later at any time, and :meth:`execute` will in particular
+    correct the value of this field, and its consequences on the affected
+    Goods.
+    """
+
+    dt_start = DateTime(label="date and time of start")
+    """Date and time of start, if different than execution.
+
+    For all Operations, if the value of this field is None, this means that
+    the Operation is considered to be instantaneous.
+
+    Overall, ``wms-core`` doesn't do much about this field other than recording
+    it: end applications that perform does serious time predictions can use
+    it about freely.
+
+    .. note:: We will probably later on make use of this field in
+              destructive Operations to update the :attr:`dt_until
+              <anyblok_wms_base.bloks.wms_core.goods.Goods.dt_until>` field
+              of their incoming Goods, meaning that they won't appear in
+              present quantity queries anymore.
+
+    For Operations in states ``done`` and ``started`` this represents the time
+    at which the Operation has been started, i.e., has reached the ``started``
+    state.
+
+    For Operations in state ``planned``, this is as much theoretical as the
+    field ``dt_execution`` is.
+    """
 
     @classmethod
     def define_mapper_args(cls):
@@ -126,12 +175,33 @@ class Operation:
             raise OperationCreateArgFollows(cls, kwargs)
 
     @classmethod
-    def create(cls, state='planned', follows=None, **kwargs):
+    def create(cls, state='planned', follows=None,
+               dt_execution=None, dt_start=None, **fields):
         """Main method for creation of operations
 
         In contrast with :meth:`insert`, this class method performs
         some Wms specific logic,
         e.g, creation of Goods, but that's up to the specific subclasses.
+
+        :param state:
+           value of the :attr:`state` field right after creation. It has
+           a strong influence on the consequences of the Operation:
+           creating an Operation in the ``done`` state means executing it
+           right away.
+
+           Creating an Oparation in the ``started`` state should
+           make the relevant Goods locked or destroyed right away
+           (TODO Not implemented)
+        :param fields: remaining fields, to be forwarded to ``insert`` and
+                       the various involved methods implemented in subclasses.
+        :param dt_execution:
+           value of the attr:`dt_execution` right at creation. If
+           ``state==planned``, this is mandatory. Otherwise, it defaults to
+           the current date and time (:meth:`datetime.now`)
+        :param follows:
+           singled out to forbid to pass it in ``kwargs``
+        :return Operation: concrete instance of the appropriate Operation
+                           subclass.
 
         In principle, downstream developers should never call :meth:`insert`.
 
@@ -149,22 +219,43 @@ class Operation:
         (yes, the same could be achieved by forcing to use the Model class
         methods instead).
         """
-        cls.forbid_follows_in_create(follows, kwargs)
-        cls.check_create_conditions(state, **kwargs)
-        follows = cls.find_parent_operations(**kwargs)
-        op = cls.insert(state=state, **kwargs)
+        cls.forbid_follows_in_create(follows, fields)
+        if dt_execution is None:
+            if state == 'done':
+                dt_execution = datetime.now()
+            else:
+                raise OperationError(
+                    cls,
+                    "Creation in state {state!r} requires the "
+                    "'dt_execution' field (date and time when "
+                    "it's supposed to be done).",
+                    state=state)
+        cls.check_create_conditions(state, dt_execution, **fields)
+        follows = cls.find_parent_operations(**fields)
+        op = cls.insert(state=state, dt_execution=dt_execution, **fields)
         op.follows.extend(follows)
         op.after_insert()
         return op
 
-    def execute(self):
+    def execute(self, dt_execution=None):
         """Execute the operation.
+
+        :param datetime dt_execution:
+           the time at which execution happens.
+           This parameter is meant for tests, or for callers doing bulk
+           execution. If omitted, it defaults to the current date
+           and time (:meth:`datetime.now`)
 
         This is an idempotent call: if the operation is already done,
         nothing happens.
         """
         if self.state == 'done':
             return
+        if dt_execution is None:
+            dt_execution = datetime.now()
+        self.dt_execution = dt_execution
+        if self.dt_start is None:
+            self.dt_start = dt_execution
         self.check_execute_conditions()
         self.execute_planned()
         self.state = 'done'
@@ -202,7 +293,8 @@ class Operation:
         (which would need to plan reversals for all followers first),
         but only that, in principle, it is possible.
 
-        :return bool: the answer
+        :return: the answer
+        :rtype: bool
 
         As there are many irreversible operations, and besides, reversibility
         has to be implemented for each subclass, the default implementation
@@ -212,7 +304,7 @@ class Operation:
         """
         return False
 
-    def plan_revert(self):
+    def plan_revert(self, dt_execution=None):
         """Plan operations to revert the present one and its consequences.
 
         Like :meth:`cancel`, this method is recursive, but it applies only
@@ -221,10 +313,21 @@ class Operation:
         It is expected that some operations can't be reverted, because they
         are destructive, and in that case an exception will be raised.
 
+        For now, time handling is rather dumb, as it will plan
+        all the operations at the same date and time (this Blok has to idea
+        of operations lead times), but that shouldn't be a problem.
+
+        :param datetime dt_execution:
+           the time at which to plan the reversal operations.
+           If not supplied, the current date and time will be used.
+
+        :rtype: (Operation, list(Operation))
         :return: the operation reverting the present one, and
                  the list of initial operations to be executed to actually
                  start reversing the whole.
         """
+        if dt_execution is None:
+            dt_execution = datetime.now()
         if self.state != 'done':
             # TODO actually it'd be nice to cancel or update
             # planned operations (think of reverting a Move meant for
@@ -246,7 +349,8 @@ class Operation:
             self.registry.flush()
             followers_reverts.append(follower_revert)
             exec_leafs.extend(follower_exec_leafs)
-        this_reversal = self.plan_revert_single(follows=followers_reverts)
+        this_reversal = self.plan_revert_single(dt_execution,
+                                                follows=followers_reverts)
         self.registry.flush()
         if not exec_leafs:
             exec_leafs.append(this_reversal)
@@ -308,11 +412,14 @@ class Operation:
         logger.info("Obliviated operation %r", self)
 
     @classmethod
-    def check_create_conditions(cls, state, **kwargs):
+    def check_create_conditions(cls, state, dt_execution, **kwargs):
         """Used during creation to check that the Operation is indeed doable.
 
         The given state obviously plays a role, and this pre insertion check
         can spare us some costly operations.
+
+        :param dt_execution: the date and time at which the Operation is
+                             (supposed to be) done.
 
         To be implemented in subclasses, by raising exceptions if something's
         wrong.
@@ -344,11 +451,26 @@ class Operation:
         raise NotImplementedError  # pragma: no cover
 
     def execute_planned(self):
-        """Execute an operation that's up to now in the 'planned' state.
-
-        This method does not have to care about the Operation state.
+        """Execute an operation that has been up to now in the 'planned' state.
 
         To be implemented in subclasses.
+
+        This method does not have to care about the Operation state, which
+        the base class has already checked.
+
+        This method must correct the dates and times on the affected Goods or
+        more broadly of any consequences of the theoretical execution date
+        and time that has been set during planning.
+        For that purpose, it can rely on the value of the :attr:`dt_execution`
+        field to be now the final one (can be sooner or later than expected).
+
+        Normally, this method should not need either to perform any checks that
+        the execution can, indeed, be done: such subclasses-specific
+        tests are supposed to be done within :meth:`check_execute_conditions`.
+
+        Downstream applications and libraries are
+        not supposed to call this method: they should use :meth:`execute`,
+        which takes care of all the above-mentioned preparations.
         """
         raise NotImplementedError  # pragma: no cover
 
@@ -384,8 +506,11 @@ class Operation:
         raise NotImplementedError(
             "for %s" % self.__registry_name__)  # pragma: no cover
 
-    def plan_revert_single(self):
+    def plan_revert_single(self, dt_execution):
         """Create a planned operation to revert the present one.
+
+        :param datetime dt_execution: the date and time at which to plan
+                                 the reversal operations.
 
         This method assumes that follow-up operations have already been taken
         care of.

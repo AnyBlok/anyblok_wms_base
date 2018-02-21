@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from datetime import datetime
 from anyblok.tests.testcase import BlokTestCase
 from anyblok_wms_base.exceptions import OperationError
 
@@ -13,6 +14,7 @@ from anyblok_wms_base.exceptions import OperationError
 class TestOperationError(BlokTestCase):
 
     def setUp(self):
+        self.dt_test1 = datetime.now()
         Wms = self.registry.Wms
         goods_type = Wms.Goods.Type.insert(label="My good type")
         self.incoming_loc = Wms.Location.insert(label="Incoming location")
@@ -21,12 +23,14 @@ class TestOperationError(BlokTestCase):
         self.arrival = self.Arrival.insert(goods_type=goods_type,
                                            location=self.incoming_loc,
                                            state='planned',
+                                           dt_execution=self.dt_test1,
                                            quantity=3)
 
         self.goods = Wms.Goods.insert(quantity=3,
                                       type=goods_type,
                                       location=self.incoming_loc,
                                       state='future',
+                                      dt_from=self.dt_test1,
                                       reason=self.arrival)
 
     def test_op_err_instance(self):

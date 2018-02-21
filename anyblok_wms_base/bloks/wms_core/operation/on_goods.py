@@ -15,6 +15,7 @@ Goods yet not using these Mixins.
 from anyblok import Declarations
 from anyblok.column import Decimal
 from anyblok.column import Integer
+from anyblok.column import DateTime
 from anyblok.relationship import Many2One
 from anyblok.relationship import Many2Many
 
@@ -34,14 +35,20 @@ class WmsSingleGoodsOperation:
 
     goods = Many2One(model='Model.Wms.Goods', nullable=False)
     quantity = Decimal(label="Quantity")  # TODO non negativity constraint
+    orig_goods_dt_until = DateTime(label="Original dt_until of goods")
+    """To save the ``dt_until`` value of the Goods to be able to restore them.
+
+    TODO like orig_reasons, this is really ugly and should be superseded
+    when implementing avatars.
+    """
 
     @classmethod
     def find_parent_operations(cls, goods=None, **kwargs):
         return [goods.reason]
 
     @classmethod
-    def check_create_conditions(cls, state, goods=None, quantity=None,
-                                **kwargs):
+    def check_create_conditions(cls, state, dt_execution,
+                                goods=None, quantity=None, **kwargs):
         if goods is None:
             raise OperationMissingGoodsError(
                 cls,
@@ -131,7 +138,7 @@ class WmsMultipleGoodsOperation:
         return set(g.reason for g in goods)
 
     @classmethod
-    def check_create_conditions(cls, state, goods=None, **kwargs):
+    def check_create_conditions(cls, state, dt_execution, goods=None, **kwargs):
         if not goods:
             raise OperationMissingGoodsError(
                 cls,

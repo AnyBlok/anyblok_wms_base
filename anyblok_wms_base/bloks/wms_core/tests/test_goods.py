@@ -6,17 +6,19 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from ..operation.tests.testcase import WmsTestCase  # TODO move it up
 from anyblok.tests.testcase import BlokTestCase
 from anyblok_wms_base.constants import (
     SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR
 )
 
 
-class TestGoods(BlokTestCase):
+class TestGoods(WmsTestCase):
 
     blok_entry_points = ('bloks', 'test_bloks')
 
     def setUp(self):
+        super(TestGoods, self).setUp()
         Wms = self.registry.Wms
 
         self.Goods = Wms.Goods
@@ -25,11 +27,13 @@ class TestGoods(BlokTestCase):
         self.arrival = Wms.Operation.Arrival.insert(
             goods_type=self.goods_type,
             location=self.stock,
+            dt_execution=self.dt_test1,
             state='done',
             quantity=1)
 
     def test_prop_api(self):
         goods = self.Goods.insert(type=self.goods_type, quantity=1,
+                                  dt_from=self.dt_test1,
                                   reason=self.arrival, location=self.stock)
 
         self.assertIsNone(goods.get_property('foo'))
@@ -41,6 +45,7 @@ class TestGoods(BlokTestCase):
     def test_str(self):
         gt = self.goods_type
         goods = self.Goods.insert(type=gt, quantity=1,
+                                  dt_from=self.dt_test1,
                                   state='future',
                                   reason=self.arrival, location=self.stock)
         self.assertEqual(repr(goods),
@@ -53,6 +58,7 @@ class TestGoods(BlokTestCase):
 
     def test_prop_api_column(self):
         goods = self.Goods.insert(type=self.goods_type, quantity=1,
+                                  dt_from=self.dt_test1,
                                   reason=self.arrival, location=self.stock)
 
         goods.set_property('batch', '12345')
@@ -60,12 +66,14 @@ class TestGoods(BlokTestCase):
 
     def test_prop_api_duplication(self):
         goods = self.Goods.insert(type=self.goods_type, quantity=1,
+                                  dt_from=self.dt_test1,
                                   reason=self.arrival, location=self.stock)
 
         goods.set_property('batch', '12345')
         self.assertEqual(goods.get_property('batch'), '12345')
 
         goods2 = self.Goods.insert(type=self.goods_type, quantity=3,
+                                   dt_from=self.dt_test2,
                                    reason=self.arrival, location=self.stock,
                                    properties=goods.properties)
         goods2.set_property('batch', '6789')
@@ -74,6 +82,7 @@ class TestGoods(BlokTestCase):
 
     def test_prop_api_reserved(self):
         goods = self.Goods.insert(type=self.goods_type, quantity=1,
+                                  dt_from=self.dt_test1,
                                   reason=self.arrival, location=self.stock)
 
         with self.assertRaises(ValueError):
@@ -88,6 +97,7 @@ class TestGoods(BlokTestCase):
         the future.
         """
         goods = self.Goods.insert(type=self.goods_type, quantity=1,
+                                  dt_from=self.dt_test1,
                                   reason=self.arrival, location=self.stock)
 
         goods.set_property('foo', 2)
@@ -100,6 +110,7 @@ class TestGoods(BlokTestCase):
         the future.
         """
         goods = self.Goods.insert(type=self.goods_type, quantity=1,
+                                  dt_from=self.dt_test1,
                                   reason=self.arrival, location=self.stock)
 
         goods.set_property('batch', '2')

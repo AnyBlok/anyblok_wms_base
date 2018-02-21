@@ -6,11 +6,13 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from datetime import datetime
 
 from anyblok import Declarations
 from anyblok.column import Boolean
 
 from anyblok_wms_base.exceptions import (
+    OperationError,
     OperationQuantityError,
 )
 
@@ -54,27 +56,40 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleGoodsOperation):
 
     @classmethod
     def create(cls, state='planned', follows=None, goods=None, quantity=None,
-               **kwargs):
+               dt_execution=None, dt_start=None, **kwargs):
         """Main method for creation of operations
 
-        This is entirely overridden from the Wms.Operation, because
+        This is entirely overridden from :class:`Operation`, because
         in partial cases, it's simpler to create directly the split, then
         the current operation.
+
+        TODO provide another hook to limit duplication
         """
         cls.forbid_follows_in_create(follows, kwargs)
-        cls.check_create_conditions(state, goods=goods, quantity=quantity,
+        if dt_execution is None:
+            if state == 'done':
+                dt_execution = datetime.now()
+            else:
+                raise OperationError(
+                    cls,
+                    "Creation in state {state!r} requires the "
+                    "'dt_execution' kwarg (date and time when "
+                    "it's supposed to be done).",
+                    state=state)
+        cls.check_create_conditions(state, dt_execution,
+                                    goods=goods, quantity=quantity,
                                     **kwargs)
+        follows = cls.find_parent_operations(goods=goods, **kwargs)
         partial = quantity < goods.quantity
         if partial:
             Split = cls.registry.Wms.Operation.Split
-            split = Split.create(goods=goods, quantity=quantity, state=state)
+            split = Split.create(goods=goods, quantity=quantity, state=state,
+                                 dt_execution=dt_execution)
             follows = [split]
             goods = split.get_outcome()
-        else:
-            follows = cls.find_parent_operations(goods=goods, **kwargs)
 
         op = cls.insert(state=state, goods=goods, quantity=quantity,
-                        partial=partial, **kwargs)
+                        dt_execution=dt_execution, partial=partial, **kwargs)
         op.follows.extend(follows)
         op.after_insert()
         return op
@@ -82,6 +97,6 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleGoodsOperation):
     def execute_planned(self):
         if self.partial:
             split_op = self.follows[0]
-            split_op.execute()
+            split_op.execute(dt_execution=self.dt_execution)
         self.execute_planned_after_split()
         self.registry.flush()

@@ -38,47 +38,47 @@ class Move(SingleGoodsSplitter, Operation):
                 "destination={self.destination!r}").format(self=self)
 
     @classmethod
-    def check_create_conditions(cls, state, origin=None, **kwargs):
+    def check_create_conditions(cls, state, dt_execution,
+                                origin=None, **kwargs):
         if origin is not None:
             raise OperationError(cls, "The 'origin' field must *not* "
                                  "be passed to the create() method")
-        super(Move, cls).check_create_conditions(state, **kwargs)
+        super(Move, cls).check_create_conditions(state, dt_execution, **kwargs)
 
     def after_insert(self):
         goods = self.goods
         self.origin = self.goods.location
+        self.orig_goods_dt_until = goods.dt_until
         if self.partial or self.state == 'done':
             self.registry.flush()
             goods.update(location=self.destination, reason=self)
+            # TODO do something with datetimes? If so, that means we want
+            # the Goods datetimes to encompass the locations, and so
+            # actually create a new avatar in 'past' state.
         else:
-            fields = dict(reason=self,
-                          state='future',
-                          type=goods.type,
-                          code=goods.code,
-                          properties=goods.properties)
-            Goods = self.registry.Wms.Goods
-            Goods.insert(location=self.destination,
-                         quantity=self.quantity,
-                         **fields)
-            Goods.insert(location=goods.location,
-                         quantity=-self.quantity,
-                         **fields)
+            self.registry.Wms.Goods.insert(location=self.destination,
+                                           quantity=self.quantity,
+                                           reason=self,
+                                           state='future',
+                                           dt_from=self.dt_execution,
+                                           type=goods.type,
+                                           code=goods.code,
+                                           properties=goods.properties)
 
     def execute_planned_after_split(self):
         goods = self.goods
+        dt_execution = self.dt_execution
         if self.partial:
             # not done by the split, because goods' reason is already the Move
-            goods.state = 'present'
+            goods.update(state='present', dt_from=dt_execution)
             return
 
         Goods = self.registry.Wms.Goods
-        query = Goods.query().filter(Goods.reason == self)
-        query.filter(Goods.quantity < 0).delete(synchronize_session='fetch')
-
-        after_move = query.one()
-        after_move.state = 'present'
+        after_move = Goods.query().filter(Goods.reason == self).one()
+        after_move.update(state='present', dt_from=dt_execution)
         self.registry.flush()
         self.goods = after_move
+
         self.registry.flush()
         # TODO it'd be maybe nicer if Moves could guarantee continuity of
         # the Goods record, but then that'd mean updating all the operations
@@ -91,17 +91,14 @@ class Move(SingleGoodsSplitter, Operation):
         # dynamically all Operation classes having a goods field (m2o or m2m)
         # None of this would be in favor of privileging operator's reactivity,
         # by careful preparation of ops.
-
-        # can't goods.delete() because another op might refer it
-        # TODO dates
-        goods.state = 'past'
-        goods.reason = self
+        goods.update(state='past', reason=self, dt_until=dt_execution)
 
     def cancel_single(self):
         goods = self.goods
         if self.partial:
             split = self.follows[0]
             goods.reason = split
+        # TODO dates
         goods.location = self.origin
         self.registry.flush()
         Goods = self.registry.Wms.Goods
@@ -109,13 +106,24 @@ class Move(SingleGoodsSplitter, Operation):
             synchronize_session='fetch')
 
     def obliviate_single(self):
-        self.goods.update(location=self.origin,
-                          reason=self.follows[0],
-                          state='present')
-        self.registry.flush()
         Goods = self.registry.Wms.Goods
-        Goods.query().filter(Goods.reason == self).delete(
-            synchronize_session='fetch')
+        before = Goods.query().filter(Goods.reason == self,
+                                      Goods.state == 'past').first()
+        # TODO could be greatly simplified with avatars
+        if before is None:  # was executed directly at creation
+            restored = self.goods
+        else:
+            restored = before
+            after = self.goods
+            self.goods = before  # so that we may do:
+            self.registry.flush()
+            after.delete()
+
+        restored.update(location=self.origin,
+                        reason=self.follows[0],
+                        dt_until=self.orig_goods_dt_until,
+                        state='present')
+        self.registry.flush()
 
     def is_reversible(self):
         """Moves are always reversible.
@@ -124,7 +132,7 @@ class Move(SingleGoodsSplitter, Operation):
         """
         return True
 
-    def plan_revert_single(self, follows=()):
+    def plan_revert_single(self, dt_execution, follows=()):
         if not follows:
             # reversal of an end-of-chain move
             reason = self
@@ -140,4 +148,5 @@ class Move(SingleGoodsSplitter, Operation):
         return self.create(goods=goods,
                            quantity=self.quantity,
                            destination=self.origin,
+                           dt_execution=dt_execution,
                            state='planned')

@@ -12,6 +12,7 @@ from anyblok_wms_base.constants import (
     SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR
     )
 from anyblok_wms_base.exceptions import (
+    OperationError,
     OperationIrreversibleError,
     )
 
@@ -28,6 +29,7 @@ class TestSplit(WmsTestCase):
     """
 
     def setUp(self):
+        super(TestSplit, self).setUp()
         Wms = self.registry.Wms
         self.Operation = Operation = Wms.Operation
         self.Goods = Wms.Goods
@@ -38,10 +40,12 @@ class TestSplit(WmsTestCase):
         self.arrival = Operation.Arrival.insert(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 state='planned',
+                                                dt_execution=self.dt_test1,
                                                 quantity=3)
 
         self.goods = self.Goods.insert(quantity=3,
                                        type=self.goods_type,
+                                       dt_from=self.dt_test1,
                                        location=self.incoming_loc,
                                        state='future',
                                        reason=self.arrival)
@@ -50,20 +54,95 @@ class TestSplit(WmsTestCase):
         self.goods.state = 'present'
         split = self.Operation.Split.create(state='done',
                                             goods=self.goods,
+                                            dt_execution=self.dt_test2,
                                             quantity=2)
 
-        outcomes = self.Goods.query().filter(self.Goods.reason == split).all()
+        outcomes = self.Goods.query().filter(self.Goods.reason == split,
+                                             self.Goods.state != 'past').all()
         self.assertEqual(len(outcomes), 2)
-        self.assertTrue(self.goods in outcomes)
-        self.assertEqual(self.goods.quantity, 1)
+        self.assertEqual(self.goods.state, 'past')
+        self.assertEqual(self.goods.dt_from, self.dt_test1)
+        self.assertEqual(self.goods.dt_until, self.dt_test2)
         self.assertEqual(sum(out.quantity for out in outcomes), 3)
         for outcome in outcomes:
+            self.assertEqual(outcome.dt_from, self.dt_test2)
             self.assertEqual(outcome.location, self.incoming_loc)
             self.assertEqual(outcome.type, self.goods_type)
             # I prefer this to the less explicit assertGreater (ambiguity
             # for French speakers with math background)
             self.assertTrue(outcome.quantity > 0)
             self.assertEqual(outcome.state, 'present')
+
+    def test_create_planned_execute(self):
+        self.goods.state = 'present'
+        split = self.Operation.Split.create(state='planned',
+                                            goods=self.goods,
+                                            dt_execution=self.dt_test2,
+                                            quantity=2)
+
+        all_outcomes = self.Goods.query().filter(
+            self.Goods.reason == split,
+            self.Goods.state != 'past').all()
+
+        self.assertEqual(len(all_outcomes), 2)
+
+        self.assertEqual(self.goods.state, 'present')
+        self.assertEqual(self.goods.dt_from, self.dt_test1)
+        self.assertEqual(self.goods.dt_until, self.dt_test2)
+        self.assertEqual(sum(out.quantity for out in all_outcomes), 3)
+        # this will fail if me mangle the datetimes severely
+        self.assertEqual(self.incoming_loc.quantity(self.goods_type,
+                                                    goods_state='future',
+                                                    at_datetime=self.dt_test3),
+                         3)
+
+        for outcome in all_outcomes:
+            self.assertEqual(outcome.dt_from, self.dt_test2)
+            self.assertEqual(outcome.location, self.incoming_loc)
+            self.assertEqual(outcome.type, self.goods_type)
+            # I prefer this to the less explicit assertGreater (ambiguity
+            # for French speakers with math background)
+            self.assertTrue(outcome.quantity > 0)
+            self.assertEqual(outcome.state, 'future')
+        wished_outcome = split.get_outcome()
+        self.assertEqual(wished_outcome.quantity, 2)
+        self.assertTrue(wished_outcome in all_outcomes)
+
+        split.execute(self.dt_test2)
+        for outcome in all_outcomes:
+            self.assertEqual(outcome.dt_from, self.dt_test2)
+            self.assertEqual(outcome.dt_until, None)
+            self.assertEqual(outcome.location, self.incoming_loc)
+            self.assertEqual(outcome.type, self.goods_type)
+            # I prefer this to the less explicit assertGreater (ambiguity
+            # for French speakers with math background)
+            self.assertTrue(outcome.quantity > 0)
+            self.assertEqual(outcome.state, 'present')
+
+        # whatever the time we pick at the total quantity should still be
+        # unchanged (using the right goods_state, of course)
+        for state, dt in (('present', None),
+                          ('future', self.dt_test2),
+                          ('future', self.dt_test3),
+                          ('past', self.dt_test1),
+                          ('past', self.dt_test2),
+                          ('past', self.dt_test3)):
+            self.assertEqual(
+                self.incoming_loc.quantity(self.goods_type,
+                                           goods_state=state,
+                                           at_datetime=dt),
+                3)
+
+    def test_create_planned_outcome_disappears(self):
+        split = self.Operation.Split.create(state='planned',
+                                            goods=self.goods,
+                                            dt_execution=self.dt_test2,
+                                            quantity=2)
+
+        wished_outcome = split.get_outcome()
+        wished_outcome.delete()
+        with self.assertRaises(OperationError):
+            split.get_outcome()
 
     def test_irreversible(self):
         """A case in which Splits are irreversible."""
@@ -93,10 +172,12 @@ class TestSplit(WmsTestCase):
         self.goods.state = 'present'
         split = self.Operation.Split.create(state='done',
                                             goods=self.goods,
+                                            dt_execution=self.dt_test2,
                                             quantity=2)
 
-        outcomes = self.Goods.query().filter(self.Goods.reason == split).all()
-        split.plan_revert()
+        outcomes = self.Goods.query().filter(self.Goods.reason == split,
+                                             self.Goods.state != 'past').all()
+        split.plan_revert(dt_execution=self.dt_test3)
 
         aggregate = self.single_result(self.Operation.Aggregate.query())
         self.assertEqual(aggregate.goods, outcomes)
@@ -114,7 +195,8 @@ class TestSplit(WmsTestCase):
         # TODO we might actually want in case Splits have no meaning
         # in real life to simply forget an end-of-chain Split.
         self.assertEqual(self.Goods.query().filter(
-            self.Goods.state == 'past').all(), outcomes)
+            self.Goods.state == 'past',
+            self.Goods.reason == aggregate).all(), outcomes)
 
         # no weird leftovers
         self.assertEqual(
@@ -142,7 +224,6 @@ class TestSplit(WmsTestCase):
         self.assertEqual(rev_move.follows, [move])
         rev_move.execute()
         aggregate.execute()
-
         new_goods = self.single_result(
             self.Goods.query().filter(self.Goods.state == 'present'))
         self.assertEqual(new_goods.quantity, 3)

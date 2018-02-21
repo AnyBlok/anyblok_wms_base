@@ -44,10 +44,10 @@ class Unpack(SingleGoodsSplitter, Operation):
     quantity = Decimal(label="Quantity")  # TODO non negativity constraint
 
     @classmethod
-    def check_create_conditions(cls, state, goods=None, quantity=None,
-                                **kwargs):
+    def check_create_conditions(cls, state, dt_execution,
+                                goods=None, quantity=None, **kwargs):
         super(Unpack, cls).check_create_conditions(
-            state, goods=goods,
+            state, dt_execution, goods=goods,
             quantity=quantity,
             **kwargs)
 
@@ -73,6 +73,7 @@ class Unpack(SingleGoodsSplitter, Operation):
         Goods = self.registry.Wms.Goods
         GoodsType = Goods.Type
         packs = self.goods
+        dt_execution = self.dt_execution
         spec = self.get_outcome_specs()
         type_ids = set(outcome['type'] for outcome in spec)
         outcome_types = {gt.id: gt for gt in GoodsType.query().filter(
@@ -80,19 +81,14 @@ class Unpack(SingleGoodsSplitter, Operation):
 
         outcome_state = 'present' if self.state == 'done' else 'future'
         if self.state == 'done':
-            packs.update(state='past', reason=self)
-        else:
-            # don't bias the future stock levels
-            Goods.insert(type=packs.type,
-                         location=packs.location,
-                         quantity=-packs.quantity,
-                         state='future',
-                         reason=self)
+            packs.state = 'past'
         for outcome_spec in spec:
             fields = dict(quantity=outcome_spec['quantity'] * self.quantity,
                           location=packs.location,
                           type=outcome_types[outcome_spec['type']],
                           reason=self,
+                          dt_from=dt_execution,
+                          dt_until=packs.dt_until,
                           state=outcome_state)
             clone = outcome_spec.get('forward_properties') == 'clone'
             if clone:
@@ -100,6 +96,7 @@ class Unpack(SingleGoodsSplitter, Operation):
             outcome = Goods.insert(**fields)
             if not clone:
                 self.forward_props(outcome_spec, outcome)
+        packs.update(dt_until=dt_execution, reason=self)
 
     def forward_props(self, spec, outcome):
         """Handle the properties for a given outcome (Goods record)
@@ -214,6 +211,9 @@ class Unpack(SingleGoodsSplitter, Operation):
         return specs
 
     def cancel_single(self):
+        self.goods.update(reason=self.follows[0],
+                          dt_until=self.orig_goods_dt_until)
+        self.registry.flush()
         Goods = self.registry.Wms.Goods
         Goods.query().filter(Goods.reason == self).delete(
             synchronize_session='fetch')

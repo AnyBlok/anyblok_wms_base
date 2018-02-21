@@ -6,13 +6,14 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok.tests.testcase import BlokTestCase
+from .testcase import WmsTestCase
 from anyblok_wms_base.exceptions import OperationCreateArgFollows
 
 
-class TestArrival(BlokTestCase):
+class TestArrival(WmsTestCase):
 
     def setUp(self):
+        super(TestArrival, self).setUp()
         Wms = self.registry.Wms
         self.goods_type = Wms.Goods.Type.insert(label="My good type")
         self.incoming_loc = Wms.Location.insert(label="Incoming location")
@@ -24,6 +25,7 @@ class TestArrival(BlokTestCase):
         arrival = self.Arrival.create(location=self.incoming_loc,
                                       quantity=3,
                                       state='planned',
+                                      dt_execution=self.dt_test1,
                                       goods_code='765',
                                       goods_properties=dict(foo=5,
                                                             bar='monty'),
@@ -39,13 +41,17 @@ class TestArrival(BlokTestCase):
         self.assertEqual(goods.code, '765')
         self.assertEqual(goods.get_property('foo'), 5)
         self.assertEqual(goods.get_property('bar'), 'monty')
+        self.assertEqual(goods.dt_from, self.dt_test1)
 
-        arrival.execute()
-        self.assertEqual(goods.state, 'present')
+        arrival.execute(self.dt_test2)
         self.assertEqual(arrival.state, 'done')
+        self.assertEqual(arrival.dt_execution, self.dt_test2)
+        self.assertEqual(arrival.dt_start, self.dt_test2)
+        self.assertEqual(goods.state, 'present')
         self.assertEqual(goods.get_property('foo'), 5)
         self.assertEqual(goods.get_property('bar'), 'monty')
         self.assertEqual(goods.code, '765')
+        self.assertEqual(goods.dt_from, self.dt_test2)
 
     def test_create_done(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
@@ -82,6 +88,7 @@ class TestArrival(BlokTestCase):
         arrival = self.Arrival.create(location=self.incoming_loc,
                                       quantity=3,
                                       state='planned',
+                                      dt_execution=self.dt_test1,
                                       goods_code='x34/7',
                                       goods_properties=dict(foo=2,
                                                             monty='python'),
@@ -102,7 +109,7 @@ class TestArrival(BlokTestCase):
         str(arrival)
 
 
-class TestOperationBase(BlokTestCase):
+class TestOperationBase(WmsTestCase):
     """Test the Operation base class
 
     In these test cases, Operation.Move is considered the canonical example
@@ -110,6 +117,7 @@ class TestOperationBase(BlokTestCase):
     """
 
     def setUp(self):
+        super(TestOperationBase, self).setUp()
         Wms = self.registry.Wms
         self.goods_type = Wms.Goods.Type.insert(label="My good type")
         self.incoming_loc = Wms.Location.insert(label="Incoming location")
@@ -121,6 +129,7 @@ class TestOperationBase(BlokTestCase):
         op = self.Arrival.create(location=self.incoming_loc,
                                  quantity=3,
                                  state='planned',
+                                 dt_execution=self.dt_test2,
                                  goods_type=self.goods_type)
         op.state = 'done'
         op.execute_planned = lambda: self.fail("Should not be called")

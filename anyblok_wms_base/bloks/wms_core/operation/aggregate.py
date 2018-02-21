@@ -18,7 +18,7 @@ register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
 MultipleGoods = Declarations.Mixin.WmsMultipleGoodsOperation
 
-UNIFORM_FIELDS = ('type', 'properties', 'code', 'location')
+UNIFORM_FIELDS = ('type', 'properties', 'code', 'location', 'dt_until')
 
 
 @register(Operation)
@@ -97,9 +97,9 @@ class Aggregate(MultipleGoods, Operation):
         return props1 == props2
 
     @classmethod
-    def check_create_conditions(cls, state, goods=None, **kwargs):
+    def check_create_conditions(cls, state, dt_execution, goods=None, **kwargs):
         super(Aggregate, cls).check_create_conditions(
-            state, goods=goods, **kwargs)
+            state, dt_execution, goods=goods, **kwargs)
         first = goods[0]
         for record in goods:
             for field in UNIFORM_FIELDS:
@@ -119,28 +119,27 @@ class Aggregate(MultipleGoods, Operation):
         """
         self.registry.flush()
         goods = self.goods
+        dt_execution = self.dt_execution
         Goods = self.registry.Wms.Goods
         new_goods = {field: getattr(goods[0], field)
                      for field in UNIFORM_FIELDS}
-        new_goods['reason'] = self
-        qty = sum(record.quantity for record in goods)
+        new_goods.update(reason=self, dt_from=dt_execution,
+                         quantity=sum(record.quantity for record in goods))
+
         if self.state == 'done':
+            # TODO PERF bulk update query ?
             for record in goods:
-                record.update(reason=self, state='past')  # TODO dates
-            return Goods.insert(state='present', quantity=qty, **new_goods)
+                record.update(reason=self, state='past', dt_until=dt_execution)
+            return Goods.insert(state='present', **new_goods)
         else:
-            new_goods['state'] = 'future'
-            Goods.insert(quantity=qty, **new_goods)
-            Goods.insert(quantity=-qty, **new_goods)
+            Goods.insert(state='future', **new_goods)
 
     def execute_planned(self):
         Goods = self.registry.Wms.Goods
-        query = Goods.query().filter(Goods.reason == self)
-        query.filter(Goods.quantity < 0).delete(synchronize_session='fetch')
-        created = query.filter(Goods.quantity > 0).one()
-        created.state = 'present'
+        created = Goods.query().filter(Goods.reason == self).one()
+        created.update(state='present', dt_from=self.dt_execution)
         for record in self.goods:
-            record.update(state='past', reason=self)
+            record.update(state='past', reason=self, dt_until=self.dt_execution)
 
     def cancel_single(self):
         Goods = self.registry.Wms.Goods

@@ -57,7 +57,7 @@ class Arrival(Operation):
                 "quantity={self.quantity}").format(self=self)
 
     @classmethod
-    def check_create_conditions(cls, state, **kwargs):
+    def check_create_conditions(cls, state, dt_execution, **kwargs):
         """An Arrival does not have preconditions."""
 
     @classmethod
@@ -80,6 +80,7 @@ class Arrival(Operation):
             quantity=self.quantity,
             reason=self,
             state='present' if self.state == 'done' else 'future',
+            dt_from=self.dt_execution,
             type=self.goods_type,
             properties=props,
             code=self.goods_code,
@@ -87,7 +88,8 @@ class Arrival(Operation):
 
     def execute_planned(self):
         Goods = self.registry.Wms.Goods
-        Goods.query().filter(Goods.reason == self).one().update(state='present')
+        Goods.query().filter(Goods.reason == self).one().update(
+            state='present', dt_from=self.dt_execution)
 
     def cancel_single(self):
         Goods = self.registry.Wms.Goods

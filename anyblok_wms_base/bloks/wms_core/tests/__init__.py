@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from datetime import datetime
 from anyblok.tests.testcase import BlokTestCase
 
 
@@ -19,6 +20,7 @@ class TestCore(BlokTestCase):
         loc = Wms.Location.insert(label="Root location")
         arrival = Wms.Operation.Arrival.insert(goods_type=goods_type,
                                                location=loc,
+                                               dt_execution=datetime.now(),
                                                state='done',
                                                quantity=3)
         # basic test of polymorphism
@@ -30,6 +32,7 @@ class TestCore(BlokTestCase):
         goods = Wms.Goods.insert(quantity=3,
                                  type=goods_type,
                                  location=loc,
+                                 dt_from=datetime.now(),
                                  state='present',
                                  reason=arrival)
         self.assertEqual(goods.reason, op)

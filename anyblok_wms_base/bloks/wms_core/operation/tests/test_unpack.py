@@ -6,15 +6,16 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok.tests.testcase import BlokTestCase
+from .testcase import WmsTestCase
 from anyblok_wms_base.exceptions import (
     OperationGoodsError,
 )
 
 
-class TestUnpack(BlokTestCase):
+class TestUnpack(WmsTestCase):
 
     def setUp(self):
+        super(TestUnpack, self).setUp()
         Wms = self.registry.Wms
         self.Operation = Operation = Wms.Operation
         self.Unpack = Operation.Unpack
@@ -31,6 +32,7 @@ class TestUnpack(BlokTestCase):
         self.arrival = self.Operation.Arrival.insert(
             goods_type=goods_type,
             location=self.stock,
+            dt_execution=self.dt_test1,
             state='planned',
             quantity=3)
 
@@ -41,6 +43,7 @@ class TestUnpack(BlokTestCase):
         self.packs = self.Goods.insert(quantity=5,
                                        type=self.packed_goods_type,
                                        location=self.stock,
+                                       dt_from=self.dt_test1,
                                        state='future',
                                        properties=props,
                                        reason=self.arrival)
@@ -62,6 +65,7 @@ class TestUnpack(BlokTestCase):
         self.packs.update(state='present')
         unp = self.Unpack.create(quantity=5,
                                  state='done',
+                                 dt_execution=self.dt_test2,
                                  goods=self.packs)
         self.assertEqual(unp.follows, [self.arrival])
 
@@ -97,6 +101,7 @@ class TestUnpack(BlokTestCase):
         self.packs.update(state='present')
         unp = self.Unpack.create(quantity=5,
                                  state='done',
+                                 dt_execution=self.dt_test2,
                                  goods=self.packs)
         self.assertEqual(unp.follows, [self.arrival])
 
@@ -134,6 +139,7 @@ class TestUnpack(BlokTestCase):
         self.packs.update(state='present')
         unp = self.Unpack.create(quantity=5,
                                  state='done',
+                                 dt_execution=self.dt_test2,
                                  goods=self.packs)
         self.assertEqual(unp.follows, [self.arrival])
 
@@ -170,6 +176,7 @@ class TestUnpack(BlokTestCase):
         self.packs.update(state='present')
         unp = self.Unpack.create(quantity=5,
                                  state='done',
+                                 dt_execution=self.dt_test2,
                                  goods=self.packs)
         self.assertEqual(unp.follows, [self.arrival])
 
@@ -201,6 +208,7 @@ class TestUnpack(BlokTestCase):
             self.packs.update(state='present')
             self.Unpack.create(quantity=5,
                                state='done',
+                               dt_execution=self.dt_test2,
                                goods=self.packs)
 
         # No property at all, we fail explicitely
@@ -237,6 +245,7 @@ class TestUnpack(BlokTestCase):
         self.packs.update(state='present')
         unp = self.Unpack.create(quantity=5,
                                  state='done',
+                                 dt_execution=self.dt_test2,
                                  goods=self.packs)
         self.assertEqual(unp.follows, [self.arrival])
 
@@ -269,6 +278,7 @@ class TestUnpack(BlokTestCase):
                                   ])))
         unp = self.Unpack.create(quantity=5,
                                  state='planned',
+                                 dt_execution=self.dt_test2,
                                  goods=self.packs)
         self.assertEqual(unp.follows, [self.arrival])
 
@@ -285,17 +295,22 @@ class TestUnpack(BlokTestCase):
         self.assertEqual(unpacked_goods.reason, unp)
 
         self.assertEqual(
-            self.stock.quantity(self.packed_goods_type, goods_state='future'),
+            self.stock.quantity(self.packed_goods_type,
+                                at_datetime=self.dt_test2,
+                                goods_state='future'),
             0)
 
         self.packs.state = 'present'
+        self.registry.flush()
         unp.execute()
         self.assertEqual(unpacked_goods.state, 'present')
         self.assertEqual(self.packs.state, 'past')
         self.assertEqual(self.packs.reason, unp)
 
         self.assertEqual(
-            self.stock.quantity(self.packed_goods_type, goods_state='future'),
+            self.stock.quantity(self.packed_goods_type,
+                                at_datetime=self.dt_test2,
+                                goods_state='future'),
             0)
         self.assertEqual(
             self.Goods.query().filter(
@@ -320,6 +335,7 @@ class TestUnpack(BlokTestCase):
 
         unp = self.Unpack.create(quantity=4,
                                  state='planned',
+                                 dt_execution=self.dt_test2,
                                  goods=self.packs)
         self.assertEqual(unp.follows[0].type, 'wms_split')
         self.assertEqual(unp.partial, True)
@@ -337,22 +353,25 @@ class TestUnpack(BlokTestCase):
         self.assertEqual(unpacked_goods.get_property('foo'), 7)
 
         self.assertEqual(
-            self.stock.quantity(self.packed_goods_type, goods_state='future'),
-            1)
+            self.stock.quantity(self.packed_goods_type,
+                                goods_state='future',
+                                at_datetime=self.dt_test2), 1)
 
         self.packs.state = 'present'
         packs_query = self.Goods.query().filter(
             self.Goods.type == self.packed_goods_type)
-        unp.execute()
+        unp.execute(dt_execution=self.dt_test3)
 
-        self.assertEqual(unpacked_goods.state, 'present')
-        self.assertEqual(self.packs.quantity, 1)
+        # not unpacked
+        still_packed = self.single_result(
+            packs_query.filter(Goods.state == 'present'))
+        self.assertEqual(still_packed.quantity, 1)
 
         # check intermediate objects no leftover intermediate packs
-        self.assertEqual(
-            packs_query.filter(Goods.state == 'present').one(),
-            self.packs)
-        after_split = packs_query.filter(Goods.state == 'past').one()
+        after_split = self.single_result(
+            packs_query.filter(
+                Goods.state == 'past',
+                Goods.reason == unp))
         self.assertEqual(after_split.quantity, 4)
         self.assertEqual(
             packs_query.filter(Goods.state == 'future').count(), 0)
@@ -374,6 +393,7 @@ class TestUnpack(BlokTestCase):
 
         unp = self.Unpack.create(quantity=4,
                                  state='planned',
+                                 dt_execution=self.dt_test2,
                                  goods=self.packs)
         self.assertEqual(unp.follows[0].type, 'wms_split')
         self.assertEqual(unp.partial, True)
@@ -384,7 +404,9 @@ class TestUnpack(BlokTestCase):
             Goods.query().filter(Goods.type == unpacked_type).count(),
             0)
         self.assertEqual(
-            self.stock.quantity(self.packed_goods_type, goods_state='future'),
+            self.stock.quantity(self.packed_goods_type,
+                                goods_state='future',
+                                at_datetime=self.dt_test2),
             5)
 
     def test_no_outcomes(self):
@@ -396,6 +418,7 @@ class TestUnpack(BlokTestCase):
         with self.assertRaises(OperationGoodsError) as arc:
             self.Unpack.create(quantity=5,
                                state='done',
+                               dt_execution=self.dt_test2,
                                goods=self.packs)
         str(arc.exception)
         repr(arc.exception)
@@ -414,6 +437,7 @@ class TestUnpack(BlokTestCase):
         with self.assertRaises(OperationGoodsError) as arc:
             self.Unpack.create(quantity=5,
                                state='done',
+                               dt_execution=self.dt_test2,
                                goods=self.packs)
         str(arc.exception)
         repr(arc.exception)

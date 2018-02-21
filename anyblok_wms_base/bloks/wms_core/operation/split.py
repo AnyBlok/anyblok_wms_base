@@ -11,6 +11,10 @@ from anyblok import Declarations
 from anyblok.column import Decimal
 from anyblok.column import Integer
 
+from anyblok_wms_base.exceptions import (
+    OperationError,
+)
+
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
 SingleGoods = Declarations.Mixin.WmsSingleGoodsOperation
@@ -69,13 +73,15 @@ class Split(SingleGoods, Operation):
     def after_insert(self):
         """Business logic after the inert insertion
 
-        This method returns the newly (positive) created goods, as a special
+        This method returns the pair of newly created goods, as a special
         convenience for direct callers within ``wms_core`` Blok.
+        The first one is the one having the wished quantity.
 
         Usually downstream code is not supposed to call :meth:``after_insert``
         direcly, but this Operation's siblings are entitled to it (unit tested
         together, and this can spare some verifications).
         """
+        self.orig_goods_dt_until = self.goods.dt_until
         self.registry.flush()
         goods = self.goods
         Goods = self.registry.Wms.Goods
@@ -85,38 +91,39 @@ class Split(SingleGoods, Operation):
             reason=self,
             type=goods.type,
             code=goods.code,
+            dt_from=self.dt_execution,
+            dt_until=goods.dt_until,
             properties=goods.properties,
         )
+        goods.dt_until = self.dt_execution
         if self.state == 'done':
-            goods.quantity -= self.quantity
-            # Should we update the reason on the original record ?
-            # it seems unnecessary, although it sounds true in case of
-            # splits having physical meaning : in that case the split is
-            # indeed the reason for what can be witnessed in an inventory
-            goods.reason = self
-            # TODO check for some kind of copy() API on SQLA
-            return Goods.insert(quantity=qty, state='present', **new_goods)
+            goods.update(state='past', reason=self)
+            new_goods['state'] = 'present'
         else:
             new_goods['state'] = 'future'
-            # TODO check for some kind of copy() API on SQLA
-            split = Goods.insert(quantity=qty, **new_goods)
-            Goods.insert(quantity=-qty, **new_goods)
-            return split
+
+        return (Goods.insert(quantity=qty, **new_goods),
+                Goods.insert(quantity=goods.quantity - qty, **new_goods))
 
     def get_outcome(self):
         Goods = self.registry.Wms.Goods
-        return Goods.query().filter(
-            Goods.reason == self).filter(
-                Goods.id != self.goods.id).filter(
-                    Goods.quantity > 0).one()
+        # in case the split is exactly in half, there's no difference
+        # between the two records we created, let's pick any.
+        outcome = Goods.query().filter(Goods.reason == self,
+                                       Goods.quantity == self.quantity).first()
+        if outcome is None:
+            raise OperationError(self, "The split outcomes have disappeared")
+        return outcome
 
     def execute_planned(self):
-        self.goods.quantity -= self.quantity
         Goods = self.registry.Wms.Goods
-        query = Goods.query().filter(Goods.reason == self)
-        query.filter(Goods.quantity < 0).delete(synchronize_session='fetch')
-        for created in query.filter(Goods.quantity > 0).all():
-            created.state = 'present'
+        for outcome in Goods.query().filter(Goods.reason == self).all():
+            outcome.update(state='present',
+                           dt_from=self.dt_execution,
+                           dt_until=self.orig_goods_dt_until)
+        self.registry.flush()
+        self.goods.update(state='past', dt_until=self.dt_execution, reason=self)
+        self.registry.flush()
 
     def cancel_single(self):
         Goods = self.registry.Wms.Goods
@@ -124,8 +131,11 @@ class Split(SingleGoods, Operation):
             synchronize_session='fetch')
 
     def obliviate_single(self):
-        self.goods.quantity += self.quantity
-        self.goods.reason = self.follows[0]
+        Goods = self.registry.Wms.Goods
+        Goods.query().filter(Goods.reason == self,
+                             Goods.state == 'past').one().update(
+                                 dt_until=self.orig_goods_dt_until,
+                                 reason=self.follows[0])
         self.registry.flush()
         Goods = self.registry.Wms.Goods
         Goods.query().filter(Goods.reason == self).delete(
@@ -139,8 +149,7 @@ class Split(SingleGoods, Operation):
         """
         return self.goods.type.is_split_reversible()
 
-    def plan_revert_single(self, follows=()):
-        goods = self.goods
+    def plan_revert_single(self, dt_execution, follows=()):
         if not follows:
             # reversal of an end-of-chain split
             follows = [self]
@@ -149,12 +158,11 @@ class Split(SingleGoods, Operation):
         # TODO introduce an outcome() generic API for all operations ?
         # here in that case, that's for multiple operations
         # in_ is not implemented for Many2Ones
+        reason_ids = set(f.id for f in follows)
+        reason_ids.add(self.id)
         to_aggregate = Goods.query().filter(
-            Goods.reason_id.in_(set(f.id for f in follows)),
-            Goods.quantity > 0).all()
-        if goods not in to_aggregate and goods.state == 'present':
-            # our initial goods have not been fully exhausted
-            # and hasn't had any downstream operations
-            to_aggregate.append(self.goods)
+            Goods.reason_id.in_(reason_ids),
+            Goods.state != 'past').all()
         return Wms.Operation.Aggregate.create(goods=to_aggregate,
+                                              dt_execution=dt_execution,
                                               state='planned')

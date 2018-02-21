@@ -6,7 +6,6 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok.tests.testcase import BlokTestCase
 from .testcase import WmsTestCase
 from anyblok_wms_base.exceptions import (
     OperationError,
@@ -20,6 +19,7 @@ from anyblok_wms_base.exceptions import (
 class TestMove(WmsTestCase):
 
     def setUp(self):
+        super(TestMove, self).setUp()
         Wms = self.registry.Wms
         Operation = Wms.Operation
         goods_type = Wms.Goods.Type.insert(label="My good type")
@@ -29,11 +29,14 @@ class TestMove(WmsTestCase):
         self.arrival = Operation.Arrival.insert(goods_type=goods_type,
                                                 location=self.incoming_loc,
                                                 state='planned',
+                                                dt_execution=self.dt_test1,
                                                 quantity=3)
 
         self.goods = Wms.Goods.insert(quantity=3,
                                       type=goods_type,
                                       location=self.incoming_loc,
+                                      dt_from=self.dt_test1,
+                                      dt_until=self.dt_test3,
                                       state='future',
                                       reason=self.arrival)
         self.Move = Operation.Move
@@ -44,6 +47,8 @@ class TestMove(WmsTestCase):
         self.assertEqual(new_goods.quantity, 3)
         self.assertEqual(new_goods.location, self.incoming_loc)
         self.assertEqual(new_goods.state, 'present')
+        self.assertEqual(new_goods.dt_from, self.dt_test1)
+        self.assertEqual(new_goods.dt_until, self.dt_test3)
         self.assertEqual(new_goods.reason, self.arrival)
         # TODO also check that id did not change once we can make it True
 
@@ -51,6 +56,7 @@ class TestMove(WmsTestCase):
         move = self.Move.create(destination=self.stock,
                                 quantity=3,
                                 state='planned',
+                                dt_execution=self.dt_test2,
                                 goods=self.goods)
         self.assertEqual(move.follows, [self.arrival])
         self.assertEqual(move.goods, self.goods)
@@ -59,10 +65,10 @@ class TestMove(WmsTestCase):
         move.execute()
         self.assertEqual(move.state, 'done')
         self.assertEqual(self.goods.reason, move)
-        moved = self.Goods.query().filter(self.Goods.reason == move,
-                                          self.Goods.state != 'past').all()
-        self.assertEqual(len(moved), 1)
-        moved = moved[0]
+
+        moved = self.single_result(
+            self.Goods.query().filter(self.Goods.reason == move,
+                                      self.Goods.state != 'past'))
         self.assertEqual(moved.state, 'present')
         self.assertEqual(moved.reason, move)
         self.assertEqual(moved.location, self.stock)
@@ -75,11 +81,13 @@ class TestMove(WmsTestCase):
         move = self.Move.create(destination=self.stock,
                                 quantity=3,
                                 state='done',
+                                dt_execution=self.dt_test2,
                                 goods=self.goods)
         self.assertEqual(move.follows, [self.arrival])
 
         # TODO continuity of Goods line
-        new_goods = self.single_result(self.Goods.query())
+        new_goods = self.single_result(
+            self.Goods.query().filter(self.Goods.state != 'past'))
         self.assertEqual(new_goods.quantity, 3)
         self.assertEqual(new_goods.location, self.stock)
         self.assertEqual(new_goods.state, 'present')
@@ -97,6 +105,7 @@ class TestMove(WmsTestCase):
     def test_whole_planned_execute_obliviate(self):
         move = self.Move.create(destination=self.stock,
                                 quantity=3,
+                                dt_execution=self.dt_test2,
                                 state='planned',
                                 goods=self.goods)
         self.goods.update(state='present')
@@ -118,18 +127,28 @@ class TestMove(WmsTestCase):
         move = self.Move.create(destination=self.stock,
                                 quantity=1,
                                 state='done',
+                                dt_execution=self.dt_test2,
                                 goods=self.goods)
         self.assertEqual(len(move.follows), 1)
         split = move.follows[0]
         self.assertEqual(split.type, 'wms_split')
 
-        self.assertEqual(self.goods.quantity, 2)
+        # the original has been thrown in the past by the split
+        self.assertEqual(self.goods.quantity, 3)
+        self.assertEqual(self.goods.state, 'past')
+        self.assertEqual(self.goods.dt_from, self.dt_test1)
+        self.assertEqual(self.goods.dt_until, self.dt_test2)
 
-        after_move = self.Goods.query().filter(self.Goods.reason == move).all()
-        self.assertEqual(len(after_move), 1)
+        not_moved = self.single_result(
+            self.Goods.query().filter(self.Goods.reason == move.follows[0],
+                                      self.Goods.state != 'past'))
+        self.assertEqual(not_moved.quantity, 2)
 
-        after_move = after_move[0]
+        after_move = self.single_result(
+            self.Goods.query().filter(self.Goods.reason == move))
         self.assertEqual(after_move.quantity, 1)
+        self.assertEqual(after_move.dt_from, self.dt_test2)
+        self.assertEqual(after_move.dt_until, self.dt_test3)
         self.assertEqual(after_move.location, self.stock)
         self.assertEqual(after_move.reason, move)
 
@@ -137,6 +156,7 @@ class TestMove(WmsTestCase):
         move = self.Move.create(destination=self.stock,
                                 quantity=1,
                                 state='planned',
+                                dt_execution=self.dt_test2,
                                 goods=self.goods)
         self.assertEqual(len(move.follows), 1)
         split = move.follows[0]
@@ -144,27 +164,37 @@ class TestMove(WmsTestCase):
 
         self.goods.state = 'present'
         self.registry.flush()
-        move.execute()
+        move.execute(dt_execution=self.dt_test2)
 
-        self.assertEqual(self.goods.quantity, 2)
+        # the original has been thrown in the past by the split
+        self.assertEqual(self.goods.quantity, 3)
+        self.assertEqual(self.goods.state, 'past')
+        self.assertEqual(self.goods.dt_from, self.dt_test1)
+        self.assertEqual(self.goods.dt_until, self.dt_test2)
 
-        after_move = self.Goods.query().filter(self.Goods.reason == move).all()
-        self.assertEqual(len(after_move), 1)
+        not_moved = self.single_result(
+            self.Goods.query().filter(self.Goods.reason == move.follows[0],
+                                      self.Goods.state != 'past'))
+        self.assertEqual(not_moved.quantity, 2)
 
-        after_move = after_move[0]
+        after_move = self.single_result(
+            self.Goods.query().filter(self.Goods.reason == move))
         self.assertEqual(after_move.quantity, 1)
         self.assertEqual(after_move.location, self.stock)
+        self.assertEqual(after_move.dt_from, self.dt_test2)
+        self.assertEqual(after_move.dt_until, self.dt_test3)
         self.assertEqual(after_move.reason, move)
         self.assertEqual(after_move.state, 'present')
 
 
-class TestSingleGoodsOperation(BlokTestCase):
+class TestSingleGoodsOperation(WmsTestCase):
     """Test the WmsSingleGoodOperation mixin
 
     In these test cases, Operation.Move is considered the canonical example of
     the mixin.
     """
     def setUp(self):
+        super(TestSingleGoodsOperation, self).setUp()
         Wms = self.registry.Wms
         Operation = Wms.Operation
         goods_type = Wms.Goods.Type.insert(label="My good type")
@@ -174,12 +204,14 @@ class TestSingleGoodsOperation(BlokTestCase):
         self.arrival = Operation.Arrival.insert(goods_type=goods_type,
                                                 location=self.incoming_loc,
                                                 state='planned',
+                                                dt_execution=self.dt_test1,
                                                 quantity=3)
 
         self.goods = Wms.Goods.insert(quantity=3,
                                       type=goods_type,
                                       location=self.incoming_loc,
                                       state='future',
+                                      dt_from=self.dt_test1,
                                       reason=self.arrival)
         self.Move = Operation.Move
         self.Goods = Wms.Goods
@@ -190,6 +222,7 @@ class TestSingleGoodsOperation(BlokTestCase):
         with self.assertRaises(OperationGoodsError) as arc:
             self.Move.create(destination=self.stock,
                              quantity=3,
+                             dt_execution=self.dt_test2,
                              state='done',
                              goods=self.goods)
         exc = arc.exception
@@ -200,6 +233,7 @@ class TestSingleGoodsOperation(BlokTestCase):
         self.goods.state = 'present'
         with self.assertRaises(OperationMissingQuantityError) as arc:
             self.Move.create(destination=self.stock,
+                             dt_execution=self.dt_test2,
                              state='done',
                              goods=self.goods)
         exc = arc.exception
@@ -209,6 +243,7 @@ class TestSingleGoodsOperation(BlokTestCase):
         self.goods.state = 'present'
         with self.assertRaises(OperationMissingGoodsError) as arc:
             self.Move.create(destination=self.stock,
+                             dt_execution=self.dt_test2,
                              state='done',
                              quantity=3)
         exc = arc.exception
@@ -218,6 +253,7 @@ class TestSingleGoodsOperation(BlokTestCase):
         self.goods.state = 'present'
         with self.assertRaises(OperationQuantityError) as arc:
             self.Move.create(destination=self.stock,
+                             dt_execution=self.dt_test2,
                              quantity=7,
                              state='done',
                              goods=self.goods)
@@ -229,6 +265,7 @@ class TestSingleGoodsOperation(BlokTestCase):
     def test_whole_planned_execute_but_not_ready(self):
         move = self.Move.create(destination=self.stock,
                                 quantity=3,
+                                dt_execution=self.dt_test2,
                                 state='planned',
                                 goods=self.goods)
         self.assertEqual(move.follows, [self.arrival])
@@ -239,19 +276,26 @@ class TestSingleGoodsOperation(BlokTestCase):
         self.assertEqual(exc.model_name, self.op_model_name)
         self.assertEqual(exc.kwargs.get('goods'), self.goods)
 
-    def test_quantity_changed_no_split(self):
-        """SingleGoodsSplitters raise if quantity of the final op isn't exact.
+    def test_create_planned_dt_execution_required(self):
+        """SingleGoodsSplitters.create() requires dt_execution."""
+        with self.assertRaises(OperationError):
+            self.Move.create(destination=self.stock,
+                             quantity=3,
+                             state='planned',
+                             goods=self.goods)
 
-        This test is for the case without split
-        """
+    def test_quantity_changed_no_split(self):
+        """SingleGoodsSplitters demand exact quantity (no split)"""
         move = self.Move.create(destination=self.stock,
                                 quantity=3,
+                                dt_execution=self.dt_test2,
                                 state='planned',
                                 goods=self.goods)
         self.assertEqual(move.follows, [self.arrival])
         self.assertEqual(move.goods, self.goods)
         self.goods.state = 'present'
         self.goods.quantity = 2
+        self.registry.flush()
         with self.assertRaises(OperationQuantityError) as arc:
             move.execute()
         exc = arc.exception
@@ -259,20 +303,21 @@ class TestSingleGoodsOperation(BlokTestCase):
         self.assertEqual(exc.kwargs.get('goods'), self.goods)
 
     def test_quantity_changed_split(self):
-        """SingleGoodsSplitters raise if quantity of the final op isn't exact.
+        """SingleGoodsSplitters demand exact quantity (after split)
 
-        This test is for the case with split. We have to alter the split
-        outcome somewhat artificially, to simulate a bug or some external
-        alteration.
+        We have to alter the split outcome somewhat artificially,
+        to simulate a bug or some external alteration.
         """
         move = self.Move.create(destination=self.stock,
                                 quantity=2,
+                                dt_execution=self.dt_test2,
                                 state='planned',
                                 goods=self.goods)
         self.assertNotEqual(move.goods, self.goods)
         move.goods.quantity = 3
 
         self.goods.state = 'present'
+        self.registry.flush()
         with self.assertRaises(OperationQuantityError) as arc:
             move.execute()
         exc = arc.exception
@@ -282,6 +327,7 @@ class TestSingleGoodsOperation(BlokTestCase):
     def test_quantity_too_big_split(self):
         move = self.Move.create(destination=self.stock,
                                 quantity=2,
+                                dt_execution=self.dt_test2,
                                 state='planned',
                                 goods=self.goods)
         self.assertEqual(len(move.follows), 1)

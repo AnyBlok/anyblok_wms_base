@@ -12,6 +12,7 @@ from anyblok import Declarations
 from anyblok.column import String
 from anyblok.column import Selection
 from anyblok.column import Integer
+from anyblok.column import DateTime
 from anyblok.column import Decimal
 from anyblok.relationship import Many2One
 from anyblok_postgres.column import Jsonb
@@ -34,6 +35,9 @@ class Goods:
     goods, for all the intents and purposes the WMS is used for.
 
     Fields semantics:
+
+    .. note:: the ``quantity`` field may vanish from ``wms-core`` in the
+              future, see :ref:`improvement_no_quantities`
 
     - properties:
           Besides its main columns meant to represent handling by the Wms Base
@@ -60,6 +64,38 @@ class Goods:
           this records the Operation that is responsible for the current
           values of the Goods record, including its state. In practice it is
           simply the latest Operation that did anything to these Goods.
+    - dt_from:
+          This represents the starting date and time
+          of presence of the goods at this location (TODO really make this
+          Move story uniform and accept the price in volumetry), but the
+          meaning really depends on the value of the ``state`` field:
+
+          + In the ``past`` and ``present`` states, this is supposed to be
+            a faithful representation of reality.
+
+          + In the ``future`` state, this is completely theoretical, and
+            ``wms-core`` doesn't do much about it, besides using it to avoid
+            counting several avatars of the same physical goods while
+            :meth:`peeking at quantities in the future
+            <anyblok_wms_base.bloks.wms_core.location.Location.quantity>`.
+            If the end application does serious time prediction, it can use it
+            freely
+    - dt_until:
+          This represents the ending date and time
+          of presence of the goods at this location (TODO really make this
+          Move story uniform and accept the price in volumetry).
+
+          Like ``dt_from``, the meaning vary according to the value of state:
+
+          + In the ``past`` state, this is supposed to be a faithful
+            representation of reality: apart from the special case of formal
+            :ref:`Splits and Aggregates <op_split_aggregate>`, the goods
+            really left this location at these date and time.
+
+          + In the ``present`` and ``future`` states, this is purely
+            theoretical, and the same remarks as for the ``dt_from`` field
+            apply readily.
+
     - quantity:
           this has been defined as Decimal to cover a broad scope of
           applications. However, for performance reasons, applications are
@@ -81,6 +117,7 @@ class Goods:
             those thirds of pies alongside those representing the whole pies,
             and represent the first cutting of a slice as an
             unpacking operation)
+
     """
     type = Many2One(model='Model.Wms.Goods.Type', nullable=False, index=True)
     id = Integer(label="Identifier", primary_key=True)
@@ -103,6 +140,25 @@ class Goods:
                       "these goods are here",
                       index=True,
                       model=Model.Wms.Operation, nullable=False)
+
+    dt_from = DateTime(label="Exist (or will) from this date & time",
+                       nullable=False)
+    """DateTime from which the Goods exist with the given location and state.
+
+    Functionally, even though the default in creating Operations will be
+    to use the current date and time, this is not to be confused with the
+    time of creation in the database, which we don't care much about.
+
+    Timestamps tend to be very precise, but for the sake of completeness,
+    let's mention here that is is inclusive.
+    """
+
+    dt_until = DateTime(label="Exist (or will) until this date & time")
+    """DateTime until which the Goods exist with the given location and state.
+
+    Timestamps tend to be very precise, but for the sake of completeness,
+    let's mention here that is is exclusive.
+    """
 
     def __str__(self):
         return ("(id={self.id}, state={self.state!r}, "
