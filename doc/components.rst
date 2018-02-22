@@ -15,6 +15,18 @@ wms-core
 As the name suggests, this Blok provides the :ref:`core_concepts` of
 Anyblok / Wms.
 
+.. _blok_wms_reservation:
+
+wms-reservation
+---------------
+
+Will provide reservation of :ref:`goods_goods` for some purposes
+(typically a final delivery, or a manufacturing step).
+
+Development has not started yet, but it's constantly on our minds (see
+:ref:`improvement_avatars`, or :ref:`improvement_operation_superseding`)
+
+
 wms-aggregated-goods
 --------------------
 
