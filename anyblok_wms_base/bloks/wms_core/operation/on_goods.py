@@ -39,7 +39,7 @@ class WmsSingleGoodsOperation:
     """To save the ``dt_until`` value of the Goods to be able to restore them.
 
     TODO like orig_reasons, this is really ugly and should be superseded
-    when implementing avatars.
+    when implementing :ref:`Avatars <improvement_avatars>`.
     """
 
     @classmethod

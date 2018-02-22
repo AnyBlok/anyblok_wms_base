@@ -130,8 +130,8 @@ class Operation:
     <anyblok_wms_base.bloks.wms_core.goods.Goods.dt_from>` and :attr:`dt_until
     <anyblok_wms_base.bloks.wms_core.goods.Goods.dt_until>` fields of
     the Goods affected by this Operation, to avoid summing up
-    several avatars of the same physical goods while :meth:`peeking at
-    quantities in the future
+    several :ref:`Goods Avatars <goods_avatar>` of the same physical goods
+    while :meth:`peeking at quantities in the future
     <anyblok_wms_base.bloks.wms_core.location.Location.quantity>`,
     but has no other strong meaning within
     ``wms-core``: if the end application does some serious time prediction,

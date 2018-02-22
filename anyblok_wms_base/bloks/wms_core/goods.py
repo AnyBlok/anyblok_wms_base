@@ -75,8 +75,8 @@ class Goods:
 
           + In the ``future`` state, this is completely theoretical, and
             ``wms-core`` doesn't do much about it, besides using it to avoid
-            counting several avatars of the same physical goods while
-            :meth:`peeking at quantities in the future
+            counting several :ref:`goods_avatar` of the same physical goods
+            while :meth:`peeking at quantities in the future
             <anyblok_wms_base.bloks.wms_core.location.Location.quantity>`.
             If the end application does serious time prediction, it can use it
             freely

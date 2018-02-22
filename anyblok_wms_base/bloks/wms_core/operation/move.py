@@ -106,10 +106,13 @@ class Move(SingleGoodsSplitter, Operation):
             synchronize_session='fetch')
 
     def obliviate_single(self):
+        """Restore the moved Goods.
+
+        # TODO could be greatly simplified with :ref:`improvement_avatars`.
+        """
         Goods = self.registry.Wms.Goods
         before = Goods.query().filter(Goods.reason == self,
                                       Goods.state == 'past').first()
-        # TODO could be greatly simplified with avatars
         if before is None:  # was executed directly at creation
             restored = self.goods
         else:
