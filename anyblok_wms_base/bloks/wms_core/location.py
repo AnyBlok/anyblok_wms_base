@@ -52,8 +52,14 @@ class Location:
 
         TODO: make recursive (not fully decided about the forest structure
         of locations)
+
         TODO: provide filtering according to Goods properties (should become
         special PostgreSQL JSON clauses)
+
+        TODO PERF: for timestamp ranges, use GiST indexes and the @> operator.
+        See the comprehensive answer to `that question
+        <https://dba.stackexchange.com/questions/39589>`_ for an entry point.
+        Let's get a DB with serious volume and datetimes first.
         """
         Goods = self.registry.Wms.Goods
         query = Goods.query(func.sum(Goods.quantity)).filter(
