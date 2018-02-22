@@ -128,7 +128,8 @@ class Move(SingleGoodsSplitter, Operation):
     def is_reversible(self):
         """Moves are always reversible.
 
-        See :class:`Operation` for what this exactly means.
+        See :meth:`the base class <.base.Operation.is_reversible>` for what
+        reversibility exactly means.
         """
         return True
 

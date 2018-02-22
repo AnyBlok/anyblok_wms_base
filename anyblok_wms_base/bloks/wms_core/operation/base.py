@@ -31,7 +31,7 @@ Model = Declarations.Model
 
 @register(Model.Wms)
 class Operation:
-    """A stock operation.
+    """Base class for all Operations.
 
     .. warning:: downstream applications and libraries should never issue
                  :meth:`insert` for Operations in their main code, and must use
@@ -49,48 +49,44 @@ class Operation:
     Downstream applications and libraries can add columns on the present model
     to satisfy their auditing needs (some notion of "user" or "operator" comes
     to mind).
-
-    Fields semantics:
-
-    - id: is equal to the id of the concrete operations model
-    - state: see :ref:`op_states`
-    - comment:
-        free field to store details of how it went, or motivation
-        for the operation (downstream libraries implementing scheduling
-        should better use columns rather than this field).
-    - follows:
-        the operations that are the direct reasons
-        for the presence of Goods the present one is about.
-        This is a Many2Many relationship because there might be
-        several Goods involved in the operation, but for each of them,
-        it'll be exactly one operation, namely the latest before
-        the present one. In other words, operations history is a directed
-        acyclic graph, whose edges are encoded by this Many2Many.
-
-        This field can be empty in case of initial operations.
-
-        Examples:
-
-        + a move of a bottle of milk that follows the unpacking
-          of a 6-pack, which itself follows a move from somewhere else
-        + a parcel packing operation that follows exactly one move
-          to the shipping area for each Goods to be packed.
-          they themselves would follow more operations.
-        + an :class:`Arrival <.arrival.Arrival>` typically doesn't
-          follow anything (but might be due to some kind of purchase order).
     """
     id = Integer(label="Identifier, shared with specific tables",
                  primary_key=True)
+    """The primary key (serial integer)
+
+    its value is equal to that of the concrete Operation Model.
+    """
+
     # TODO enums ?
     type = Selection(label="Operation Type",
                      selections=OPERATION_TYPES,
                      nullable=False,
                      )
+    """Polymorphic key to dispatch between the various Operation Models.
+
+    As such keys are
+    supposed to be unique among all polymorphic cases in the whole application,
+    those defined by WMS Base are prefixed with ``wms_``.
+    """
     state = Selection(label="State of operation",
                       selections=OPERATION_STATES,
                       nullable=False,
                       )
+    """The current state (lifecycle step) of the Operation.
+
+    See :ref:`op_states` for the meanings.
+    """
     comment = String(label="Comment")
+    """Free field.
+
+    This is meant to store details of how it went, or motivation
+    for the operation (downstream libraries implementing scheduling
+    should better use columns rather than this field).
+
+    .. note:: this shouldn't be ``wms-core`` responsibility, and hence should
+              be simply removed.
+    """
+
     follows = Many2Many(model='Model.Wms.Operation',
                         m2m_remote_columns='parent_id',
                         m2m_local_columns='child_id',
@@ -98,6 +94,29 @@ class Operation:
                         label="Immediate preceding operations",
                         many2many="followers",
                         )
+    """Immediate predecessors in the Operation history,
+
+    the operations that are the direct reasons
+    for the presence of Goods the present one is about.
+    This is a Many2Many relationship because there might be
+    several Goods involved in the operation, but for each of them,
+    it'll be exactly one operation, namely the latest before
+    the present one. In other words, operations history is a directed
+    acyclic graph, whose edges are encoded by this Many2Many.
+
+    This field can be empty in case of initial operations.
+
+    Examples:
+
+    * a move of a bottle of milk that follows the unpacking
+      of a 6-pack, which itself follows a move from somewhere else
+    * a parcel packing operation that follows exactly one move
+      to the shipping area for each Goods to be packed.
+      they themselves would follow more operations.
+    * an :class:`Arrival <.arrival.Arrival>` typically doesn't
+      follow anything (but might be due to some kind of purchase order).
+    """
+
     dt_execution = DateTime(label="date and time of execution",
                             nullable=False)
     """Date and time of execution.
@@ -111,7 +130,7 @@ class Operation:
     <anyblok_wms_base.bloks.wms_core.goods.Goods.dt_from>` and :attr:`dt_until
     <anyblok_wms_base.bloks.wms_core.goods.Goods.dt_until>` fields of
     the Goods affected by this Operation, to avoid summing up
-    records representing in the same physical goods while :meth:`peeking at
+    several avatars of the same physical goods while :meth:`peeking at
     quantities in the future
     <anyblok_wms_base.bloks.wms_core.location.Location.quantity>`,
     but has no other strong meaning within
@@ -189,9 +208,9 @@ class Operation:
            creating an Operation in the ``done`` state means executing it
            right away.
 
-           Creating an Oparation in the ``started`` state should
+           Creating an Operation in the ``started`` state should
            make the relevant Goods locked or destroyed right away
-           (TODO Not implemented)
+           (TODO not implemented)
         :param fields: remaining fields, to be forwarded to ``insert`` and
                        the various involved methods implemented in subclasses.
         :param dt_execution:
@@ -205,7 +224,7 @@ class Operation:
 
         In principle, downstream developers should never call :meth:`insert`.
 
-        As this is Python, nothing really forbids them for doing so, but they
+        As this is Python, nothing really forbids them of doing so, but they
         must then exactly know what they are doing, much like issuing
         INSERT statements to the database).
 
@@ -300,7 +319,6 @@ class Operation:
         has to be implemented for each subclass, the default implementation
         returns ``False``. Subclasses implementing reversibility have to
         override this.
-
         """
         return False
 
@@ -477,9 +495,9 @@ class Operation:
     def cancel_single(self):
         """Cancel just the current operation.
 
-        This method assumes that follow-up operations are already been
-        taken care of. It removes all planned consequences of the operation,
-        without deleting the operation itself.
+        This method assumes that follow-up Operations have already been
+        taken care of. It removes all planned consequences of the current one,
+        but dos not delete it.
 
         Downstream applications and libraries are
         not supposed to call this method: they should use :meth:`cancel`,
@@ -493,9 +511,9 @@ class Operation:
     def obliviate_single(self):
         """Oblivate just the current operation.
 
-        This method assumes that follow-up operations are already been
-        taken care of. It removes all consequences of the operation,
-        without deleting the operation itself.
+        This method assumes that follow-up Operations are already been
+        taken care of. It removes all consequences of the current one,
+        but does not delete it.
 
         Downstream applications and libraries are
         not supposed to call this method: they should use :meth:`obliviate`,
@@ -506,14 +524,20 @@ class Operation:
         raise NotImplementedError(
             "for %s" % self.__registry_name__)  # pragma: no cover
 
-    def plan_revert_single(self, dt_execution):
+    def plan_revert_single(self, dt_execution, follows=()):
         """Create a planned operation to revert the present one.
+
+        This method assumes that reversals have already been issued for
+        follow-up Operations, and takes them as input.
 
         :param datetime dt_execution: the date and time at which to plan
                                  the reversal operations.
-
-        This method assumes that follow-up operations have already been taken
-        care of.
+        :param follows:
+           the Operations that the reversal will have to follow. In other
+           words, these are the reversals of ``self.followers`` (can be empty).
+        :type follows: list(Operation)
+        :return: the planned reversal
+        :rtype: Operation
 
         Downstream applications and libraries are
         not supposed to call this method: they should use :meth:`plan_revert`,

@@ -37,6 +37,12 @@ get a grasp of what it intends to do.
    components
    CHANGES
    improvements
+   apidoc/index
+
+.. toctree::
+   :hidden:
+
+   LICENSE
 
 Indices and tables
 ==================
