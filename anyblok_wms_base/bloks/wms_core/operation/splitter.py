@@ -123,4 +123,5 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleGoodsOperation):
         If a :class:`Split <.split.Split>` has been inserted in the history,
         it is already executed.
         """
-        raise NotImplementedError
+        raise NotImplementedError(
+            "for %s" % self.__registry_name__)  # pragma: no cover
