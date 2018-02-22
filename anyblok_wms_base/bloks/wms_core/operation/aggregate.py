@@ -18,8 +18,6 @@ register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
 MultipleGoods = Declarations.Mixin.WmsMultipleGoodsOperation
 
-UNIFORM_FIELDS = ('type', 'properties', 'code', 'location', 'dt_until')
-
 
 @register(Operation)
 class Aggregate(MultipleGoods, Operation):
@@ -47,25 +45,16 @@ class Aggregate(MultipleGoods, Operation):
     cases implementation of various Operations.
     The benefit is that they appear explicitely in the history.
 
-    For the time being, a planned Aggregate creates two records in 'future'
-    state:
-
-    - the first has a positive quantity and is the one that will persist once
-      the Aggregate will be executed
-    - the second has a negative quantity being the exact negative of the
-      first, so that the operation doesn't skew future stock levels.
-
-    This is good enough for now, if not entirely satisfactory. Once we have
-    visibility time ranges on moves, we might change this and enforce that
-    all Goods records have positive quantities.
-
     TODO for the time being, the result of an Aggregate is a new record of
     Goods, it might be interesting to precise a target among self.goods,
     so that reversing a Split can actually become a no-op,
     restoring the original split Goods record to its initial state (perhaps
     excluding cases where Split is physical).
+
+    TODO implement :meth:`plan_revert_single`
     """
     TYPE = 'wms_aggregate'
+    UNIFORM_FIELDS = ('type', 'properties', 'code', 'location', 'dt_until')
 
     id = Integer(label="Identifier",
                  primary_key=True,
@@ -81,6 +70,7 @@ class Aggregate(MultipleGoods, Operation):
 
         This is singled out because of properties, for which we don't want
         to assert equality of the properties lines, but of their content.
+
         TODO: see if implementing __eq__ etc for properties would be a
         bad idea (would it confuse the Anyblok or SQLAlchemy?)
         """
@@ -98,11 +88,16 @@ class Aggregate(MultipleGoods, Operation):
 
     @classmethod
     def check_create_conditions(cls, state, dt_execution, goods=None, **kwargs):
+        """Check that the Goods to aggregate are indeed indistinguishable.
+
+        This performs the check from superclasses, and then compares all
+        fields from :attr:`UNIFORM_FIELDS` in the specified ``goods``.
+        """
         super(Aggregate, cls).check_create_conditions(
             state, dt_execution, goods=goods, **kwargs)
         first = goods[0]
         for record in goods:
-            for field in UNIFORM_FIELDS:
+            for field in cls.UNIFORM_FIELDS:
                 if not cls.field_is_equal(field, first, record):
                     raise OperationGoodsError(
                         cls,
@@ -122,12 +117,12 @@ class Aggregate(MultipleGoods, Operation):
         dt_execution = self.dt_execution
         Goods = self.registry.Wms.Goods
         new_goods = {field: getattr(goods[0], field)
-                     for field in UNIFORM_FIELDS}
+                     for field in self.UNIFORM_FIELDS}
         new_goods.update(reason=self, dt_from=dt_execution,
                          quantity=sum(record.quantity for record in goods))
 
         if self.state == 'done':
-            # TODO PERF bulk update query ?
+            # TODO PERF mutil_insert ?
             for record in goods:
                 record.update(reason=self, state='past', dt_until=dt_execution)
             return Goods.insert(state='present', **new_goods)

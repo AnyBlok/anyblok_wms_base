@@ -8,7 +8,6 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 
 from anyblok import Declarations
-from anyblok.column import Decimal
 from anyblok.column import Integer
 
 from anyblok_wms_base.exceptions import (
@@ -22,65 +21,61 @@ SingleGoods = Declarations.Mixin.WmsSingleGoodsOperation
 
 @register(Operation)
 class Split(SingleGoods, Operation):
-    """A split of Goods record.
+    """A split of Goods record in two.
 
-    Splits are operations of a special kind, that have to be considered
-    internal details of wms_core, that are not guaranteed to exist in the
-    future.
-
-    They replace a Goods record with several ones keeping
-    the same properties and locations, and the same total quantity.
+    Splits replace a :class:`Goods <.goods.Goods>` record with two of them,
+    keeping the same properties and location, and the same total
+    quantity.
 
     While non trivial in the database, they may have no physical counterpart in
     the real world. We call them *formal* in that case.
 
-    Formal Splits can always be reverted with Aggregate
-    Operations, but only some physical Splits can be reverted, depending on
-    the Goods Type. See :class:`Model.Wms.Goods.Type` for a full discussion of
-    this, with use cases.
+    Formal Splits are operations of a special kind, that have to be considered
+    internal details of ``wms-core``, that are not guaranteed to exist in the
+    future.
+
+    Formal Splits can always be reverted with
+    :class:`Aggregate <.aggregate.Aggregate>` Operations,
+    but only some physical Splits can be reverted, depending on
+    the Goods Type.
+
+    .. seealso:: :class:`Model.Wms.Goods.Type <..goods.Type>`
+                 for a full discussion including use-cases of formal and
+                 physical splits and reversal of the latter.
 
     In the formal case, we've decided to represent this as an Operation for
     the sake of consistency, and especially to avoid too much special cases
-    in implementation of various Operations.
-    The benefit is that Splits appear explicitely in the history.
+    in implementation of various concrete Operations.
 
-    For the time being, a planned split creates two records in 'future' state:
+    The benefit is that Splits appear explicitely in the history, and this
+    helps implementing :ref:`history manipulating methods
+    <op_cancel_revert_obliviate>` a lot.
 
-    - the first has a positive quantity and is the one that will persist once
-      the split will be executed
-    - the second has a quantity being the exact negative of the
-      first, so that the operation doesn't biai future on stock levels.
+    The drawback is that we get a proliferation of Goods records, some of them
+    even with a zero second lifespan, but even those could be simplified only
+    for executed Splits.
 
-    This is good enough for now, if not entirely satisfactory. Once we have
-    visibility time ranges on moves, we might change this and enforce that
-    all Goods records have positive quantities.
+    Splits are typically created and executed from :class:`splitter Operations
+    <.splitter.WmsSingleGoodsSplitterOperation>`, and that explains the
+    above-mentioned zero lifespans.
 
-    As Split records are typically created from other Operation records,
-    they are also typically executed from the latter.
+    For Splits, the :attr:`quantity
+    <.on_goods.WmsSingleGoodsOperation.quantity>` field is the one the issuer
+    wants to extract.
     """
     TYPE = 'wms_split'
+    """Polymorphic key"""
 
     id = Integer(label="Identifier",
                  primary_key=True,
                  autoincrement=False,
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
-    quantity = Decimal(label="Quantity")  # TODO non negativity constraint
 
     def specific_repr(self):
         return ("goods={self.goods!r}, "
                 "quantity={self.quantity}").format(self=self)
 
     def after_insert(self):
-        """Business logic after the inert insertion
-
-        This method returns the pair of newly created goods, as a special
-        convenience for direct callers within ``wms_core`` Blok.
-        The first one is the one having the wished quantity.
-
-        Usually downstream code is not supposed to call :meth:``after_insert``
-        direcly, but this Operation's siblings are entitled to it (unit tested
-        together, and this can spare some verifications).
-        """
         self.orig_goods_dt_until = self.goods.dt_until
         self.registry.flush()
         goods = self.goods
@@ -106,6 +101,10 @@ class Split(SingleGoods, Operation):
                 Goods.insert(quantity=goods.quantity - qty, **new_goods))
 
     def get_outcome(self):
+        """Return the Goods record with the wished quantity.
+
+        :rtype: Operation
+        """
         Goods = self.registry.Wms.Goods
         # in case the split is exactly in half, there's no difference
         # between the two records we created, let's pick any.
@@ -144,8 +143,8 @@ class Split(SingleGoods, Operation):
     def is_reversible(self):
         """Reversibility depends on the relevant Goods Type.
 
-        See :class:`Operation` for what reversibility exactly means in that
-        context.
+        See :meth:`on Model.Goods.Type
+        <anyblok_wms_base.bloks.wms_core.goods.Type.is_split_reversible>`
         """
         return self.goods.type.is_split_reversible()
 

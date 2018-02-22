@@ -22,12 +22,38 @@ This Operation Model inherits from :class:`WmsSingleGoodsSplitter
 
 Model.Wms.Operation.Split
 -------------------------
+
 This Operation Model inherits from :class:`WmsSingleGoods
 <.on_goods.WmsSingleGoodsOperation>`
 
+.. py:currentmodule:: anyblok_wms_base.bloks.wms_core.operation.split
+
 .. autoclass:: anyblok_wms_base.bloks.wms_core.operation.split.Split
-   :members:
-   :undoc-members:
+
+   .. autoattribute:: TYPE
+
+   .. raw:: html
+
+      <h3>Specific members</h3>
+
+   .. automethod:: get_outcome
+
+   .. raw:: html
+
+      <h3>Optional methods of WmsSingleGoodsOperation inheritors</h3>
+
+   .. automethod:: is_reversible
+
+   .. raw:: html
+
+      <h3>Mandatory methods of WmsSingleGoodsOperation inheritors</h3>
+
+
+   .. automethod:: after_insert
+   .. automethod:: execute_planned
+   .. automethod:: cancel_single
+   .. automethod:: plan_revert_single
+   .. automethod:: obliviate_single
 
 
 Model.Wms.Operation.Aggregate
@@ -35,7 +61,31 @@ Model.Wms.Operation.Aggregate
 This Operation Model inherits from :class:`WmsMultipleGoods
 <.on_goods.WmsMultipleGoodsOperation>`
 
+.. py:currentmodule:: anyblok_wms_base.bloks.wms_core.operation.aggregate
+
 .. autoclass:: anyblok_wms_base.bloks.wms_core.operation.aggregate.Aggregate
-   :members:
-   :undoc-members:
+
+   .. raw:: html
+
+      <h3>Specific members</h3>
+
+   .. autoattribute:: UNIFORM_FIELDS
+   .. automethod:: field_is_equal
+
+   .. raw:: html
+
+      <h3>Optional methods of WmsMultipleGoodsOperation inheritors</h3>
+
+   .. automethod:: is_reversible
+   .. automethod:: check_create_conditions
+
+   .. raw:: html
+
+      <h3>Mandatory methods of WmsMultipleGoodsOperation inheritors</h3>
+
+   .. automethod:: after_insert
+   .. automethod:: execute_planned
+   .. automethod:: cancel_single
+   .. TODO   .. automethod:: plan_revert_single
+   .. automethod:: obliviate_single
 
