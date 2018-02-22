@@ -8,9 +8,7 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 
 from anyblok import Declarations
-from anyblok.column import Decimal
 from anyblok.column import Integer
-from anyblok.relationship import Many2One
 
 from anyblok_wms_base.exceptions import OperationGoodsError
 
@@ -40,8 +38,6 @@ class Unpack(SingleGoodsSplitter, Operation):
                  primary_key=True,
                  autoincrement=False,
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
-    goods = Many2One(model='Model.Wms.Goods', nullable=False)
-    quantity = Decimal(label="Quantity")  # TODO non negativity constraint
 
     @classmethod
     def check_create_conditions(cls, state, dt_execution,
