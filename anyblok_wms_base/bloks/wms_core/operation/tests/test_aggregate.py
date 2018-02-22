@@ -47,6 +47,11 @@ class TestAggregate(WmsTestCase):
                                state='planned',
                                dt_execution=self.dt_test2)
 
+    def assertQuantity(self, quantity, **kwargs):
+        self.assertEqual(
+            self.loc.quantity(self.goods_type, **kwargs),
+            quantity)
+
     def test_create_done_same_props(self):
         props = self.Goods.Properties.insert(flexible=dict(foo='bar'))
         for record in self.goods:
@@ -64,6 +69,9 @@ class TestAggregate(WmsTestCase):
         self.assertEqual(new_goods.quantity, 3)
         self.assertEqual(new_goods.location, self.loc)
         self.assertEqual(new_goods.properties, props)
+
+        for dt in (self.dt_test1, self.dt_test2, self.dt_test3):
+            self.assertQuantity(3, at_datetime=dt)
 
     def test_create_done_equal_props(self):
         """Test equality check for different records of properties."""
@@ -149,6 +157,20 @@ class TestAggregate(WmsTestCase):
                                  exc.kwargs.get('second_field'))),
                             set((other_loc, self.loc)))
 
+    def test_forbid_differences_dt_from(self):
+        self.goods[1].dt_from = self.dt_test2
+        with self.assertRaises(OperationGoodsError) as arc:
+            self.plan_aggregate()
+        exc = arc.exception
+        self.assertEqual(exc.kwargs.get('field'), 'dt_from')
+
+    def test_forbid_differences_dt_until(self):
+        self.goods[1].dt_until = self.dt_test3
+        with self.assertRaises(OperationGoodsError) as arc:
+            self.plan_aggregate()
+        exc = arc.exception
+        self.assertEqual(exc.kwargs.get('field'), 'dt_until')
+
     def test_ensure_goods(self):
         with self.assertRaises(OperationMissingGoodsError):
             self.Agg.create(state='planned', dt_execution=self.dt_test2)
@@ -201,7 +223,13 @@ class TestAggregate(WmsTestCase):
         agg = self.plan_aggregate()
         self.assertEqual(agg.goods, self.goods)
 
-        agg.execute()
+        for dt in (self.dt_test1, self.dt_test2, self.dt_test3):
+            self.assertQuantity(3, at_datetime=dt)
+
+        agg.execute(dt_execution=self.dt_test3)
+
+        for dt in (self.dt_test1, self.dt_test2, self.dt_test3):
+            self.assertQuantity(3, at_datetime=dt)
 
         for record in self.goods:
             self.assertEqual(record.state, 'past')

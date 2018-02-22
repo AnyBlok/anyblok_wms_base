@@ -54,7 +54,8 @@ class Aggregate(MultipleGoods, Operation):
     TODO implement :meth:`plan_revert_single`
     """
     TYPE = 'wms_aggregate'
-    UNIFORM_FIELDS = ('type', 'properties', 'code', 'location', 'dt_until')
+    UNIFORM_FIELDS = ('type', 'properties', 'code', 'location',
+                      'dt_from', 'dt_until')
 
     id = Integer(label="Identifier",
                  primary_key=True,
