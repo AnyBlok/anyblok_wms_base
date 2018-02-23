@@ -162,7 +162,7 @@ what the core provides us (none of these is satisfactory):
      the Purchase Order, just plan an
      Arrival for the expected goods, at the unpacking location.
      Make no further attempt to predict
-     what form it will take place, but linki it with the Purchase Order
+     what form it will take place, but linked it with the Purchase Order
      (that linking wouldn't be part of wms-core, but it would be
      implemented in the end application)
    * In particular, don't represent the unpacking of the parcels
@@ -206,7 +206,7 @@ what the core provides us (none of these is satisfactory):
      Departure).
    * Even relying on the planner to be smart enough to reconstruct
      everything, we'll have to make it synchronous or to notify the
-     busy and impatient operator once it's run.
+     busy and impatient human operator once it's run.
    * This will break the reservation logic that we are also
      supposed to have in the application, creating great complexity
      upon the reservation system to maintain ordering and the
@@ -250,12 +250,12 @@ to substitute a planned operation with a chain of operations.
   ``unpack_outcomes`` storing the theoretical contents, and
   link them to the Purchase Order
 * The system would recognize that this Purchase Order is already
-  linked to the first planned Arrival (id=``1``), and it would
-  start planning the Moves (id=``4,5,6``) of the parcels to the unpacking
-  area, as well as their Unpack operations (id=``7,8,9``)
+  linked to the first planned Arrival (``id=1``), and it would
+  start planning the Moves (``id=5,6,7``) of the parcels to the unpacking
+  area, as well as their Unpack operations (``id=8,9,10``)
 * Finally, the system would call the new wms-core API to
-  replace or "satisfy" Arrival (id=1) with the chain made of ids 2
-  through 9, since the contents are identical. The core would arrange
+  replace or "satisfy" Arrival (``id=1``) with the chain made of ids 2
+  through 10, since the contents are identical. The core would arrange
   for the unpack outcomes (still unplanned, but that doesn't matter)
   to actually be the already existing incomes of the downstream
   operations, which don't need to be cancelled. Reservations don't
@@ -264,23 +264,23 @@ to substitute a planned operation with a chain of operations.
 * Unpacks are executed and contents verified.
   Their outcomes are corrected according to reality, and backtraced to the
   Arrivals (and hence the Purchase Order) in cases of discrepancies,
-  same as they would have been if the Arrival with (``id=1``) had been
+  same as they would have been if the Arrival with ``id=1`` had been
   executed directly.
 
 This proposal doesn't say anything about which commits or savepoints
 are issued to the database and their logical orderings: these can be
 considered implementation details at this point, all that matters at
 this functional level is that the outcomes of the final Unpacks
-with (``id=7,8,9``)
+with ``id=8,9,10``
 
-* are not themselves visible in future stock levels besides the
-  outcomes of the original Arrival (id=1) is superseded
+* are not themselves visible in future stock levels together
+  with outcomes of the original Arrival (``id=1``)
 * don't get themselves reserved right away for other purposes.
 
 As already noted, this does not take into account the fact that we'd
-probably get a single delivery order, but that can be addressed
-separately by introducing a multi-unpack operation (details of that
-don't belong here).
+probably get a single delivery order for those three parcels,
+but that can be addressed separately by introducing a multi-unpack
+operation (details of that don't belong here).
 
 Back to the general discussion
 ------------------------------
@@ -291,16 +291,18 @@ stubbornness of reality.
 
 Actually, about any planning would benefit from such a core
 feature. The motto for downstream developers would then be: "plan the
-minimum, you can rewrite it later".
+minimum, refine it later to adjust to reality".
 
 Question: do other WMS have such future history rewrite capabilities?
 
 I'm not sure how far it should go in the general form. Mathematically,
 it would be about replacing any subgraph of the history DAG by another one
-which has the same incomes and outcomes. Maybe it's simpler to
-implement it in full generality rather than some special cases like
-the example above (which has a single root that happens to be also
-root in the whole DAG, which no incomes).
+which has the same incomes and outcomes, for a suitable definition of
+"same".
+
+Maybe it's simpler to implement it in full generality rather than some
+special cases like the example above, in which the subgraph has a
+single root with no incomes, that happens to be also root in the whole DAG.
 
 
 .. _improvement_no_quantities:
