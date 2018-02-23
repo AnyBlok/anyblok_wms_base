@@ -10,6 +10,7 @@
 from anyblok import Declarations
 from anyblok.column import Integer
 
+from anyblok_wms_base.utils import min_upper_bounds
 from anyblok_wms_base.exceptions import (
     OperationGoodsError,
 )
@@ -54,8 +55,7 @@ class Aggregate(MultipleGoods, Operation):
     TODO implement :meth:`plan_revert_single`
     """
     TYPE = 'wms_aggregate'
-    UNIFORM_FIELDS = ('type', 'properties', 'code', 'location',
-                      'dt_from', 'dt_until')
+    UNIFORM_FIELDS = ('type', 'properties', 'code', 'location')
 
     id = Integer(label="Identifier",
                  primary_key=True,
@@ -115,20 +115,26 @@ class Aggregate(MultipleGoods, Operation):
         """
         self.registry.flush()
         goods = self.goods
-        dt_execution = self.dt_execution
+        dt_exec = self.dt_execution
         Goods = self.registry.Wms.Goods
-        new_goods = {field: getattr(goods[0], field)
-                     for field in self.UNIFORM_FIELDS}
-        new_goods.update(reason=self, dt_from=dt_execution,
-                         quantity=sum(record.quantity for record in goods))
 
         if self.state == 'done':
-            # TODO PERF mutil_insert ?
-            for record in goods:
-                record.update(reason=self, state='past', dt_until=dt_execution)
-            return Goods.insert(state='present', **new_goods)
+            update = dict(dt_until=dt_exec, state='past', reason=self)
         else:
-            Goods.insert(state='future', **new_goods)
+            update = dict(dt_until=dt_exec)
+        for record in goods:
+            record.update(**update)
+
+        uniform_fields = {field: getattr(goods[0], field)
+                          for field in self.UNIFORM_FIELDS}
+        return Goods.insert(
+            reason=self,
+            dt_from=dt_exec,
+            # dt_until in states 'present' and 'future' is theoretical anyway
+            dt_until=min_upper_bounds(g.dt_until for g in goods),
+            state='present' if self.state == 'done' else 'future',
+            quantity=sum(g.quantity for g in goods),
+            **uniform_fields)
 
     def execute_planned(self):
         Goods = self.registry.Wms.Goods

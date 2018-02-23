@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from datetime import timedelta
 from .testcase import WmsTestCase
 from anyblok_wms_base.exceptions import (
     OperationGoodsError,
@@ -90,6 +91,19 @@ class TestAggregate(WmsTestCase):
         old_props.pop('id')
         self.assertEqual(new_props, old_props)
 
+    def test_create_done_several_dt_from(self):
+        self.goods[1].dt_from = self.dt_test2
+        for record in self.goods:
+            record.state = 'present'
+        agg = self.Agg.create(goods=self.goods, state='done',
+                              dt_execution=self.dt_test3)
+        for record in self.goods:
+            self.assertEqual(record.dt_until, self.dt_test3)
+        outcome = self.single_result(
+            self.Goods.query().filter(self.Goods.reason == agg,
+                                      self.Goods.state == 'present'))
+        self.assertEqual(outcome.dt_from, self.dt_test3)
+
     def assertBackToBeginning(self, state='present', props=None):
         new_goods = self.Goods.query().filter().all()
         self.assertEqual(len(new_goods), 2)
@@ -156,20 +170,6 @@ class TestAggregate(WmsTestCase):
         self.assertSetEqual(set((exc.kwargs.get('first_field'),
                                  exc.kwargs.get('second_field'))),
                             set((other_loc, self.loc)))
-
-    def test_forbid_differences_dt_from(self):
-        self.goods[1].dt_from = self.dt_test2
-        with self.assertRaises(OperationGoodsError) as arc:
-            self.plan_aggregate()
-        exc = arc.exception
-        self.assertEqual(exc.kwargs.get('field'), 'dt_from')
-
-    def test_forbid_differences_dt_until(self):
-        self.goods[1].dt_until = self.dt_test3
-        with self.assertRaises(OperationGoodsError) as arc:
-            self.plan_aggregate()
-        exc = arc.exception
-        self.assertEqual(exc.kwargs.get('field'), 'dt_until')
 
     def test_ensure_goods(self):
         with self.assertRaises(OperationMissingGoodsError):
@@ -242,6 +242,27 @@ class TestAggregate(WmsTestCase):
         self.assertEqual(new_goods.quantity, 3)
         self.assertEqual(new_goods.location, self.loc)
         self.assertEqual(new_goods.properties, props)
+
+    def test_execute_several_dt_from(self):
+        self.goods[1].dt_from = self.dt_test2
+        dt_test4 = self.dt_test3 + timedelta(1)
+
+        agg = self.Agg.create(goods=self.goods, state='planned',
+                              dt_execution=self.dt_test3)
+        for record in self.goods:
+            self.assertEqual(record.dt_until, self.dt_test3)
+        outcome = self.single_result(
+            self.Goods.query().filter(self.Goods.reason == agg))
+        self.assertEqual(outcome.dt_from, self.dt_test3)
+
+        for record in self.goods:
+            record.state = 'present'
+
+        agg.execute(dt_execution=dt_test4)
+        for record in self.goods:
+            self.assertEqual(record.dt_until, dt_test4)
+            self.assertEqual(record.state, 'past')
+        self.assertEqual(outcome.dt_from, dt_test4)
 
     def test_execute_obliviate(self):
         props = self.Goods.Properties.insert(flexible=dict(foo='bar'))

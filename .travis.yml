@@ -35,7 +35,7 @@ env:
 script:
   - flake8 anyblok_wms_base
   - anyblok_createdb --install-all-bloks
-  - nosetests anyblok_wms_base/bloks --with-anyblok-bloks -v -s --with-coverage --cover-package=anyblok_wms_base
+  - nosetests anyblok_wms_base --with-doctest --with-anyblok-bloks -v -s --with-coverage --cover-package=anyblok_wms_base
 
 after_success:
   coveralls
