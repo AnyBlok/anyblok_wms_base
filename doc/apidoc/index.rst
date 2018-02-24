@@ -10,5 +10,8 @@ package names for readability in page titles.
 .. toctree::
    :maxdepth: 2
 
+   constants
+   exceptions
+   utils
    bloks/wms_core/index
 

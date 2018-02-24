@@ -36,7 +36,7 @@ This Operation Model inherits from :class:`WmsSingleGoods
 
       <h3>Specific members</h3>
 
-   .. automethod:: get_outcome
+   .. autoattribute:: wished_outcome
 
    .. raw:: html
 
