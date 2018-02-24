@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from sqlalchemy import CheckConstraint
 
 from anyblok import Declarations
 from anyblok.column import Decimal
@@ -49,7 +50,13 @@ class Arrival(Operation):
     goods_properties = Jsonb(label="Properties of arrived Goods")
     goods_code = String(label="Code to set on arrived Goods")
     location = Many2One(model='Model.Wms.Location')
-    quantity = Decimal(label="Quantity")  # TODO non negativity constraint
+    quantity = Decimal(label="Quantity")
+
+    @classmethod
+    def define_table_args(cls):
+        return super(Arrival, cls).define_table_args() + (
+            CheckConstraint('quantity > 0',
+                            name='positive_qty'),)
 
     def specific_repr(self):
         return ("goods_type={self.goods_type!r}, "

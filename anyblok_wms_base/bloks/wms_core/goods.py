@@ -7,6 +7,7 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy import CheckConstraint
 
 from anyblok import Declarations
 from anyblok.column import String
@@ -121,7 +122,7 @@ class Goods:
     """
     type = Many2One(model='Model.Wms.Goods.Type', nullable=False, index=True)
     id = Integer(label="Identifier", primary_key=True)
-    quantity = Decimal(label="Quantity")  # TODO non negativity constraint
+    quantity = Decimal(label="Quantity")
     code = String(label="Identifying code",
                   index=True)
     # TODO consider switch to Enum
@@ -159,6 +160,12 @@ class Goods:
     Timestamps tend to be very precise, but for the sake of completeness,
     let's mention here that is is exclusive.
     """
+
+    @classmethod
+    def define_table_args(cls):
+        return super(Goods, cls).define_table_args() + (
+            CheckConstraint('quantity > 0', name='positive_qty'),
+        )
 
     def __str__(self):
         return ("(id={self.id}, state={self.state!r}, "

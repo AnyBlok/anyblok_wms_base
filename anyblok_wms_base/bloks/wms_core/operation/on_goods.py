@@ -12,6 +12,8 @@ In principle, this would apply to all except purely creating operations.
 It's quite possible, if not recommended, to have special Operations inputting
 Goods yet not using these Mixins.
 """
+from sqlalchemy import CheckConstraint
+
 from anyblok import Declarations
 from anyblok.column import Decimal
 from anyblok.column import Integer
@@ -41,6 +43,12 @@ class WmsSingleGoodsOperation:
     TODO like orig_reasons, this is really ugly and should be superseded
     when implementing :ref:`Avatars <improvement_avatars>`.
     """
+
+    @classmethod
+    def define_table_args(cls):
+        return super(WmsSingleGoodsOperation, cls).define_table_args() + (
+            CheckConstraint('quantity > 0',
+                            name='positive_qty'),)
 
     @classmethod
     def find_parent_operations(cls, goods=None, **kwargs):
