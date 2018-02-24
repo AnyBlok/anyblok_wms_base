@@ -98,7 +98,7 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleGoodsOperation):
             split = Split.create(goods=goods, quantity=quantity, state=state,
                                  dt_execution=dt_execution)
             follows = [split]
-            goods = split.get_outcome()
+            goods = split.wished_outcome
 
         op = cls.insert(state=state, goods=goods, quantity=quantity,
                         dt_execution=dt_execution, partial=partial, **kwargs)

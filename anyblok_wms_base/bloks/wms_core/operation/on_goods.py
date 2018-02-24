@@ -83,6 +83,29 @@ class WmsSingleGoodsOperation:
                 quantity=quantity,
                 goods=goods)
 
+    @property
+    def outcomes(self):
+        """Return the outcomes of the present operation.
+
+        Outcomes are the Goods (Avatars) that the current Operation produces,
+        unless another Operation has been executed afterwards, becoming their
+        reason.
+
+        If no Operation is downstream, one can think of outcomes as the results
+        of the current Operation.
+
+        This default implementation considers that the Goods the current
+        Operation is working on never are outcomes.
+
+        This is a Python property, because it might become a field at some
+        point.
+        """
+        Goods = self.registry.Wms.Goods
+        # if already executed, might be the 'reason' for some Goods
+        # from self.goods to be in 'past' state.
+        return Goods.query().filter(Goods.reason == self,
+                                    Goods.state != 'past').all()
+
     def check_execute_conditions(self):
         goods = self.goods
         if self.quantity > goods.quantity:

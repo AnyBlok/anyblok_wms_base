@@ -100,15 +100,19 @@ class Split(SingleGoods, Operation):
         return (Goods.insert(quantity=qty, **new_goods),
                 Goods.insert(quantity=goods.quantity - qty, **new_goods))
 
-    def get_outcome(self):
+    @property
+    def wished_outcome(self):
         """Return the Goods record with the wished quantity.
 
-        :rtype: Operation
+        This is only one of ``self.outcome``
+
+        :rtype: Goods
         """
         Goods = self.registry.Wms.Goods
         # in case the split is exactly in half, there's no difference
         # between the two records we created, let's pick any.
         outcome = Goods.query().filter(Goods.reason == self,
+                                       Goods.state != 'past',
                                        Goods.quantity == self.quantity).first()
         if outcome is None:
             raise OperationError(self, "The split outcomes have disappeared")
@@ -154,7 +158,6 @@ class Split(SingleGoods, Operation):
             follows = [self]
         Wms = self.registry.Wms
         Goods = Wms.Goods
-        # TODO introduce an outcome() generic API for all operations ?
         # here in that case, that's for multiple operations
         # in_ is not implemented for Many2Ones
         reason_ids = set(f.id for f in follows)
