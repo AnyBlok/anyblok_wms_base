@@ -34,6 +34,7 @@ class TestGoods(WmsTestCase):
     def test_prop_api(self):
         goods = self.Goods.insert(type=self.goods_type, quantity=1,
                                   dt_from=self.dt_test1,
+                                  state='future',
                                   reason=self.arrival, location=self.stock)
 
         self.assertIsNone(goods.get_property('foo'))
@@ -59,6 +60,7 @@ class TestGoods(WmsTestCase):
     def test_prop_api_column(self):
         goods = self.Goods.insert(type=self.goods_type, quantity=1,
                                   dt_from=self.dt_test1,
+                                  state='future',
                                   reason=self.arrival, location=self.stock)
 
         goods.set_property('batch', '12345')
@@ -66,6 +68,7 @@ class TestGoods(WmsTestCase):
 
     def test_prop_api_duplication(self):
         goods = self.Goods.insert(type=self.goods_type, quantity=1,
+                                  state='future',
                                   dt_from=self.dt_test1,
                                   reason=self.arrival, location=self.stock)
 
@@ -73,6 +76,7 @@ class TestGoods(WmsTestCase):
         self.assertEqual(goods.get_property('batch'), '12345')
 
         goods2 = self.Goods.insert(type=self.goods_type, quantity=3,
+                                   state='future',
                                    dt_from=self.dt_test2,
                                    reason=self.arrival, location=self.stock,
                                    properties=goods.properties)
@@ -80,8 +84,9 @@ class TestGoods(WmsTestCase):
         self.assertEqual(goods.get_property('batch'), '12345')
         self.assertEqual(goods2.get_property('batch'), '6789')
 
-    def test_prop_api_reserved(self):
+    def test_prop_api_reserved_property_names(self):
         goods = self.Goods.insert(type=self.goods_type, quantity=1,
+                                  state='future',
                                   dt_from=self.dt_test1,
                                   reason=self.arrival, location=self.stock)
 
@@ -97,6 +102,7 @@ class TestGoods(WmsTestCase):
         the future.
         """
         goods = self.Goods.insert(type=self.goods_type, quantity=1,
+                                  state='future',
                                   dt_from=self.dt_test1,
                                   reason=self.arrival, location=self.stock)
 
@@ -110,6 +116,7 @@ class TestGoods(WmsTestCase):
         the future.
         """
         goods = self.Goods.insert(type=self.goods_type, quantity=1,
+                                  state='future',
                                   dt_from=self.dt_test1,
                                   reason=self.arrival, location=self.stock)
 

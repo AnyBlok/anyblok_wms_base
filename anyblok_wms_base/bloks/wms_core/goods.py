@@ -127,10 +127,9 @@ class Goods:
                   index=True)
     # TODO consider switch to Enum
     state = Selection(label="State of existence",
-                      # TODO nullable=False
                       selections=GOODS_STATES,
-                      index=True,
-                      )
+                      nullable=False,
+                      index=True)
     properties = Many2One(label="Properties",
                           index=True,
                           model='Model.Wms.Goods.Properties')
