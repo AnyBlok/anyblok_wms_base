@@ -33,3 +33,18 @@ class WmsTestCase(BlokTestCase):
         results = query.all()
         self.assertEqual(len(results), 1)
         return results[0]
+
+    def assert_singleton(self, collection):
+        """Assert that collection has exactly one element and return the latter.
+
+        This help improving reader's focus, while never throwing an Error
+
+        :param collection:
+           whatever is iterable and implements ``len()`.
+           These criteria cover at least list, tuple, set, frozenset…
+
+        Note that mapping types typically would return their unique *key*
+        """
+        self.assertEqual(len(collection), 1)
+        for elt in collection:
+            return elt
