@@ -46,52 +46,35 @@ class Move(SingleGoodsSplitter, Operation):
         super(Move, cls).check_create_conditions(state, dt_execution, **kwargs)
 
     def after_insert(self):
-        goods = self.goods
-        self.origin = self.goods.location
-        self.orig_goods_dt_until = goods.dt_until
-        if self.partial or self.state == 'done':
-            self.registry.flush()
-            goods.update(location=self.destination, reason=self)
-            # TODO do something with datetimes? If so, that means we want
-            # the Goods datetimes to encompass the locations, and so
-            # actually create a new avatar in 'past' state.
-        else:
-            self.registry.Wms.Goods.insert(location=self.destination,
-                                           quantity=self.quantity,
-                                           reason=self,
-                                           state='future',
-                                           dt_from=self.dt_execution,
-                                           type=goods.type,
-                                           code=goods.code,
-                                           properties=goods.properties)
+        state, to_move, dt_exec = self.state, self.goods, self.dt_execution
+        self.origin = to_move.location
+        self.orig_goods_dt_until = to_move.dt_until
+
+        self.registry.Wms.Goods.insert(
+            location=self.destination,
+            reason=self,
+            state='present' if state == 'done' else 'future',
+            dt_from=dt_exec,
+            # copied fields:
+            dt_until=to_move.dt_until,
+            quantity=to_move.quantity,
+            type=to_move.type,
+            code=to_move.code,
+            properties=to_move.properties)
+
+        to_move.dt_until = dt_exec
+        if state == 'done':
+            to_move.state = 'past'
 
     def execute_planned_after_split(self):
-        goods = self.goods
         dt_execution = self.dt_execution
-        if self.partial:
-            # not done by the split, because goods' reason is already the Move
-            goods.update(state='present', dt_from=dt_execution)
-            return
 
         Goods = self.registry.Wms.Goods
         after_move = Goods.query().filter(Goods.reason == self).one()
         after_move.update(state='present', dt_from=dt_execution)
         self.registry.flush()
-        self.goods = after_move
 
-        self.registry.flush()
-        # TODO it'd be maybe nicer if Moves could guarantee continuity of
-        # the Goods record, but then that'd mean updating all the operations
-        # that refer to after_move, and we have no generic way of finding
-        # them at the time being.
-        # One idea would be to traverse the DAG of
-        # follow-ups and change all of them if they have a goods field whose
-        # value is or contains  that move's goods.
-        # Another idea would be to introspect
-        # dynamically all Operation classes having a goods field (m2o or m2m)
-        # None of this would be in favor of privileging operator's reactivity,
-        # by careful preparation of ops.
-        goods.update(state='past', reason=self, dt_until=dt_execution)
+        self.goods.update(state='past', reason=self, dt_until=dt_execution)
 
     def cancel_single(self):
         goods = self.goods
@@ -107,25 +90,12 @@ class Move(SingleGoodsSplitter, Operation):
 
     def obliviate_single(self):
         """Restore the moved Goods.
-
-        # TODO could be greatly simplified with :ref:`improvement_avatars`.
         """
-        Goods = self.registry.Wms.Goods
-        before = Goods.query().filter(Goods.reason == self,
-                                      Goods.state == 'past').first()
-        if before is None:  # was executed directly at creation
-            restored = self.goods
-        else:
-            restored = before
-            after = self.goods
-            self.goods = before  # so that we may do:
-            self.registry.flush()
-            after.delete()
-
-        restored.update(location=self.origin,
-                        reason=self.follows[0],
-                        dt_until=self.orig_goods_dt_until,
-                        state='present')
+        self.outcomes[0].delete()
+        self.goods.update(location=self.origin,
+                          reason=self.follows[0],
+                          dt_until=self.orig_goods_dt_until,
+                          state='present')
         self.registry.flush()
 
     def is_reversible(self):

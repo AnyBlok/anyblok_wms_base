@@ -104,7 +104,7 @@ class TestSplit(WmsTestCase):
             # for French speakers with math background)
             self.assertTrue(outcome.quantity > 0)
             self.assertEqual(outcome.state, 'future')
-        wished_outcome = split.get_outcome()
+        wished_outcome = split.wished_outcome
         self.assertEqual(wished_outcome.quantity, 2)
         self.assertTrue(wished_outcome in all_outcomes)
 
@@ -139,10 +139,9 @@ class TestSplit(WmsTestCase):
                                             dt_execution=self.dt_test2,
                                             quantity=2)
 
-        wished_outcome = split.get_outcome()
-        wished_outcome.delete()
+        split.wished_outcome.delete()
         with self.assertRaises(OperationError):
-            split.get_outcome()
+            split.wished_outcome
 
     def test_irreversible(self):
         """A case in which Splits are irreversible."""

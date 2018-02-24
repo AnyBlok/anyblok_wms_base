@@ -118,8 +118,7 @@ class TestOperation(WmsTestCase):
                             dt_execution=self.dt_test2,
                             destination=self.stock,
                             state='done')
-        self.registry.flush()
-        move2 = Move.create(goods=goods,
+        move2 = Move.create(goods=self.assert_singleton(move1.outcomes),
                             quantity=3,
                             dt_execution=self.dt_test3,
                             destination=workshop,
@@ -218,8 +217,7 @@ class TestOperation(WmsTestCase):
                             dt_execution=self.dt_test2,
                             destination=self.stock,
                             state='done')
-        self.registry.flush()
-        Move.create(goods=goods,
+        Move.create(goods=self.assert_singleton(move1.outcomes),
                     quantity=3,
                     dt_execution=self.dt_test3,
                     destination=workshop,

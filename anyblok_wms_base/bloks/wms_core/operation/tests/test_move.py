@@ -85,13 +85,14 @@ class TestMove(WmsTestCase):
                                 goods=self.goods)
         self.assertEqual(move.follows, [self.arrival])
 
-        # TODO continuity of Goods line
-        new_goods = self.single_result(
-            self.Goods.query().filter(self.Goods.state != 'past'))
-        self.assertEqual(new_goods.quantity, 3)
-        self.assertEqual(new_goods.location, self.stock)
-        self.assertEqual(new_goods.state, 'present')
-        self.assertEqual(new_goods.reason, move)
+        after_move = move.outcomes[0]
+        self.assertEqual(after_move.quantity, 3)
+        self.assertEqual(after_move.location, self.stock)
+        self.assertEqual(after_move.state, 'present')
+        self.assertEqual(after_move.reason, move)
+
+        not_moved = move.goods
+        self.assertEqual(not_moved.state, 'past')
 
     def test_whole_done_obliviate(self):
         self.goods.state = 'present'
@@ -129,8 +130,7 @@ class TestMove(WmsTestCase):
                                 state='done',
                                 dt_execution=self.dt_test2,
                                 goods=self.goods)
-        self.assertEqual(len(move.follows), 1)
-        split = move.follows[0]
+        split = self.assert_singleton(move.follows)
         self.assertEqual(split.type, 'wms_split')
 
         # the original has been thrown in the past by the split
@@ -139,13 +139,10 @@ class TestMove(WmsTestCase):
         self.assertEqual(self.goods.dt_from, self.dt_test1)
         self.assertEqual(self.goods.dt_until, self.dt_test2)
 
-        not_moved = self.single_result(
-            self.Goods.query().filter(self.Goods.reason == move.follows[0],
-                                      self.Goods.state != 'past'))
+        not_moved = self.assert_singleton(split.outcomes)
         self.assertEqual(not_moved.quantity, 2)
 
-        after_move = self.single_result(
-            self.Goods.query().filter(self.Goods.reason == move))
+        after_move = self.assert_singleton(move.outcomes)
         self.assertEqual(after_move.quantity, 1)
         self.assertEqual(after_move.dt_from, self.dt_test2)
         self.assertEqual(after_move.dt_until, self.dt_test3)
@@ -158,8 +155,7 @@ class TestMove(WmsTestCase):
                                 state='planned',
                                 dt_execution=self.dt_test2,
                                 goods=self.goods)
-        self.assertEqual(len(move.follows), 1)
-        split = move.follows[0]
+        split = self.assert_singleton(move.follows)
         self.assertEqual(split.type, 'wms_split')
 
         self.goods.state = 'present'
@@ -172,13 +168,12 @@ class TestMove(WmsTestCase):
         self.assertEqual(self.goods.dt_from, self.dt_test1)
         self.assertEqual(self.goods.dt_until, self.dt_test2)
 
-        not_moved = self.single_result(
-            self.Goods.query().filter(self.Goods.reason == move.follows[0],
-                                      self.Goods.state != 'past'))
+        # the moved Goods are not considered an outcome of the Split,
+        # because the Move is now its reason
+        not_moved = self.assert_singleton(split.outcomes)
         self.assertEqual(not_moved.quantity, 2)
 
-        after_move = self.single_result(
-            self.Goods.query().filter(self.Goods.reason == move))
+        after_move = self.assert_singleton(move.outcomes)
         self.assertEqual(after_move.quantity, 1)
         self.assertEqual(after_move.location, self.stock)
         self.assertEqual(after_move.dt_from, self.dt_test2)

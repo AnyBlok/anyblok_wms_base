@@ -87,9 +87,9 @@ software bugs or human errors.
 Anybox WMS Base provides different set of features for these purposes:
 
 * :ref:`flexible properties <goods_properties>` allow to represent
-  what can be variable in Goods of a given Type.
+  what can be variable amond Goods of a given Type
 * full historical data about operations
-* some limited capability to query the Goods in the past and in the future
+* ability to query the Goods in the past and in the (theoretical) future
 
 .. _goal_flexibility:
 
@@ -129,7 +129,7 @@ should be rich enough to encompass events of the real world, such as
 the accidental destruction of some goods.
 
 This also implies that care must be taken to define what the data
-should actually means. We're trying to be very explicit about that, but it's
+should actually mean. We're trying to be very explicit about that, but it's
 all about intents, as it also depends on the usage the concrete application
 will make of that library. For a concrete example, see the meaning of the
 data about Goods that :ref:`op_arrival` operation carries.
@@ -221,15 +221,14 @@ after the fact.
 Thanks to the flexibility of Anyblok, downstream developers are free to
 override anything from WMS Base, be it for quick workarounds or
 features. This means that within WMS Base, we have no need to rush
-for anythin we'd missed, bug or feature, even if it's crucial for one
-application that we happen to maintain.
+for anything we'd missed, bug or feature, even if it's crucial for one
+application that we happen to maintain ourselves.
 
 In the case of features that end developers feel should be
-part of WMS Base, they can upstreamed later through pull requests,
+part of WMS Base, they can be upstreamed later through pull requests,
 discussed, maybe become new optional bloks if not fit for the provided
 ones. In the meanwhile, WMS Base quality won't be affected.
 
 PS: nobody's perfect, and we certainly aren't. If you feel that
-quality can be improved, feel free to tell us about it.
-
-
+quality is lacking, and especially if you have proposals, feel free to
+tell us about it.

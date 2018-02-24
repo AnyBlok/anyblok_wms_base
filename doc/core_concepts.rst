@@ -345,8 +345,8 @@ Move
           <anyblok_wms_base.bloks.wms_core.operation.move.Move>`
           for more details.
 
-Moves represent Goods being carrying over from one :ref:`location` to
-another. They are always reversible.
+Moves represent Goods being carried over from one :ref:`location` to
+another, with no change of properties. They are always reversible.
 
 .. _op_unpack:
 
