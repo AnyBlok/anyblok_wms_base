@@ -8,9 +8,7 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 
 from anyblok import Declarations
-from anyblok.column import Decimal
 from anyblok.column import Integer
-from anyblok.relationship import Many2One
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
@@ -40,8 +38,6 @@ class Departure(SingleGoodsSplitter, Operation):
                  primary_key=True,
                  autoincrement=False,
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
-    goods = Many2One(model='Model.Wms.Goods')
-    quantity = Decimal(label="Quantity")  # TODO non negativity constraint
 
     def depart(self):
         """Common logic for final departure step."""
