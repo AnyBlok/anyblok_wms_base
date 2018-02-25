@@ -17,11 +17,11 @@ from anyblok_wms_base.exceptions import (
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
-MultipleGoods = Declarations.Mixin.WmsMultipleGoodsOperation
+GoodsOperation = Declarations.Mixin.WmsGoodsOperation
 
 
 @register(Operation)
-class Aggregate(MultipleGoods, Operation):
+class Aggregate(GoodsOperation, Operation):
     """An aggregation of Goods record.
 
     Aggregate is the converse of Split.
