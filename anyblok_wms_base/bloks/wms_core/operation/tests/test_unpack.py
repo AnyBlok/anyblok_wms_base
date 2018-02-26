@@ -446,7 +446,18 @@ class TestUnpack(WmsTestCase):
                               goods=self.packs))
 
     def test_repr(self):
-        self.create_packs(type_behaviours={}, properties={})
-        unp = self.Unpack(quantity=5, state='done', goods=self.packs)
+        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(
+                uniform_outcomes=True,
+                outcomes=[
+                    dict(type=unpacked_type.id,
+                         quantity=6,
+                         ),
+                ]),
+            ),
+            properties={})
+        unp = self.Unpack.create(quantity=5, state='planned', goods=self.packs,
+                                 dt_execution=self.dt_test2)
         repr(unp)
         str(unp)

@@ -57,9 +57,8 @@ class Departure(SingleGoodsSplitter, Operation):
         self.depart()
 
     def cancel_single(self):
-        self.goods.dt_until = self.orig_goods_dt_until
+        self.reset_goods_original_values()
 
     def obliviate_single(self):
-        self.goods.update(state='present', reason=self.follows[0],
-                          dt_until=self.orig_goods_dt_until)
+        self.reset_goods_original_values(state='present')
         self.registry.flush()

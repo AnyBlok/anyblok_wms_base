@@ -41,12 +41,13 @@ class Unpack(SingleGoodsSplitter, Operation):
 
     @classmethod
     def check_create_conditions(cls, state, dt_execution,
-                                goods=None, quantity=None, **kwargs):
+                                working_on=None, quantity=None, **kwargs):
         super(Unpack, cls).check_create_conditions(
-            state, dt_execution, goods=goods,
+            state, dt_execution, working_on=working_on,
             quantity=quantity,
             **kwargs)
 
+        goods = working_on[0]
         if 'unpack' not in goods.type.behaviours:
             raise OperationGoodsError(
                 cls,
@@ -207,8 +208,7 @@ class Unpack(SingleGoodsSplitter, Operation):
         return specs
 
     def cancel_single(self):
-        self.goods.update(reason=self.follows[0],
-                          dt_until=self.orig_goods_dt_until)
+        self.reset_goods_original_values()
         self.registry.flush()
         Goods = self.registry.Wms.Goods
         Goods.query().filter(Goods.reason == self).delete(

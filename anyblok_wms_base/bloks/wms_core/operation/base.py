@@ -15,21 +15,47 @@ from anyblok.column import String
 from anyblok.column import Selection
 from anyblok.column import Integer
 from anyblok.column import DateTime
+from anyblok.relationship import Many2One
 from anyblok.relationship import Many2Many
+
 
 from anyblok_wms_base.constants import OPERATION_STATES, OPERATION_TYPES
 from anyblok_wms_base.exceptions import (
     OperationCreateArgFollows,
+    OperationMissingGoodsError,
+    OperationGoodsError,
     OperationError,
     OperationIrreversibleError,
     )
 
 logger = logging.getLogger(__name__)
 register = Declarations.register
-Model = Declarations.Model
+Wms = Declarations.Model.Wms
 
 
-@register(Model.Wms)
+class NonZero:
+    """Marker to mean any unspecified non zero value.
+
+    >>> str(NonZero())
+    NONZERO
+
+    We don't implement __repr__ because with reloads and the like, one
+    can have subtle bugs with constants, and in that case, the default
+    ``repr()`` including the object id (memory address with CPython)
+    is really useful.
+
+    For these subtle bugs reasons, it's probably better to test with
+    ``isinstance`` rather than with ``is`` on a constant.
+    """
+
+    def __str__(self):
+        return "NONZERO"
+
+
+NONZERO = NonZero()
+
+
+@register(Wms)
 class Operation:
     """Base class for all Operations.
 
@@ -86,6 +112,14 @@ class Operation:
     .. note:: this shouldn't be ``wms-core`` responsibility, and hence should
               be simply removed.
     """
+
+    working_on = Many2Many(model='Model.Wms.Goods',
+                           # TODO this should be the same table as
+                           # WorkingOn model
+                           join_table='tmp_wms_operation_workingon',
+                           m2m_remote_columns='goods_id',
+                           m2m_local_columns='acting_op_id',
+                           label="Goods record to apply the operation to")
 
     follows = Many2Many(model='Model.Wms.Operation',
                         m2m_remote_columns='parent_id',
@@ -165,6 +199,15 @@ class Operation:
     field ``dt_execution`` is.
     """
 
+    working_on_number = NONZERO
+    """Number of Goods record the operation is meant to :attr:`work on <goods>`
+
+    This can be set by subclasses to impose a fixed number, as in
+    :attr:`working_on_number <.on_goods.WmsSingleGoodsOperation>`
+
+    In particular, purely creative subclasses must set this to 0
+    """
+
     @classmethod
     def define_mapper_args(cls):
         mapper_args = super(Operation, cls).define_mapper_args()
@@ -193,8 +236,23 @@ class Operation:
         if follows is not None:
             raise OperationCreateArgFollows(cls, kwargs)
 
+    def link_working_on(self, working_on=None, clear=False, **fields):
+        WO = self.registry.Wms.Operation.WorkingOn
+        if clear:
+            # TODO while the enriched m2m pattern doesn't work readily
+            self.working_on.clear()
+            WO.query().filter(WO.acting_op == self).delete(
+                synchronize_session='fetch')
+        for record in working_on:
+            WO.insert(goods=record,
+                      acting_op=self,
+                      orig_reason=record.reason,
+                      orig_dt_until=record.dt_until)
+        # TODO while the enriched m2m pattern doesn't work readily
+        self.working_on.extend(working_on)
+
     @classmethod
-    def create(cls, state='planned', follows=None,
+    def create(cls, state='planned', follows=None, working_on=None,
                dt_execution=None, dt_start=None, **fields):
         """Main method for creation of operations
 
@@ -249,12 +307,26 @@ class Operation:
                     "'dt_execution' field (date and time when "
                     "it's supposed to be done).",
                     state=state)
-        cls.check_create_conditions(state, dt_execution, **fields)
-        follows = cls.find_parent_operations(**fields)
+        cls.check_create_conditions(
+            state, dt_execution, working_on=working_on, **fields)
+        working_on, fields_upd = cls.before_insert(state=state,
+                                                   working_on=working_on,
+                                                   dt_execution=dt_execution,
+                                                   dt_start=dt_start,
+                                                   **fields)
+        if fields_upd is not None:
+            fields.update(fields_upd)
+        follows = cls.find_parent_operations(working_on=working_on, **fields)
         op = cls.insert(state=state, dt_execution=dt_execution, **fields)
         op.follows.extend(follows)
+        if working_on is not None:  # happens with creative Operations
+            op.link_working_on(working_on)
         op.after_insert()
         return op
+
+    @classmethod
+    def before_insert(cls, working_on=None, **fields):
+        return working_on, None
 
     def execute(self, dt_execution=None):
         """Execute the operation.
@@ -429,28 +501,93 @@ class Operation:
         self.delete()
         logger.info("Obliviated operation %r", self)
 
-    @classmethod
-    def check_create_conditions(cls, state, dt_execution, **kwargs):
-        """Used during creation to check that the Operation is indeed doable.
+    def iter_goods_original_values(self):
+        """List incoming goods together with original values kept in WorkingOn.
 
-        The given state obviously plays a role, and this pre insertion check
-        can spare us some costly operations.
+        Depending on the needs, it might be interesting to avoid
+        actually fetching all those records.
 
-        :param dt_execution: the date and time at which the Operation is
-                             (supposed to be) done.
-
-        To be implemented in subclasses, by raising exceptions if something's
-        wrong.
+        :return: a generator of pairs (goods, their original reasons,
+        their original ``dt_until``)
         """
-        raise NotImplementedError  # pragma: no cover
+        WorkingOn = self.registry.Wms.Operation.WorkingOn
+        # TODO simple 2-column query instead
+        return ((wo.goods, wo.orig_reason, wo.orig_dt_until)
+                for wo in WorkingOn.query().filter(
+                        WorkingOn.acting_op == self).all())
+
+    def reset_goods_original_values(self, state=None):
+        """Reset all input Goods to their original reason and state if passed.
+
+        :param state: if not None, will be state on the input Goods
+
+        The original values are those currently held in
+        :class:`Model.Wms.Operation.WorkingOn <WorkingOn>`.
+
+        TODO PERF: it should be more efficient not to fetch the goods and
+        their records, but work directly on ids (and maybe do this in one pass
+        with a clever UPDATE query).
+        TODO: consider generalization to the base class to simplify
+        implementation of all Operation subclasses.
+        """
+        for goods, reason, dt_until in self.iter_goods_original_values():
+            if state is not None:
+                goods.state = state
+            goods.update(reason=reason, dt_until=dt_until)
 
     @classmethod
-    def find_parent_operations(cls, **kwargs):
+    def check_create_conditions(cls, state, dt_execution,
+                                working_on=None, **kwargs):
+        expected = cls.working_on_number
+        if not working_on and (isinstance(expected, NonZero) or expected):
+            raise OperationMissingGoodsError(
+                cls,
+                "The 'working_on' keyword argument must be passed to the "
+                "create() method, and must not be empty")
+
+        if not isinstance(expected, NonZero) and len(working_on) != expected:
+            raise OperationGoodsError(
+                cls,
+                "Expecting exactly {exp} Goods records, got {nb} of them: "
+                "{goods}", exp=expected, nb=len(working_on), goods=working_on)
+
+        if state == 'done':
+            for record in working_on:
+                if record.state != 'present':
+                    raise OperationGoodsError(
+                        cls,
+                        "Can't create in state 'done' for goods {goods} "
+                        "because one of them (id={record.id}) has state "
+                        "{record.state} instead of the expected 'present'",
+                        goods=working_on, record=record)
+
+    @property
+    def outcomes(self):
+        """Return the outcomes of the present operation.
+
+        Outcomes are the Goods (Avatars) that the current Operation produces,
+        unless another Operation has been executed afterwards, becoming their
+        reason.
+        If no Operation is downstream, one can think of outcomes as the results
+        of the current Operation.
+
+        This default implementation considers that the Goods the current
+        Operation is working on never are outcomes.
+
+        This is a Python property, because it might become a field at some
+        point.
+        """
+        Goods = self.registry.Wms.Goods
+        # if already executed, might be the 'reason' for some Goods
+        # from self.goods to be in 'past' state.
+        return Goods.query().filter(Goods.reason == self,
+                                    Goods.state != 'past').all()
+
+    @classmethod
+    def find_parent_operations(cls, working_on=None, **kwargs):
         """Return the list or tuple of operations that this one follows
-
-        To be implemented in subclasses.
         """
-        raise NotImplementedError  # pragma: no cover
+        return set(g.reason for g in working_on)
 
     def after_insert(self):
         """Perform specific logic after insert during creation process
@@ -459,14 +596,20 @@ class Operation:
         """
         raise NotImplementedError  # pragma: no cover
 
-    @classmethod
-    def check_execute_conditions(cls, **kwargs):
+    def check_execute_conditions(self):
         """Used during execution to check that the Operation is indeed doable.
 
         To be implemented in subclasses, by raising an exception if something's
         wrong.
         """
-        raise NotImplementedError  # pragma: no cover
+        for record in self.working_on:
+            if record.state != 'present':
+                raise OperationGoodsError(
+                    self,
+                    "Can't execute {op} for goods {goods} "
+                    "because one of them (id={record.id}) has state "
+                    "{record.state} instead of the expected 'present'",
+                    goods=self.working_on, record=record)
 
     def execute_planned(self):
         """Execute an operation that has been up to now in the 'planned' state.
@@ -547,3 +690,44 @@ class Operation:
         """
         raise NotImplementedError(
             "for %s" % self.__registry_name__)  # pragma: no cover
+
+
+@Declarations.register(Wms.Operation)
+class WorkingOn:
+    """Internal table to help reconcile followed operations with their goods.
+
+    For Operations with multiple goods, tracking the followed operations and
+    the goods is not enough: we also need to record the original association
+    between them.
+    use case: oblivion.
+    """
+    # TODO apparently, I can't readily construct a multiple primary key
+    # from the m2o relationships
+    id = Integer(primary_key=True)
+    acting_op = Many2One(model='Model.Wms.Operation',
+                         index=True,
+                         foreign_key_options={'ondelete': 'cascade'})
+    """The Operation we are interested in."""
+
+    goods = Many2One(model='Model.Wms.Goods',
+                     foreign_key_options={'ondelete': 'cascade'})
+    """One of the Goods record for the :attr:`acting Operation <acting_op>."""
+
+    orig_reason = Many2One(model='Model.Wms.Operation',
+                           foreign_key_options={'ondelete': 'cascade'})
+    """Saving the original ``reason`` value of the :attr:`Goods <goods>`
+
+    This is needed to implement :ref:`oblivion op_revert_cancel_obliviate`
+
+    TODO we hope to supersede this while implementing
+    :ref:`Avatars <improvement_avatars>`.
+    """
+
+    orig_dt_until = DateTime(label="Original dt_until of goods")
+    """Saving the original ``dt_until`` value of the :attr:`Goods <goods>`
+
+    This is needed to implement :ref:`oblivion op_revert_cancel_obliviate`
+
+    TODO we hope to supersede this while implementing
+    :ref:`Avatars <improvement_avatars>`.
+    """

@@ -179,7 +179,7 @@ class TestSplit(WmsTestCase):
         split.plan_revert(dt_execution=self.dt_test3)
 
         aggregate = self.single_result(self.Operation.Aggregate.query())
-        self.assertEqual(aggregate.goods, outcomes)
+        self.assertEqual(set(aggregate.working_on), set(outcomes))
         aggregate.execute()
 
         new_goods = self.single_result(

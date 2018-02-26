@@ -10,7 +10,6 @@
 from anyblok import Declarations
 from anyblok.column import Integer
 from anyblok.relationship import Many2One
-from anyblok_wms_base.exceptions import OperationError
 
 
 register = Declarations.register
@@ -30,25 +29,13 @@ class Move(SingleGoodsSplitter, Operation):
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
     destination = Many2One(model='Model.Wms.Location',
                            nullable=False)
-    origin = Many2One(model='Model.Wms.Location',
-                      label="Set during execution, for cancel/revert/rollback")
 
     def specific_repr(self):
         return ("goods={self.goods!r}, "
                 "destination={self.destination!r}").format(self=self)
 
-    @classmethod
-    def check_create_conditions(cls, state, dt_execution,
-                                origin=None, **kwargs):
-        if origin is not None:
-            raise OperationError(cls, "The 'origin' field must *not* "
-                                 "be passed to the create() method")
-        super(Move, cls).check_create_conditions(state, dt_execution, **kwargs)
-
     def after_insert(self):
         state, to_move, dt_exec = self.state, self.goods, self.dt_execution
-        self.origin = to_move.location
-        self.orig_goods_dt_until = to_move.dt_until
 
         self.registry.Wms.Goods.insert(
             location=self.destination,
@@ -77,12 +64,7 @@ class Move(SingleGoodsSplitter, Operation):
         self.goods.update(state='past', reason=self, dt_until=dt_execution)
 
     def cancel_single(self):
-        goods = self.goods
-        if self.partial:
-            split = self.follows[0]
-            goods.reason = split
-        # TODO dates
-        goods.location = self.origin
+        self.reset_goods_original_values()
         self.registry.flush()
         Goods = self.registry.Wms.Goods
         Goods.query().filter(Goods.reason == self).delete(
@@ -92,10 +74,7 @@ class Move(SingleGoodsSplitter, Operation):
         """Restore the moved Goods.
         """
         self.outcomes[0].delete()
-        self.goods.update(location=self.origin,
-                          reason=self.follows[0],
-                          dt_until=self.orig_goods_dt_until,
-                          state='present')
+        self.reset_goods_original_values(state='present')
         self.registry.flush()
 
     def is_reversible(self):
@@ -121,6 +100,6 @@ class Move(SingleGoodsSplitter, Operation):
                                      Goods.quantity > 0).one()
         return self.create(goods=goods,
                            quantity=self.quantity,
-                           destination=self.origin,
+                           destination=self.goods.location,
                            dt_execution=dt_execution,
                            state='planned')

@@ -9,6 +9,7 @@
 
 from anyblok import Declarations
 from anyblok.column import Integer
+from anyblok.column import Decimal
 
 from anyblok_wms_base.exceptions import (
     OperationError,
@@ -71,12 +72,14 @@ class Split(SingleGoods, Operation):
                  autoincrement=False,
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
 
+    quantity = Decimal()
+    """The quantity to split."""
+
     def specific_repr(self):
         return ("goods={self.goods!r}, "
                 "quantity={self.quantity}").format(self=self)
 
     def after_insert(self):
-        self.orig_goods_dt_until = self.goods.dt_until
         self.registry.flush()
         goods = self.goods
         Goods = self.registry.Wms.Goods
@@ -123,7 +126,8 @@ class Split(SingleGoods, Operation):
         for outcome in Goods.query().filter(Goods.reason == self).all():
             outcome.update(state='present',
                            dt_from=self.dt_execution,
-                           dt_until=self.orig_goods_dt_until)
+                           )
+#                           dt_until=self.orig_goods_dt_until)
         self.registry.flush()
         self.goods.update(state='past', dt_until=self.dt_execution, reason=self)
         self.registry.flush()
@@ -134,11 +138,7 @@ class Split(SingleGoods, Operation):
             synchronize_session='fetch')
 
     def obliviate_single(self):
-        Goods = self.registry.Wms.Goods
-        Goods.query().filter(Goods.reason == self,
-                             Goods.state == 'past').one().update(
-                                 dt_until=self.orig_goods_dt_until,
-                                 reason=self.follows[0])
+        self.reset_goods_original_values()
         self.registry.flush()
         Goods = self.registry.Wms.Goods
         Goods.query().filter(Goods.reason == self).delete(
@@ -165,6 +165,6 @@ class Split(SingleGoods, Operation):
         to_aggregate = Goods.query().filter(
             Goods.reason_id.in_(reason_ids),
             Goods.state != 'past').all()
-        return Wms.Operation.Aggregate.create(goods=to_aggregate,
+        return Wms.Operation.Aggregate.create(working_on=to_aggregate,
                                               dt_execution=dt_execution,
                                               state='planned')

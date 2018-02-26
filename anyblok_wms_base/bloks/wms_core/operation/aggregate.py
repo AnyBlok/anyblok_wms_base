@@ -17,11 +17,10 @@ from anyblok_wms_base.exceptions import (
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
-GoodsOperation = Declarations.Mixin.WmsGoodsOperation
 
 
 @register(Operation)
-class Aggregate(GoodsOperation, Operation):
+class Aggregate(Operation):
     """An aggregation of Goods record.
 
     Aggregate is the converse of Split.
@@ -46,12 +45,6 @@ class Aggregate(GoodsOperation, Operation):
     cases implementation of various Operations.
     The benefit is that they appear explicitely in the history.
 
-    TODO for the time being, the result of an Aggregate is a new record of
-    Goods, it might be interesting to precise a target among self.goods,
-    so that reversing a Split can actually become a no-op,
-    restoring the original split Goods record to its initial state (perhaps
-    excluding cases where Split is physical).
-
     TODO implement :meth:`plan_revert_single`
     """
     TYPE = 'wms_aggregate'
@@ -63,7 +56,7 @@ class Aggregate(GoodsOperation, Operation):
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
 
     def specific_repr(self):
-        return "goods={self.goods!r}, ".format(self=self)
+        return "working_on={self.working_on!r}, ".format(self=self)
 
     @staticmethod
     def field_is_equal(field, goods_rec1, goods_rec2):
@@ -88,16 +81,17 @@ class Aggregate(GoodsOperation, Operation):
         return props1 == props2
 
     @classmethod
-    def check_create_conditions(cls, state, dt_execution, goods=None, **kwargs):
+    def check_create_conditions(cls, state, dt_execution, working_on=None,
+                                **kwargs):
         """Check that the Goods to aggregate are indeed indistinguishable.
 
         This performs the check from superclasses, and then compares all
         fields from :attr:`UNIFORM_FIELDS` in the specified ``goods``.
         """
         super(Aggregate, cls).check_create_conditions(
-            state, dt_execution, goods=goods, **kwargs)
-        first = goods[0]
-        for record in goods:
+            state, dt_execution, working_on=working_on, **kwargs)
+        first = working_on[0]
+        for record in working_on:
             for field in cls.UNIFORM_FIELDS:
                 if not cls.field_is_equal(field, first, record):
                     raise OperationGoodsError(
@@ -106,7 +100,7 @@ class Aggregate(GoodsOperation, Operation):
                         "because of discrepancy in field {field!r}: "
                         "The record with id {first.id} has {first_field!r} "
                         "The record with id {second.id} has {second_field!r} ",
-                        goods=goods, field=field,
+                        goods=working_on, field=field,
                         first=first, first_field=getattr(first, field),
                         second=record, second_field=getattr(record, field))
 
@@ -114,7 +108,7 @@ class Aggregate(GoodsOperation, Operation):
         """Business logic after the inert insertion
         """
         self.registry.flush()
-        goods = self.goods
+        working_on = self.working_on
         dt_exec = self.dt_execution
         Goods = self.registry.Wms.Goods
 
@@ -122,25 +116,25 @@ class Aggregate(GoodsOperation, Operation):
             update = dict(dt_until=dt_exec, state='past', reason=self)
         else:
             update = dict(dt_until=dt_exec)
-        for record in goods:
+        for record in working_on:
             record.update(**update)
 
-        uniform_fields = {field: getattr(goods[0], field)
+        uniform_fields = {field: getattr(working_on[0], field)
                           for field in self.UNIFORM_FIELDS}
         return Goods.insert(
             reason=self,
             dt_from=dt_exec,
             # dt_until in states 'present' and 'future' is theoretical anyway
-            dt_until=min_upper_bounds(g.dt_until for g in goods),
+            dt_until=min_upper_bounds(g.dt_until for g in working_on),
             state='present' if self.state == 'done' else 'future',
-            quantity=sum(g.quantity for g in goods),
+            quantity=sum(g.quantity for g in working_on),
             **uniform_fields)
 
     def execute_planned(self):
         Goods = self.registry.Wms.Goods
         created = Goods.query().filter(Goods.reason == self).one()
         created.update(state='present', dt_from=self.dt_execution)
-        for record in self.goods:
+        for record in self.working_on:
             record.update(state='past', reason=self, dt_until=self.dt_execution)
 
     def cancel_single(self):
@@ -149,7 +143,7 @@ class Aggregate(GoodsOperation, Operation):
             synchronize_session='fetch')
 
     def obliviate_single(self):
-        self.reset_goods_original_reasons(state='present')
+        self.reset_goods_original_values(state='present')
         self.registry.flush()
         Goods = self.registry.Wms.Goods
         Goods.query().filter(Goods.reason == self).delete(
@@ -162,4 +156,4 @@ class Aggregate(GoodsOperation, Operation):
         context.
         """
         # that all Good Types are equal is part of pre-creation checks
-        return self.goods[0].type.is_aggregate_reversible()
+        return self.working_on[0].type.is_aggregate_reversible()

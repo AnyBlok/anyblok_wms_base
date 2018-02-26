@@ -114,15 +114,6 @@ class TestMove(WmsTestCase):
         move.obliviate()
         self.assertBackToBeginning()
 
-    def test_forbid_origin(self):
-        with self.assertRaises(OperationError) as arc:
-            self.Move.create(destination=self.stock,
-                             origin=self.incoming_loc,
-                             quantity=3,
-                             state='done',
-                             goods=self.goods)
-        self.assertTrue("'origin'" in str(arc.exception))
-
     def test_partial_done(self):
         self.goods.update(state='present')
         move = self.Move.create(destination=self.stock,
@@ -222,7 +213,7 @@ class TestSingleGoodsOperation(WmsTestCase):
                              goods=self.goods)
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
-        self.assertEqual(exc.kwargs.get('goods'), self.goods)
+        self.assertEqual(exc.kwargs.get('goods')[0], self.goods)
 
     def test_missing_quantity(self):
         self.goods.state = 'present'
@@ -337,9 +328,10 @@ class TestSingleGoodsOperation(WmsTestCase):
         self.assertEqual(exc.kwargs.get('goods'), self.goods)
 
     def test_repr(self):
-        move = self.Move(destination=self.stock,
-                         quantity=3,
-                         state='planned',
-                         goods=self.goods)
+        move = self.Move.create(destination=self.stock,
+                                quantity=3,
+                                state='planned',
+                                dt_execution=self.dt_test1,
+                                goods=self.goods)
         repr(move)
         str(move)
