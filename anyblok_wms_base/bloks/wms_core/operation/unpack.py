@@ -78,7 +78,7 @@ class Unpack(SingleGoodsSplitter, Operation):
 
         outcome_state = 'present' if self.state == 'done' else 'future'
         if self.state == 'done':
-            packs.state = 'past'
+            packs.update(state='past', reason=self)
         for outcome_spec in spec:
             fields = dict(quantity=outcome_spec['quantity'] * self.quantity,
                           location=packs.location,
@@ -93,7 +93,7 @@ class Unpack(SingleGoodsSplitter, Operation):
             outcome = Goods.insert(**fields)
             if not clone:
                 self.forward_props(outcome_spec, outcome)
-        packs.update(dt_until=dt_execution, reason=self)
+        packs.dt_until = dt_execution
 
     def forward_props(self, spec, outcome):
         """Handle the properties for a given outcome (Goods record)
