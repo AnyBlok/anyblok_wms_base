@@ -623,14 +623,19 @@ class Operation:
         taken care of. It removes all planned consequences of the current one,
         but dos not delete it.
 
+        The default implementation calls :meth:`reset_inputs_original_values`,
+        then deletes all the outcomes (that should be in the `future` state).
+        Subclasses should override this if there's more to be done.
+
         Downstream applications and libraries are
         not supposed to call this method: they should use :meth:`cancel`,
         which takes care of the necessary recursivity and the final deletion.
-
-        To be implemented in sublasses
         """
-        raise NotImplementedError(
-            "for %s" % self.__registry_name__)  # pragma: no cover
+        self.reset_inputs_original_values()
+        self.registry.flush()
+        Goods = self.registry.Wms.Goods
+        Goods.query().filter(Goods.reason == self).delete(
+            synchronize_session='fetch')
 
     def obliviate_single(self):
         """Oblivate just the current operation.
@@ -639,14 +644,21 @@ class Operation:
         taken care of. It removes all consequences of the current one,
         but does not delete it.
 
+        The default implementation calls :meth:`reset_inputs_original_values`,
+        and resets the state field on inputs, then deletes all the outcomes.
+        Subclasses should override this if there's more to be done.
+
         Downstream applications and libraries are
         not supposed to call this method: they should use :meth:`obliviate`,
         which takes care of the necessary recursivity and the final deletion.
 
         To be implemented in sublasses
         """
-        raise NotImplementedError(
-            "for %s" % self.__registry_name__)  # pragma: no cover
+        self.reset_inputs_original_values(state='present')
+        self.registry.flush()
+        Goods = self.registry.Wms.Goods
+        Goods.query().filter(Goods.reason == self).delete(
+            synchronize_session='fetch')
 
     def plan_revert_single(self, dt_execution, follows=()):
         """Create a planned operation to revert the present one.

@@ -63,20 +63,6 @@ class Move(SingleGoodsSplitter, Operation):
 
         self.input.update(state='past', reason=self, dt_until=dt_execution)
 
-    def cancel_single(self):
-        self.reset_inputs_original_values()
-        self.registry.flush()
-        Goods = self.registry.Wms.Goods
-        Goods.query().filter(Goods.reason == self).delete(
-            synchronize_session='fetch')
-
-    def obliviate_single(self):
-        """Restore the moved Goods.
-        """
-        self.outcomes[0].delete()
-        self.reset_inputs_original_values(state='present')
-        self.registry.flush()
-
     def is_reversible(self):
         """Moves are always reversible.
 
@@ -88,17 +74,13 @@ class Move(SingleGoodsSplitter, Operation):
     def plan_revert_single(self, dt_execution, follows=()):
         if not follows:
             # reversal of an end-of-chain move
-            reason = self
+            after = self
         else:
             # A move has at most a single follower, hence
             # its reversal follows at most one operation, whose
             # outcome is one Goods record
-            reason = follows[0]
-        Goods = self.registry.Wms.Goods
-        # TODO introduce an outcome() generic API for all operations ?
-        goods = Goods.query().filter(Goods.reason == reason,
-                                     Goods.quantity > 0).one()
-        return self.create(input=goods,
+            after = follows[0]
+        return self.create(input=after.outcomes[0],
                            quantity=self.quantity,
                            destination=self.input.location,
                            dt_execution=dt_execution,

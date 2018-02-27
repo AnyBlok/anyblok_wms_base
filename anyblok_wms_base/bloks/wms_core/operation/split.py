@@ -129,18 +129,6 @@ class Split(SingleInput, Operation):
                           reason=self)
         self.registry.flush()
 
-    def cancel_single(self):
-        Goods = self.registry.Wms.Goods
-        Goods.query().filter(Goods.reason == self).delete(
-            synchronize_session='fetch')
-
-    def obliviate_single(self):
-        self.reset_inputs_original_values()
-        self.registry.flush()
-        Goods = self.registry.Wms.Goods
-        Goods.query().filter(Goods.reason == self).delete(
-            synchronize_session='fetch')
-
     def is_reversible(self):
         """Reversibility depends on the relevant Goods Type.
 

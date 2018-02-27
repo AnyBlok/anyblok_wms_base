@@ -137,18 +137,6 @@ class Aggregate(Operation):
         for record in self.inputs:
             record.update(state='past', reason=self, dt_until=self.dt_execution)
 
-    def cancel_single(self):
-        Goods = self.registry.Wms.Goods
-        Goods.query().filter(Goods.reason == self).delete(
-            synchronize_session='fetch')
-
-    def obliviate_single(self):
-        self.reset_inputs_original_values(state='present')
-        self.registry.flush()
-        Goods = self.registry.Wms.Goods
-        Goods.query().filter(Goods.reason == self).delete(
-            synchronize_session='fetch')
-
     def is_reversible(self):
         """Reversibility depends on the relevant Goods Type.
 
