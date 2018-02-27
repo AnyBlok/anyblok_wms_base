@@ -191,9 +191,9 @@ class TestDeparture(WmsTestCase):
         self.assertQuantities(past=(3, self.dt_test2))
 
     def test_repr(self):
-        dep = self.Departure(quantity=3,
-                             state='planned',
-                             dt_execution=self.dt_test2,
-                             goods=self.goods)
+        dep = self.Departure.create(quantity=3,
+                                    state='planned',
+                                    dt_execution=self.dt_test2,
+                                    goods=self.goods)
         repr(dep)
         str(dep)

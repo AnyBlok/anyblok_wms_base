@@ -183,18 +183,18 @@ class TestSingleGoodsOperation(WmsTestCase):
         super(TestSingleGoodsOperation, self).setUp()
         Wms = self.registry.Wms
         Operation = Wms.Operation
-        goods_type = Wms.Goods.Type.insert(label="My good type")
+        self.goods_type = Wms.Goods.Type.insert(label="My good type")
         self.incoming_loc = Wms.Location.insert(label="Incoming location")
         self.stock = Wms.Location.insert(label="Stock")
 
-        self.arrival = Operation.Arrival.insert(goods_type=goods_type,
+        self.arrival = Operation.Arrival.insert(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 state='planned',
                                                 dt_execution=self.dt_test1,
                                                 quantity=3)
 
         self.goods = Wms.Goods.insert(quantity=3,
-                                      type=goods_type,
+                                      type=self.goods_type,
                                       location=self.incoming_loc,
                                       state='future',
                                       dt_from=self.dt_test1,
@@ -203,7 +203,43 @@ class TestSingleGoodsOperation(WmsTestCase):
         self.Goods = Wms.Goods
         self.op_model_name = 'Model.Wms.Operation.Move'
 
+    def test_create_goods_working_on(self):
+        """Test that in create(), the goods and working_on kwargs work."""
+        goods = self.goods
+
+        def create(**kwargs):
+            goods.state = 'present'
+            return self.Move.create(destination=self.stock, quantity=3,
+                                    state='done', **kwargs)
+
+        move = create(goods=goods)
+        self.assertEqual(move.working_on, [goods])
+
+        move = create(working_on=[goods])
+        self.assertEqual(move.working_on, [goods])
+
+        with self.assertRaises(OperationGoodsError) as arc:
+            create(working_on=[goods], goods=goods)
+        self.assertEqual(arc.exception.kwargs,
+                         dict(goods=goods, working_on=[goods]))
+
+    def test_goods_attr(self):
+        # TODO should go to test_single_goods
+        move = self.Move.create(destination=self.stock, quantity=3,
+                                working_on=[self.goods],
+                                state='planned', dt_execution=self.dt_test2)
+        other = self.Goods.insert(quantity=2,
+                                  type=self.goods_type,
+                                  location=self.incoming_loc,
+                                  state='future',
+                                  dt_from=self.dt_test1,
+                                  reason=self.arrival)
+        move.goods = other
+        self.assertEqual(move.goods, other)
+        self.assertEqual(move.working_on, [other])
+
     def test_whole_done_but_not_ready(self):
+        # TODO should go to test_operation
         self.assertEqual(self.goods.state, 'future')
         with self.assertRaises(OperationGoodsError) as arc:
             self.Move.create(destination=self.stock,
@@ -216,6 +252,7 @@ class TestSingleGoodsOperation(WmsTestCase):
         self.assertEqual(exc.kwargs.get('goods')[0], self.goods)
 
     def test_missing_quantity(self):
+        # TODO should go to test_splitter
         self.goods.state = 'present'
         with self.assertRaises(OperationMissingQuantityError) as arc:
             self.Move.create(destination=self.stock,
@@ -226,6 +263,7 @@ class TestSingleGoodsOperation(WmsTestCase):
         self.assertEqual(exc.model_name, self.op_model_name)
 
     def test_missing_goods(self):
+        # TODO should go to test_operation
         self.goods.state = 'present'
         with self.assertRaises(OperationMissingGoodsError) as arc:
             self.Move.create(destination=self.stock,
@@ -236,6 +274,7 @@ class TestSingleGoodsOperation(WmsTestCase):
         self.assertEqual(exc.model_name, self.op_model_name)
 
     def test_too_much(self):
+        # TODO should go to test_splitter
         self.goods.state = 'present'
         with self.assertRaises(OperationQuantityError) as arc:
             self.Move.create(destination=self.stock,
@@ -249,6 +288,7 @@ class TestSingleGoodsOperation(WmsTestCase):
         self.assertEqual(exc.kwargs.get('goods'), self.goods)
 
     def test_whole_planned_execute_but_not_ready(self):
+        # TODO should go to test_operation
         move = self.Move.create(destination=self.stock,
                                 quantity=3,
                                 dt_execution=self.dt_test2,
@@ -264,6 +304,8 @@ class TestSingleGoodsOperation(WmsTestCase):
 
     def test_create_planned_dt_execution_required(self):
         """SingleGoodsSplitters.create() requires dt_execution."""
+        # TODO splitter's create() not an override anymore,
+        # this test now is a dupe
         with self.assertRaises(OperationError):
             self.Move.create(destination=self.stock,
                              quantity=3,
@@ -272,6 +314,7 @@ class TestSingleGoodsOperation(WmsTestCase):
 
     def test_quantity_changed_no_split(self):
         """SingleGoodsSplitters demand exact quantity (no split)"""
+        # TODO splitter concrete classes now shouldn't care about quantity
         move = self.Move.create(destination=self.stock,
                                 quantity=3,
                                 dt_execution=self.dt_test2,
@@ -294,6 +337,8 @@ class TestSingleGoodsOperation(WmsTestCase):
         We have to alter the split outcome somewhat artificially,
         to simulate a bug or some external alteration.
         """
+        # TODO splitter concrete classes now shouldn't care about quantity
+        # this should go to test_splitter anyway
         move = self.Move.create(destination=self.stock,
                                 quantity=2,
                                 dt_execution=self.dt_test2,
@@ -311,6 +356,7 @@ class TestSingleGoodsOperation(WmsTestCase):
         self.assertEqual(exc.kwargs.get('goods'), move.goods)
 
     def test_quantity_too_big_split(self):
+        # TODO should go to test_splitter
         move = self.Move.create(destination=self.stock,
                                 quantity=2,
                                 dt_execution=self.dt_test2,

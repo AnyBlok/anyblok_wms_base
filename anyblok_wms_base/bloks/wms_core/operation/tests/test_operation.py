@@ -7,9 +7,11 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from datetime import timedelta
+
 from .testcase import WmsTestCase
 from anyblok_wms_base.exceptions import (
     OperationError,
+    OperationGoodsError,
     OperationIrreversibleError,
     )
 
@@ -38,14 +40,74 @@ class TestOperation(WmsTestCase):
                                   dt_from=self.dt_test1,
                                   state='future',
                                   reason=arrival)
-        move = self.Operation.Move.insert(destination=self.stock,
-                                          quantity=2,
+        move = self.Operation.Move.create(destination=self.stock,
+                                          quantity=3,
                                           dt_execution=self.dt_test2,
                                           state='planned',
                                           goods=goods)
-        move.follows.append(arrival)
         self.assertEqual(move.follows, [arrival])
         self.assertEqual(arrival.followers, [move])
+
+    def test_len_working_on(self):
+        arrival = self.Operation.Arrival.insert(goods_type=self.goods_type,
+                                                dt_execution=self.dt_test1,
+                                                location=self.incoming_loc,
+                                                state='planned',
+                                                quantity=3)
+        goods = [self.Goods.insert(quantity=qty,
+                                   type=self.goods_type,
+                                   location=self.incoming_loc,
+                                   dt_from=self.dt_test1,
+                                   state='future',
+                                   reason=arrival)
+                 for qty in (1, 2)]
+
+        with self.assertRaises(OperationGoodsError) as arc:
+            self.Operation.Departure.create(working_on=goods,
+                                            state='planned',
+                                            dt_execution=self.dt_test2)
+        self.assertEqual(arc.exception.kwargs.get('nb'), 2)
+
+    def test_link_working_on(self):
+        arrival = self.Operation.Arrival.insert(goods_type=self.goods_type,
+                                                dt_execution=self.dt_test1,
+                                                location=self.incoming_loc,
+                                                state='planned',
+                                                quantity=3)
+        goods = [self.Goods.insert(quantity=1,
+                                   type=self.goods_type,
+                                   location=self.incoming_loc,
+                                   dt_from=self.dt_test1,
+                                   dt_until=dt,
+                                   state='future',
+                                   reason=arrival)
+                 for dt in (self.dt_test1, self.dt_test2, self.dt_test3)]
+
+        WO = self.Operation.WorkingOn
+
+        op = self.Operation.insert(state='done',
+                                   dt_execution=self.dt_test3,
+                                   type='wms_move')
+        op.link_working_on(working_on=goods[:1])
+        self.assertEqual(op.working_on, goods[:1])
+        wo = self.single_result(WO.query().filter(WO.acting_op == op))
+        self.assertEqual(wo.orig_dt_until, self.dt_test1)
+        self.assertEqual(wo.orig_reason, arrival)
+
+        op.link_working_on(working_on=goods[1:2])
+        self.assertEqual(op.working_on, goods[:2])
+        wos = WO.query().filter(WO.acting_op == op).order_by(
+            WO.orig_dt_until).all()
+        self.assertEqual(len(wos), 2)
+        self.assertEqual(wos[0], wo)
+        self.assertEqual(wos[1].orig_dt_until, self.dt_test2)
+        self.assertEqual(wos[1].orig_reason, arrival)
+
+        op.link_working_on(working_on=goods[2:], clear=True)
+        self.assertEqual(op.working_on, goods[2:])
+        wo = self.single_result(WO.query().filter(WO.acting_op == op))
+        self.assertEqual(wo.orig_dt_until, self.dt_test3)
+        self.assertEqual(wo.orig_reason, arrival)
 
     def test_cancel(self):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
