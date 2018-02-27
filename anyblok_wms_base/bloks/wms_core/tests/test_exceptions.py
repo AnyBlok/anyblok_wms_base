@@ -48,7 +48,7 @@ class TestOperationError(BlokTestCase):
         ))
         self.assertTrue('qty=7' in repr_err)
         self.assertTrue(
-            "operation={op!r})".format(op=self.arrival) in repr_err)
+            "operation={op!r}".format(op=self.arrival) in repr_err)
 
     def test_op_err_cls(self):
         op_err = OperationError(self.Arrival, "quantity is {qty}", qty=7)
