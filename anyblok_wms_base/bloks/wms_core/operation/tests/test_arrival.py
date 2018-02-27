@@ -7,7 +7,6 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from .testcase import WmsTestCase
-from anyblok_wms_base.exceptions import OperationCreateArgFollows
 
 
 class TestArrival(WmsTestCase):
@@ -134,9 +133,3 @@ class TestOperationBase(WmsTestCase):
         op.state = 'done'
         op.execute_planned = lambda: self.fail("Should not be called")
         op.execute()
-
-    def test_forbidfollows(self):
-        with self.assertRaises(OperationCreateArgFollows) as arc:
-            self.Arrival.create(follows='anything triggers', state='whatever')
-        str(arc.exception)
-        repr(arc.exception)

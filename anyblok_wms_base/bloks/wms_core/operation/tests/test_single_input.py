@@ -69,15 +69,7 @@ class TestSingleInputOperation(WmsTestCase):
         move = self.Move.create(destination=self.stock, quantity=3,
                                 inputs=[self.goods],
                                 state='planned', dt_execution=self.dt_test2)
-        other = self.Goods.insert(quantity=2,
-                                  type=self.goods_type,
-                                  location=self.incoming_loc,
-                                  state='future',
-                                  dt_from=self.dt_test1,
-                                  reason=self.arrival)
-        move.input = other
-        self.assertEqual(move.input, other)
-        self.assertEqual(move.inputs, [other])
+        self.assertEqual(move.input, self.goods)
 
     def test_whole_done_but_not_ready(self):
         # TODO should go to test_operation

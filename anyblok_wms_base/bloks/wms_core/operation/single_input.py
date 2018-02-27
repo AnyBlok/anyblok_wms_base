@@ -29,11 +29,10 @@ class WmsSingleInputOperation:
 
     @property
     def input(self):
-        return self.inputs[0]
-
-    @input.setter
-    def input(self, goods):
-        self.link_inputs([goods], clear=True)
+        inps = self.inputs
+        if not inps:  # can happen as an intermediate deletion step
+            return '<unlinked>'
+        return inps[0]
 
     def check_execute_conditions(self):
         super(WmsSingleInputOperation, self).check_execute_conditions()

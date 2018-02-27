@@ -159,7 +159,7 @@ class TestAggregate(WmsTestCase):
             self.assertEqual(goods.reason, exp_reason)
 
         # CASCADE options did the necessary cleanups
-        self.assertEqual(Operation.WorkingOn.query().count(), 0)
+        self.assertEqual(Operation.HistoryInput.query().count(), 0)
 
     def test_forbid_differences(self):
         other_loc = self.registry.Wms.Location.insert(label="Other location")

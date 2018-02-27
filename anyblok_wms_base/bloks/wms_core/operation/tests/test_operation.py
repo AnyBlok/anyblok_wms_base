@@ -83,31 +83,31 @@ class TestOperation(WmsTestCase):
                                    reason=arrival)
                  for dt in (self.dt_test1, self.dt_test2, self.dt_test3)]
 
-        WO = self.Operation.WorkingOn
+        HI = self.Operation.HistoryInput
 
         op = self.Operation.insert(state='done',
                                    dt_execution=self.dt_test3,
                                    type='wms_move')
         op.link_inputs(inputs=goods[:1])
         self.assertEqual(op.inputs, goods[:1])
-        wo = self.single_result(WO.query().filter(WO.acting_op == op))
-        self.assertEqual(wo.orig_dt_until, self.dt_test1)
-        self.assertEqual(wo.orig_reason, arrival)
+        hi = self.single_result(HI.query().filter(HI.operation == op))
+        self.assertEqual(hi.orig_dt_until, self.dt_test1)
+        self.assertEqual(hi.latest_previous_op, arrival)
 
         op.link_inputs(inputs=goods[1:2])
         self.assertEqual(op.inputs, goods[:2])
-        wos = WO.query().filter(WO.acting_op == op).order_by(
-            WO.orig_dt_until).all()
-        self.assertEqual(len(wos), 2)
-        self.assertEqual(wos[0], wo)
-        self.assertEqual(wos[1].orig_dt_until, self.dt_test2)
-        self.assertEqual(wos[1].orig_reason, arrival)
+        his = HI.query().filter(HI.operation == op).order_by(
+            HI.orig_dt_until).all()
+        self.assertEqual(len(his), 2)
+        self.assertEqual(his[0], hi)
+        self.assertEqual(his[1].orig_dt_until, self.dt_test2)
+        self.assertEqual(his[1].latest_previous_op, arrival)
 
         op.link_inputs(inputs=goods[2:], clear=True)
         self.assertEqual(op.inputs, goods[2:])
-        wo = self.single_result(WO.query().filter(WO.acting_op == op))
-        self.assertEqual(wo.orig_dt_until, self.dt_test3)
-        self.assertEqual(wo.orig_reason, arrival)
+        hi = self.single_result(HI.query().filter(HI.operation == op))
+        self.assertEqual(hi.orig_dt_until, self.dt_test3)
+        self.assertEqual(hi.latest_previous_op, arrival)
 
     def test_cancel(self):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,

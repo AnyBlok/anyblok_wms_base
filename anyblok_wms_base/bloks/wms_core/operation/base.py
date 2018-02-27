@@ -16,12 +16,10 @@ from anyblok.column import Selection
 from anyblok.column import Integer
 from anyblok.column import DateTime
 from anyblok.relationship import Many2One
-from anyblok.relationship import Many2Many
 
 from anyblok_wms_base.utils import NonZero
 from anyblok_wms_base.constants import OPERATION_STATES, OPERATION_TYPES
 from anyblok_wms_base.exceptions import (
-    OperationCreateArgFollows,
     OperationMissingInputsError,
     OperationInputsError,
     OperationInputWrongState,
@@ -35,6 +33,44 @@ Wms = Declarations.Model.Wms
 
 
 NONZERO = NonZero()
+
+
+@Declarations.register(Wms.Operation)
+class HistoryInput:
+    """Internal table to help reconcile followed operations with their goods.
+
+    For Operations with multiple goods, tracking the followed operations and
+    the goods is not enough: we also need to record the original association
+    between them.
+    use case: oblivion.
+    """
+    operation = Many2One(model='Model.Wms.Operation',
+                         index=True,
+                         primary_key=True,
+                         foreign_key_options={'ondelete': 'cascade'})
+    """The Operation we are interested in."""
+
+    goods = Many2One(model='Model.Wms.Goods',
+                     primary_key=True,
+                     foreign_key_options={'ondelete': 'cascade'})
+    """One of the Goods record for the :attr:`acting Operation <acting_op>."""
+
+    latest_previous_op = Many2One(model='Model.Wms.Operation',
+                                  index=True)
+    """The latest operation that affected :attr:`goods` before the current one.
+
+    This is both the fundamental data structure suporting history (DAG)
+    aspects of Operations, as is expresses in the :attr:`Operation.follows`
+    and :attr:`Operation.followers` attributes and, on the other hand, the
+    preservation of :attr:`..goods.Goods.reason` for restore, even after
+    the :attr:`current operation <operation>` is done.
+    """
+
+    orig_dt_until = DateTime(label="Original dt_until of goods")
+    """Saving the original ``dt_until`` value of the :attr:`Goods <goods>`
+
+    This is needed to implement :ref:`oblivion op_revert_cancel_obliviate`
+    """
 
 
 @register(Wms)
@@ -95,23 +131,19 @@ class Operation:
               be simply removed.
     """
 
-    inputs = Many2Many(model='Model.Wms.Goods',
-                       # TODO this should be the same table as
-                       # WorkingOn model
-                       join_table='tmp_wms_operation_workingon',
-                       m2m_remote_columns='goods_id',
-                       m2m_local_columns='acting_op_id',
-                       label="Goods record to apply the operation to")
+    def query_history_input(self):
+        HI = self.registry.Wms.Operation.HistoryInput
+        return HI.query().filter(HI.operation == self)
 
-    follows = Many2Many(model='Model.Wms.Operation',
-                        # TODO this should be the same table as
-                        # WorkingOn model
-                        m2m_remote_columns='parent_id',
-                        m2m_local_columns='child_id',
-                        join_table='wms_operation_history',
-                        label="Immediate preceding operations",
-                        many2many="followers",
-                        )
+    @property
+    def inputs(self):
+        return [hi.goods for hi in self.query_history_input().all()]
+
+    @property
+    def follows(self):
+        return [hi.latest_previous_op
+                for hi in self.query_history_input().all()]
+
     """Immediate predecessors in the Operation history,
 
     the operations that are the direct reasons
@@ -134,6 +166,13 @@ class Operation:
     * an :class:`Arrival <.arrival.Arrival>` typically doesn't
       follow anything (but might be due to some kind of purchase order).
     """
+
+    @property
+    def followers(self):
+        HI = self.registry.Wms.Operation.HistoryInput
+        return [hi.operation
+                for hi in HI.query().filter(
+                        HI.latest_previous_op == self).all()]
 
     dt_execution = DateTime(label="date and time of execution",
                             nullable=False)
@@ -215,28 +254,19 @@ class Operation:
 
     __str__ = __repr__
 
-    @classmethod
-    def forbid_follows_in_create(cls, follows, kwargs):
-        if follows is not None:
-            raise OperationCreateArgFollows(cls, kwargs)
-
     def link_inputs(self, inputs=None, clear=False, **fields):
-        WO = self.registry.Wms.Operation.WorkingOn
+        HI = self.registry.Wms.Operation.HistoryInput
         if clear:
-            # TODO while the enriched m2m pattern doesn't work readily
-            self.inputs.clear()
-            WO.query().filter(WO.acting_op == self).delete(
+            HI.query().filter(HI.operation == self).delete(
                 synchronize_session='fetch')
         for record in inputs:
-            WO.insert(goods=record,
-                      acting_op=self,
-                      orig_reason=record.reason,
+            HI.insert(goods=record,
+                      operation=self,
+                      latest_previous_op=record.reason,
                       orig_dt_until=record.dt_until)
-        # TODO while the enriched m2m pattern doesn't work readily
-        self.inputs.extend(inputs)
 
     @classmethod
-    def create(cls, state='planned', follows=None, inputs=None,
+    def create(cls, state='planned', inputs=None,
                dt_execution=None, dt_start=None, **fields):
         """Main method for creation of operations
 
@@ -259,8 +289,6 @@ class Operation:
            value of the attr:`dt_execution` right at creation. If
            ``state==planned``, this is mandatory. Otherwise, it defaults to
            the current date and time (:meth:`datetime.now`)
-        :param follows:
-           singled out to forbid to pass it in ``kwargs``
         :return Operation: concrete instance of the appropriate Operation
                            subclass.
 
@@ -280,7 +308,6 @@ class Operation:
         (yes, the same could be achieved by forcing to use the Model class
         methods instead).
         """
-        cls.forbid_follows_in_create(follows, fields)
         if dt_execution is None:
             if state == 'done':
                 dt_execution = datetime.now()
@@ -300,9 +327,7 @@ class Operation:
                                                **fields)
         if fields_upd is not None:
             fields.update(fields_upd)
-        follows = cls.find_parent_operations(inputs=inputs, **fields)
         op = cls.insert(state=state, dt_execution=dt_execution, **fields)
-        op.follows.extend(follows)
         if inputs is not None:  # happens with creative Operations
             op.link_inputs(inputs)
         op.after_insert()
@@ -494,11 +519,9 @@ class Operation:
         :return: a generator of pairs (goods, their original reasons,
         their original ``dt_until``)
         """
-        WorkingOn = self.registry.Wms.Operation.WorkingOn
         # TODO simple 2-column query instead
-        return ((wo.goods, wo.orig_reason, wo.orig_dt_until)
-                for wo in WorkingOn.query().filter(
-                        WorkingOn.acting_op == self).all())
+        return ((hi.goods, hi.latest_previous_op, hi.orig_dt_until)
+                for hi in self.query_history_input().all())
 
     def reset_inputs_original_values(self, state=None):
         """Reset all input Goods to their original reason and state if passed.
@@ -567,12 +590,6 @@ class Operation:
         return Goods.query().filter(Goods.reason == self,
                                     Goods.state != 'past').all()
 
-    @classmethod
-    def find_parent_operations(cls, inputs=None, **kwargs):
-        """Return the list or tuple of operations that this one follows
-        """
-        return set(g.reason for g in inputs)
-
     def after_insert(self):
         """Perform specific logic after insert during creation process
 
@@ -636,6 +653,7 @@ class Operation:
         Goods = self.registry.Wms.Goods
         Goods.query().filter(Goods.reason == self).delete(
             synchronize_session='fetch')
+        self.registry.flush()
 
     def obliviate_single(self):
         """Oblivate just the current operation.
@@ -683,44 +701,3 @@ class Operation:
         """
         raise NotImplementedError(
             "for %s" % self.__registry_name__)  # pragma: no cover
-
-
-@Declarations.register(Wms.Operation)
-class WorkingOn:
-    """Internal table to help reconcile followed operations with their goods.
-
-    For Operations with multiple goods, tracking the followed operations and
-    the goods is not enough: we also need to record the original association
-    between them.
-    use case: oblivion.
-    """
-    # TODO apparently, I can't readily construct a multiple primary key
-    # from the m2o relationships
-    id = Integer(primary_key=True)
-    acting_op = Many2One(model='Model.Wms.Operation',
-                         index=True,
-                         foreign_key_options={'ondelete': 'cascade'})
-    """The Operation we are interested in."""
-
-    goods = Many2One(model='Model.Wms.Goods',
-                     foreign_key_options={'ondelete': 'cascade'})
-    """One of the Goods record for the :attr:`acting Operation <acting_op>."""
-
-    orig_reason = Many2One(model='Model.Wms.Operation',
-                           foreign_key_options={'ondelete': 'cascade'})
-    """Saving the original ``reason`` value of the :attr:`Goods <goods>`
-
-    This is needed to implement :ref:`oblivion op_revert_cancel_obliviate`
-
-    TODO we hope to supersede this while implementing
-    :ref:`Avatars <improvement_avatars>`.
-    """
-
-    orig_dt_until = DateTime(label="Original dt_until of goods")
-    """Saving the original ``dt_until`` value of the :attr:`Goods <goods>`
-
-    This is needed to implement :ref:`oblivion op_revert_cancel_obliviate`
-
-    TODO we hope to supersede this while implementing
-    :ref:`Avatars <improvement_avatars>`.
-    """

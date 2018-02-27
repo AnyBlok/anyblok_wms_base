@@ -143,7 +143,7 @@ class TestDeparture(WmsTestCase):
                                     dt_execution=self.dt_test2,
                                     input=self.goods)
 
-        self.assertEqual(dep.follows.type, ['wms_split'])
+        self.assertEqual(dep.follows[0].type, 'wms_split')
         self.assertEqual(dep.follows[0].follows, [self.arrival])
 
         sent = self.single_result(
@@ -167,7 +167,7 @@ class TestDeparture(WmsTestCase):
                                     dt_execution=self.dt_test2,
                                     input=self.goods)
 
-        self.assertEqual(dep.follows.type, ['wms_split'])
+        self.assertEqual(dep.follows[0].type, 'wms_split')
         self.assertEqual(dep.follows[0].follows, [self.arrival])
 
         self.goods.state = 'present'
