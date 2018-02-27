@@ -12,11 +12,11 @@ from anyblok.column import Integer
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
-SingleGoodsSplitter = Declarations.Mixin.WmsSingleGoodsSplitterOperation
+Splitter = Declarations.Mixin.WmsSplitterOperation
 
 
 @register(Operation)
-class Departure(SingleGoodsSplitter, Operation):
+class Departure(Splitter, Operation):
     """Operation to represent Goods physically leaving the system.
 
     Departures can be partial, i.e., there's no need to match the exact

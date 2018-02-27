@@ -21,7 +21,7 @@ Mixin = Declarations.Mixin
 
 
 @Declarations.register(Mixin)
-class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleInputOperation):
+class WmsSplitterOperation(Mixin.WmsSingleInputOperation):
     """Mixin for operations on a single record of Goods that can split.
 
     In case the value of :attr:`quantity` is less than in the Goods record,
@@ -49,7 +49,7 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleInputOperation):
     @classmethod
     def define_table_args(cls):
         return super(
-            WmsSingleGoodsSplitterOperation, cls).define_table_args() + (
+            WmsSplitterOperation, cls).define_table_args() + (
                 CheckConstraint('quantity > 0', name='positive_qty'),
             )
 
@@ -61,7 +61,7 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleInputOperation):
     def check_create_conditions(cls, state, dt_execution,
                                 inputs=None, quantity=None, **kwargs):
 
-        super(WmsSingleGoodsSplitterOperation, cls).check_create_conditions(
+        super(WmsSplitterOperation, cls).check_create_conditions(
             state, dt_execution,
             inputs=inputs, quantity=quantity, **kwargs)
 
@@ -98,7 +98,7 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleInputOperation):
         if self.partial:
             self.input.reason.check_execute_conditions()
         else:
-            super(WmsSingleGoodsSplitterOperation,
+            super(WmsSplitterOperation,
                   self).check_execute_conditions()
 
     @classmethod

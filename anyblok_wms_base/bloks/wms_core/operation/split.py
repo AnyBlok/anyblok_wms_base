@@ -58,7 +58,7 @@ class Split(SingleInput, Operation):
     for executed Splits.
 
     Splits are typically created and executed from :class:`splitter Operations
-    <.splitter.WmsSingleGoodsSplitterOperation>`, and that explains the
+    <.splitter.WmsSplitterOperation>`, and that explains the
     above-mentioned zero lifespans.
 
     For Splits, the :attr:`quantity

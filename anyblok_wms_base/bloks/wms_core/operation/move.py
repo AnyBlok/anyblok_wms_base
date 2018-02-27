@@ -14,11 +14,11 @@ from anyblok.relationship import Many2One
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
-SingleGoodsSplitter = Declarations.Mixin.WmsSingleGoodsSplitterOperation
+Splitter = Declarations.Mixin.WmsSplitterOperation
 
 
 @register(Operation)
-class Move(SingleGoodsSplitter, Operation):
+class Move(Splitter, Operation):
     """A stock move
     """
     TYPE = 'wms_move'

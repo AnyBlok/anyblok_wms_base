@@ -69,7 +69,7 @@ class TestSplitterOperation(WmsTestCase):
         self.assertEqual(exc.kwargs.get('input'), self.goods)
 
     def test_quantity_changed_no_split(self):
-        """SingleGoodsSplitters demand exact quantity (no split)"""
+        """Splitters demand exact quantity (no split)"""
         # TODO splitter concrete classes now shouldn't care about quantity
         # the implementation should be in the SingleInput mixin
         move = self.Move.create(destination=self.stock,
@@ -89,7 +89,7 @@ class TestSplitterOperation(WmsTestCase):
         self.assertEqual(exc.kwargs.get('inputs'), [self.goods])
 
     def test_quantity_changed_split(self):
-        """SingleGoodsSplitters demand exact quantity (after split)
+        """Splitters demand exact quantity (after split)
 
         We have to alter the split outcome somewhat artificially,
         to simulate a bug or some external alteration.
