@@ -218,7 +218,7 @@ class TestSingleInputOperation(WmsTestCase):
         move = create(inputs=[goods])
         self.assertEqual(move.inputs, [goods])
 
-        with self.assertRaises(OperationInputsError) as arc:
+        with self.assertRaises(OperationError) as arc:
             create(inputs=[goods], input=goods)
         self.assertEqual(arc.exception.kwargs,
                          dict(input=goods, inputs=[goods]))
@@ -250,7 +250,7 @@ class TestSingleInputOperation(WmsTestCase):
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
         self.assertEqual(exc.kwargs.get('record'), self.goods)
-        self.assertEqual(list(exc.kwargs.get('goods')), [self.goods])
+        self.assertEqual(list(exc.kwargs.get('inputs')), [self.goods])
 
     def test_missing_quantity(self):
         # TODO should go to test_splitter
@@ -285,8 +285,8 @@ class TestSingleInputOperation(WmsTestCase):
                              input=self.goods)
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
-        self.assertEqual(exc.kwargs.get('quantity'), 7)
-        self.assertEqual(exc.kwargs.get('goods'), self.goods)
+        self.assertEqual(exc.kwargs.get('op_quantity'), 7)
+        self.assertEqual(exc.kwargs.get('input'), self.goods)
 
     def test_whole_planned_execute_but_not_ready(self):
         # TODO should go to test_operation
@@ -301,7 +301,7 @@ class TestSingleInputOperation(WmsTestCase):
             move.execute()
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
-        self.assertEqual(list(exc.kwargs.get('goods')), [self.goods])
+        self.assertEqual(list(exc.kwargs.get('inputs')), [self.goods])
         self.assertEqual(exc.kwargs.get('record'), self.goods)
 
     def test_create_planned_dt_execution_required(self):
@@ -331,7 +331,7 @@ class TestSingleInputOperation(WmsTestCase):
             move.execute()
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
-        self.assertEqual(exc.kwargs.get('goods'), self.goods)
+        self.assertEqual(exc.kwargs.get('inputs'), [self.goods])
 
     def test_quantity_changed_split(self):
         """SingleGoodsSplitters demand exact quantity (after split)
@@ -355,7 +355,7 @@ class TestSingleInputOperation(WmsTestCase):
             move.execute()
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
-        self.assertEqual(exc.kwargs.get('goods'), move.input)
+        self.assertEqual(exc.kwargs.get('inputs'), move.inputs)
 
     def test_quantity_too_big_split(self):
         # TODO should go to test_splitter
@@ -375,7 +375,7 @@ class TestSingleInputOperation(WmsTestCase):
         str(exc)
         repr(exc)
         self.assertEqual(exc.model_name, 'Model.Wms.Operation.Split')
-        self.assertEqual(exc.kwargs.get('goods'), self.goods)
+        self.assertEqual(exc.kwargs.get('inputs'), [self.goods])
 
     def test_repr(self):
         move = self.Move.create(destination=self.stock,

@@ -10,6 +10,7 @@ from datetime import timedelta
 from .testcase import WmsTestCase
 from anyblok_wms_base.exceptions import (
     OperationInputsError,
+    OperationInputWrongState,
     OperationMissingInputsError,
 )
 from anyblok_wms_base.constants import (
@@ -179,12 +180,13 @@ class TestAggregate(WmsTestCase):
             self.plan_aggregate()
 
     def test_create_done_ensure_goods_present(self):
-        with self.assertRaises(OperationInputsError) as arc:
+        # nowadays, this just tests the base Operation class
+        with self.assertRaises(OperationInputWrongState) as arc:
             self.Agg.create(inputs=self.goods, state='done',
                             dt_execution=self.dt_test1)
 
         exc_kwargs = arc.exception.kwargs
-        self.assertEqual(exc_kwargs.get('goods'), self.goods)
+        self.assertEqual(exc_kwargs.get('inputs'), self.goods)
         self.assertTrue(exc_kwargs.get('record') in self.goods)
 
         self.goods[0].state = 'present'
@@ -192,23 +194,24 @@ class TestAggregate(WmsTestCase):
             self.Agg.create(inputs=self.goods, state='done')
 
         exc_kwargs = arc.exception.kwargs
-        self.assertEqual(exc_kwargs.get('goods'), self.goods)
+        self.assertEqual(exc_kwargs.get('inputs'), self.goods)
         self.assertEqual(exc_kwargs.get('record'), self.goods[1])
 
     def test_execute_ensure_goods_present(self):
+        # nowadays, this just tests the base Operation class
         agg = self.plan_aggregate()
-        with self.assertRaises(OperationInputsError) as arc:
+        with self.assertRaises(OperationInputWrongState) as arc:
             agg.execute()
         exc_kwargs = arc.exception.kwargs
-        self.assertEqual(exc_kwargs.get('goods'), self.goods)
+        self.assertEqual(exc_kwargs.get('inputs'), self.goods)
         self.assertTrue(exc_kwargs.get('record') in self.goods)
 
         self.goods[0].state = 'present'
-        with self.assertRaises(OperationInputsError) as arc:
+        with self.assertRaises(OperationInputWrongState) as arc:
             agg.execute()
 
         exc_kwargs = arc.exception.kwargs
-        self.assertEqual(exc_kwargs.get('goods'), self.goods)
+        self.assertEqual(exc_kwargs.get('inputs'), self.goods)
         self.assertEqual(exc_kwargs.get('record'), self.goods[1])
 
     def test_execute(self):

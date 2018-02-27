@@ -24,6 +24,7 @@ from anyblok_wms_base.exceptions import (
     OperationCreateArgFollows,
     OperationMissingInputsError,
     OperationInputsError,
+    OperationInputWrongState,
     OperationError,
     OperationIrreversibleError,
     )
@@ -526,23 +527,23 @@ class Operation:
             raise OperationMissingInputsError(
                 cls,
                 "The 'inputs' keyword argument must be passed to the "
-                "create() method, and must not be empty")
+                "create() method, and must not be empty "
+                "got {inputs})", inputs=inputs)
 
         if not isinstance(expected, NonZero) and len(inputs) != expected:
             raise OperationInputsError(
                 cls,
-                "Expecting exactly {exp} Goods records, got {nb} of them: "
-                "{goods}", exp=expected, nb=len(inputs), goods=inputs)
+                "Expecting exactly {exp} inputs, got {nb} of them: "
+                "{inputs}", exp=expected, nb=len(inputs), inputs=inputs)
 
         if state == 'done':
             for record in inputs:
                 if record.state != 'present':
-                    raise OperationInputsError(
-                        cls,
-                        "Can't create in state 'done' for goods {goods} "
-                        "because one of them (id={record.id}) has state "
-                        "{record.state} instead of the expected 'present'",
-                        goods=inputs, record=record)
+                    raise OperationInputWrongState(
+                        cls, record, 'present',
+                        prelude="Can't create in state 'done' "
+                        "for inputs {inputs}",
+                        inputs=inputs)
 
     @property
     def outcomes(self):
@@ -587,12 +588,9 @@ class Operation:
         """
         for record in self.inputs:
             if record.state != 'present':
-                raise OperationInputsError(
-                    self,
-                    "Can't execute {op} for goods {goods} "
-                    "because one of them (id={record.id}) has state "
-                    "{record.state} instead of the expected 'present'",
-                    op=self, goods=self.inputs, record=record)
+                raise OperationInputWrongState(
+                    self, record, 'present',
+                    prelude="Can't execute {operation}")
 
     def execute_planned(self):
         """Execute an operation that has been up to now in the 'planned' state.

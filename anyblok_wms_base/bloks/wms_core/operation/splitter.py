@@ -74,21 +74,19 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleInputOperation):
         if quantity > goods.quantity:
             raise OperationQuantityError(
                 cls,
-                "Can't move a greater quantity ({quantity}) than held in "
-                "goods {goods} (which have quantity={goods.quantity})",
-                quantity=quantity,
-                goods=goods)
+                "Can't split a greater quantity ({op_quantity}) than held in "
+                "{input} (which have quantity={input.quantity})",
+                op_quantity=quantity, input=goods)
 
     def check_execute_conditions(self):
         goods = self.input
         if self.quantity != goods.quantity:
             raise OperationQuantityError(
                 self,
-                "Can't execute planned for a different quantity {quantityy} "
-                "than held in its input {goods} "
+                "Can't execute planned for a different quantity {op_quantity} "
+                "than held in its input {input} "
                 "(which have quantity={goods.quantity}). "
-                "For lesser quantities, a split should have occured first ",
-                goods=goods, quantity=self.quantity)
+                "If it's less, a Split should have occured first ")
         if not self.partial:
             # if partial, then it's normal that self.input be in 'future'
             # state: the current Operation execution will complete the split

@@ -47,13 +47,13 @@ class Unpack(SingleGoodsSplitter, Operation):
             quantity=quantity,
             **kwargs)
 
-        goods = inputs[0]
-        if 'unpack' not in goods.type.behaviours:
+        goods_type = inputs[0].type
+        if 'unpack' not in goods_type.behaviours:
             raise OperationInputsError(
                 cls,
-                "Can't create an Unpack for Goods {goods} "
+                "Can't create an Unpack for {inputs} "
                 "because their type {type} doesn't have the 'unpack' "
-                "behaviour", goods=goods, type=goods.type)
+                "behaviour", inputs=inputs, type=goods_type)
 
     def execute_planned_after_split(self):
         Goods = self.registry.Wms.Goods
@@ -108,9 +108,9 @@ class Unpack(SingleGoodsSplitter, Operation):
         if req_props and not packs.properties:
             raise OperationInputsError(
                 self,
-                "Packs {packs} have no properties, yet their type {type} "
+                "Packs {inputs[0]} have no properties, yet their type {type} "
                 "requires these for Unpack operation: {req_props}",
-                packs=packs, type=packs.type, req_props=req_props)
+                type=packs.type, req_props=req_props)
         if not fwd_props:
             return
         for pname in fwd_props:
@@ -120,9 +120,9 @@ class Unpack(SingleGoodsSplitter, Operation):
                     continue
                 raise OperationInputsError(
                     self,
-                    "Packs {packs} lacks the property {prop}"
+                    "Packs {inputs[0]} lacks the property {prop}"
                     "required by their type for Unpack operation",
-                    packs=packs, prop=pname)
+                    prop=pname)
             outcome.set_property(pname, pvalue)
 
     def get_outcome_specs(self):
@@ -191,11 +191,11 @@ class Unpack(SingleGoodsSplitter, Operation):
         if not specs:
             raise OperationInputsError(
                 self,
-                "unpacking Goods {packs} has no outcomes. "
+                "unpacking {inputs[0]} yields no outcomes. "
                 "Type {type} 'unpack' behaviour: {behaviour}, "
                 "specific outcomes from Goods properties: "
                 "{specific}",
-                packs=packs, type=packs.type, behaviour=behaviour,
+                type=packs.type, behaviour=behaviour,
                 specific=specific_outcomes)
 
         global_fwd = behaviour.get('forward_properties', ())

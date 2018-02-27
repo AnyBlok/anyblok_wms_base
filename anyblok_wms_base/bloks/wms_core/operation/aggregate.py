@@ -96,11 +96,11 @@ class Aggregate(Operation):
                 if not cls.field_is_equal(field, first, record):
                     raise OperationInputsError(
                         cls,
-                        "Can't create for goods {goods} "
+                        "Can't create Aggregate with inputs {inputs} "
                         "because of discrepancy in field {field!r}: "
                         "The record with id {first.id} has {first_field!r} "
                         "The record with id {second.id} has {second_field!r} ",
-                        goods=inputs, field=field,
+                        inputs=inputs, field=field,
                         first=first, first_field=getattr(first, field),
                         second=record, second_field=getattr(record, field))
 

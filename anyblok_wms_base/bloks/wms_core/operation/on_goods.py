@@ -12,7 +12,7 @@
 from anyblok import Declarations
 
 from anyblok_wms_base.exceptions import (
-    OperationInputsError,
+    OperationError,
     OperationQuantityError,
 )
 
@@ -51,7 +51,9 @@ class WmsSingleInputOperation:
     @classmethod
     def create(cls, input=None, inputs=None, **kwargs):
         if input is not None and inputs is not None:
-            raise OperationInputsError(
+            # not an OperationInputsError, because it's not about the
+            # contents of the inputs (one could say they aren't really known
+            raise OperationError(
                 cls,
                 "You must choose between the 'input' and the 'inputs' "
                 "kwargs (got input={input}, inputs={inputs}",

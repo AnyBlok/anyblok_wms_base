@@ -216,10 +216,13 @@ class TestUnpack(WmsTestCase):
             unpack()
         str(arc.exception)
         repr(arc.exception)
-        self.assertEqual(arc.exception.kwargs,
-                         dict(packs=self.packs,
-                              req_props=['foo'],
-                              type=self.packed_goods_type))
+        exc_kwargs = arc.exception.kwargs
+        self.assertEqual(list(exc_kwargs.get('inputs')), [self.packs])
+        self.assertEqual(exc_kwargs.get('req_props'), ['foo'])
+        self.assertEqual(exc_kwargs.get('type'), self.packed_goods_type)
+        # we also have an 'operation' kwarg, because that exc is raised
+        # after actual instantiation, but we can't test it because
+        # we don't have a create() returned value to compare
 
         # Having properties, still missing the required one
         self.packs.properties = self.Goods.Properties.insert(
@@ -229,8 +232,9 @@ class TestUnpack(WmsTestCase):
             unpack()
         str(arc.exception)
         repr(arc.exception)
-        self.assertEqual(arc.exception.kwargs, dict(prop='foo',
-                                                    packs=self.packs))
+        exc_kwargs = arc.exception.kwargs
+        self.assertEqual(list(exc_kwargs.get('inputs')), [self.packs])
+        self.assertEqual(exc_kwargs.get('prop'), 'foo')
 
     def test_whole_done_one_unpacked_type_no_props(self):
         """Unpacking operation, forwarding no properties."""
@@ -422,11 +426,14 @@ class TestUnpack(WmsTestCase):
                                input=self.packs)
         str(arc.exception)
         repr(arc.exception)
-        self.assertEqual(arc.exception.kwargs,
-                         dict(type=self.packed_goods_type,
-                              packs=self.packs,
-                              behaviour=dict(outcomes=[]),
-                              specific=()))
+        exc_kwargs = arc.exception.kwargs
+        self.assertEqual(exc_kwargs.get('type'), self.packed_goods_type)
+        self.assertEqual(list(exc_kwargs.get('inputs')), [self.packs])
+        self.assertEqual(exc_kwargs.get('behaviour'), dict(outcomes=[]))
+        self.assertEqual(exc_kwargs.get('specific'), ())
+        # we also have an 'operation' kwarg, because that exc is raised
+        # after actual instantiation, but we can't test it because
+        # we don't have a create() returned value to compare
 
     def test_no_behaviour(self):
         """Unpacking with no specified 'unpack' behaviour is an error."""
@@ -441,9 +448,9 @@ class TestUnpack(WmsTestCase):
                                input=self.packs)
         str(arc.exception)
         repr(arc.exception)
-        self.assertEqual(arc.exception.kwargs,
-                         dict(type=self.packed_goods_type,
-                              goods=self.packs))
+        exc_kwargs = arc.exception.kwargs
+        self.assertEqual(exc_kwargs.get('type'), self.packed_goods_type)
+        self.assertEqual(list(exc_kwargs.get('inputs')), [self.packs])
 
     def test_repr(self):
         unpacked_type = self.Goods.Type.insert(label="Unpacked")
