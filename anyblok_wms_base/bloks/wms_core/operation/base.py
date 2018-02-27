@@ -18,7 +18,7 @@ from anyblok.column import DateTime
 from anyblok.relationship import Many2One
 from anyblok.relationship import Many2Many
 
-
+from anyblok_wms_base.utils import NonZero
 from anyblok_wms_base.constants import OPERATION_STATES, OPERATION_TYPES
 from anyblok_wms_base.exceptions import (
     OperationCreateArgFollows,
@@ -31,25 +31,6 @@ from anyblok_wms_base.exceptions import (
 logger = logging.getLogger(__name__)
 register = Declarations.register
 Wms = Declarations.Model.Wms
-
-
-class NonZero:
-    """Marker to mean any unspecified non zero value.
-
-    >>> str(NonZero())
-    NONZERO
-
-    We don't implement __repr__ because with reloads and the like, one
-    can have subtle bugs with constants, and in that case, the default
-    ``repr()`` including the object id (memory address with CPython)
-    is really useful.
-
-    For these subtle bugs reasons, it's probably better to test with
-    ``isinstance`` rather than with ``is`` on a constant.
-    """
-
-    def __str__(self):
-        return "NONZERO"
 
 
 NONZERO = NonZero()
