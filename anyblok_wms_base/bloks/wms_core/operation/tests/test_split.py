@@ -53,7 +53,7 @@ class TestSplit(WmsTestCase):
     def test_create_done(self):
         self.goods.state = 'present'
         split = self.Operation.Split.create(state='done',
-                                            goods=self.goods,
+                                            input=self.goods,
                                             dt_execution=self.dt_test2,
                                             quantity=2)
 
@@ -76,7 +76,7 @@ class TestSplit(WmsTestCase):
     def test_create_planned_execute(self):
         self.goods.state = 'present'
         split = self.Operation.Split.create(state='planned',
-                                            goods=self.goods,
+                                            input=self.goods,
                                             dt_execution=self.dt_test2,
                                             quantity=2)
 
@@ -135,7 +135,7 @@ class TestSplit(WmsTestCase):
 
     def test_create_planned_outcome_disappears(self):
         split = self.Operation.Split.create(state='planned',
-                                            goods=self.goods,
+                                            input=self.goods,
                                             dt_execution=self.dt_test2,
                                             quantity=2)
 
@@ -151,7 +151,7 @@ class TestSplit(WmsTestCase):
 
         self.goods.state = 'present'
         split = self.Operation.Split.create(state='done',
-                                            goods=self.goods,
+                                            input=self.goods,
                                             quantity=2)
         self.assertFalse(split.is_reversible())
 
@@ -170,7 +170,7 @@ class TestSplit(WmsTestCase):
         """
         self.goods.state = 'present'
         split = self.Operation.Split.create(state='done',
-                                            goods=self.goods,
+                                            input=self.goods,
                                             dt_execution=self.dt_test2,
                                             quantity=2)
 
@@ -179,7 +179,7 @@ class TestSplit(WmsTestCase):
         split.plan_revert(dt_execution=self.dt_test3)
 
         aggregate = self.single_result(self.Operation.Aggregate.query())
-        self.assertEqual(set(aggregate.working_on), set(outcomes))
+        self.assertEqual(set(aggregate.inputs), set(outcomes))
         aggregate.execute()
 
         new_goods = self.single_result(
@@ -209,7 +209,7 @@ class TestSplit(WmsTestCase):
         self.goods.state = 'present'
         move = self.Operation.Move.create(state='done',
                                           destination=self.stock,
-                                          goods=self.goods,
+                                          input=self.goods,
                                           quantity=2)
 
         self.assertEqual(len(move.follows), 1)
@@ -246,7 +246,7 @@ class TestSplit(WmsTestCase):
         """
         self.goods.state = 'present'
         split = self.Operation.Split.create(state='done',
-                                            goods=self.goods,
+                                            input=self.goods,
                                             quantity=2)
 
         split.obliviate()

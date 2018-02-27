@@ -17,11 +17,11 @@ from anyblok_wms_base.exceptions import (
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
-SingleGoods = Declarations.Mixin.WmsSingleGoodsOperation
+SingleInput = Declarations.Mixin.WmsSingleInputOperation
 
 
 @register(Operation)
-class Split(SingleGoods, Operation):
+class Split(SingleInput, Operation):
     """A split of Goods record in two.
 
     Splits replace a :class:`Goods <.goods.Goods>` record with two of them,
@@ -76,12 +76,12 @@ class Split(SingleGoods, Operation):
     """The quantity to split."""
 
     def specific_repr(self):
-        return ("goods={self.goods!r}, "
+        return ("input={self.input!r}, "
                 "quantity={self.quantity}").format(self=self)
 
     def after_insert(self):
         self.registry.flush()
-        goods = self.goods
+        goods = self.input
         Goods = self.registry.Wms.Goods
         qty = self.quantity
         new_goods = dict(
@@ -122,14 +122,11 @@ class Split(SingleGoods, Operation):
         return outcome
 
     def execute_planned(self):
-        Goods = self.registry.Wms.Goods
-        for outcome in Goods.query().filter(Goods.reason == self).all():
-            outcome.update(state='present',
-                           dt_from=self.dt_execution,
-                           )
-#                           dt_until=self.orig_goods_dt_until)
+        for outcome in self.outcomes:
+            outcome.update(state='present', dt_from=self.dt_execution)
         self.registry.flush()
-        self.goods.update(state='past', dt_until=self.dt_execution, reason=self)
+        self.input.update(state='past', dt_until=self.dt_execution,
+                          reason=self)
         self.registry.flush()
 
     def cancel_single(self):
@@ -138,7 +135,7 @@ class Split(SingleGoods, Operation):
             synchronize_session='fetch')
 
     def obliviate_single(self):
-        self.reset_goods_original_values()
+        self.reset_inputs_original_values()
         self.registry.flush()
         Goods = self.registry.Wms.Goods
         Goods.query().filter(Goods.reason == self).delete(
@@ -150,7 +147,7 @@ class Split(SingleGoods, Operation):
         See :meth:`on Model.Goods.Type
         <anyblok_wms_base.bloks.wms_core.goods.Type.is_split_reversible>`
         """
-        return self.goods.type.is_split_reversible()
+        return self.input.type.is_split_reversible()
 
     def plan_revert_single(self, dt_execution, follows=()):
         if not follows:
@@ -165,6 +162,6 @@ class Split(SingleGoods, Operation):
         to_aggregate = Goods.query().filter(
             Goods.reason_id.in_(reason_ids),
             Goods.state != 'past').all()
-        return Wms.Operation.Aggregate.create(working_on=to_aggregate,
+        return Wms.Operation.Aggregate.create(inputs=to_aggregate,
                                               dt_execution=dt_execution,
                                               state='planned')

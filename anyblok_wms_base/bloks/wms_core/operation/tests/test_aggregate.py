@@ -9,8 +9,8 @@
 from datetime import timedelta
 from .testcase import WmsTestCase
 from anyblok_wms_base.exceptions import (
-    OperationGoodsError,
-    OperationMissingGoodsError,
+    OperationInputsError,
+    OperationMissingInputsError,
 )
 from anyblok_wms_base.constants import (
     SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR
@@ -44,7 +44,7 @@ class TestAggregate(WmsTestCase):
         self.Goods = Wms.Goods
 
     def plan_aggregate(self):
-        return self.Agg.create(working_on=self.goods,
+        return self.Agg.create(inputs=self.goods,
                                state='planned',
                                dt_execution=self.dt_test2)
 
@@ -57,8 +57,8 @@ class TestAggregate(WmsTestCase):
         props = self.Goods.Properties.insert(flexible=dict(foo='bar'))
         for record in self.goods:
             record.update(state='present', properties=props)
-        agg = self.Agg.create(working_on=self.goods, state='done')
-        self.assertEqual(agg.working_on, self.goods)
+        agg = self.Agg.create(inputs=self.goods, state='done')
+        self.assertEqual(agg.inputs, self.goods)
         for record in self.goods:
             self.assertEqual(record.state, 'past')
             self.assertEqual(record.reason, agg)
@@ -79,7 +79,7 @@ class TestAggregate(WmsTestCase):
         for record in self.goods:
             props = self.Goods.Properties.insert(flexible=dict(foo='bar'))
             record.update(state='present', properties=props)
-        agg = self.Agg.create(working_on=self.goods, state='done')
+        agg = self.Agg.create(inputs=self.goods, state='done')
         new_goods = self.Goods.query().filter(
             self.Goods.reason == agg,
             self.Goods.state == 'present').all()
@@ -95,7 +95,7 @@ class TestAggregate(WmsTestCase):
         self.goods[1].dt_from = self.dt_test2
         for record in self.goods:
             record.state = 'present'
-        agg = self.Agg.create(working_on=self.goods, state='done',
+        agg = self.Agg.create(inputs=self.goods, state='done',
                               dt_execution=self.dt_test3)
         for record in self.goods:
             self.assertEqual(record.dt_until, self.dt_test3)
@@ -126,7 +126,7 @@ class TestAggregate(WmsTestCase):
         for record in self.goods:
             props = self.Goods.Properties.insert(flexible=dict(foo='bar'))
             record.update(state='present', properties=props)
-        agg = self.Agg.create(working_on=self.goods, state='done')
+        agg = self.Agg.create(inputs=self.goods, state='done')
         agg.obliviate()
         self.assertBackToBeginning(state='present', props=props)
 
@@ -147,7 +147,7 @@ class TestAggregate(WmsTestCase):
                                                 dt_execution=self.dt_test1,
                                                 quantity=35)
         self.goods[0].reason = other_reason
-        agg = self.Agg.create(working_on=self.goods, state='done',
+        agg = self.Agg.create(inputs=self.goods, state='done',
                               dt_execution=self.dt_test2)
         self.assertEqual(set(agg.follows), set((self.arrival, other_reason)))
         agg.obliviate()
@@ -163,7 +163,7 @@ class TestAggregate(WmsTestCase):
     def test_forbid_differences(self):
         other_loc = self.registry.Wms.Location.insert(label="Other location")
         self.goods[1].location = other_loc
-        with self.assertRaises(OperationGoodsError) as arc:
+        with self.assertRaises(OperationInputsError) as arc:
             self.plan_aggregate()
         exc = arc.exception
         self.assertEqual(exc.kwargs.get('field'), 'location')
@@ -172,15 +172,15 @@ class TestAggregate(WmsTestCase):
                             set((other_loc, self.loc)))
 
     def test_ensure_goods(self):
-        with self.assertRaises(OperationMissingGoodsError):
+        with self.assertRaises(OperationMissingInputsError):
             self.Agg.create(state='planned', dt_execution=self.dt_test2)
         self.goods = []
-        with self.assertRaises(OperationMissingGoodsError):
+        with self.assertRaises(OperationMissingInputsError):
             self.plan_aggregate()
 
     def test_create_done_ensure_goods_present(self):
-        with self.assertRaises(OperationGoodsError) as arc:
-            self.Agg.create(working_on=self.goods, state='done',
+        with self.assertRaises(OperationInputsError) as arc:
+            self.Agg.create(inputs=self.goods, state='done',
                             dt_execution=self.dt_test1)
 
         exc_kwargs = arc.exception.kwargs
@@ -188,8 +188,8 @@ class TestAggregate(WmsTestCase):
         self.assertTrue(exc_kwargs.get('record') in self.goods)
 
         self.goods[0].state = 'present'
-        with self.assertRaises(OperationGoodsError) as arc:
-            self.Agg.create(working_on=self.goods, state='done')
+        with self.assertRaises(OperationInputsError) as arc:
+            self.Agg.create(inputs=self.goods, state='done')
 
         exc_kwargs = arc.exception.kwargs
         self.assertEqual(exc_kwargs.get('goods'), self.goods)
@@ -197,14 +197,14 @@ class TestAggregate(WmsTestCase):
 
     def test_execute_ensure_goods_present(self):
         agg = self.plan_aggregate()
-        with self.assertRaises(OperationGoodsError) as arc:
+        with self.assertRaises(OperationInputsError) as arc:
             agg.execute()
         exc_kwargs = arc.exception.kwargs
         self.assertEqual(exc_kwargs.get('goods'), self.goods)
         self.assertTrue(exc_kwargs.get('record') in self.goods)
 
         self.goods[0].state = 'present'
-        with self.assertRaises(OperationGoodsError) as arc:
+        with self.assertRaises(OperationInputsError) as arc:
             agg.execute()
 
         exc_kwargs = arc.exception.kwargs
@@ -221,7 +221,7 @@ class TestAggregate(WmsTestCase):
             record.update(state='present', properties=props)
 
         agg = self.plan_aggregate()
-        self.assertEqual(agg.working_on, self.goods)
+        self.assertEqual(agg.inputs, self.goods)
 
         for dt in (self.dt_test1, self.dt_test2, self.dt_test3):
             self.assertQuantity(3, at_datetime=dt)
@@ -247,7 +247,7 @@ class TestAggregate(WmsTestCase):
         self.goods[1].dt_from = self.dt_test2
         dt_test4 = self.dt_test3 + timedelta(1)
 
-        agg = self.Agg.create(working_on=self.goods, state='planned',
+        agg = self.Agg.create(inputs=self.goods, state='planned',
                               dt_execution=self.dt_test3)
         for record in self.goods:
             self.assertEqual(record.dt_until, self.dt_test3)
@@ -270,7 +270,7 @@ class TestAggregate(WmsTestCase):
             record.update(state='present', properties=props)
 
         agg = self.plan_aggregate()
-        self.assertEqual(agg.working_on, self.goods)
+        self.assertEqual(agg.inputs, self.goods)
 
         agg.execute()
         agg.obliviate()
@@ -278,7 +278,7 @@ class TestAggregate(WmsTestCase):
 
     def test_cancel(self):
         agg = self.plan_aggregate()
-        self.assertEqual(agg.working_on, self.goods)
+        self.assertEqual(agg.inputs, self.goods)
 
         agg.cancel()
         self.assertEqual(self.Agg.query().count(), 0)
@@ -289,7 +289,7 @@ class TestAggregate(WmsTestCase):
     def test_reversibility(self):
         for record in self.goods:
             record.state = 'present'
-        agg = self.Agg.create(working_on=self.goods, state='done')
+        agg = self.Agg.create(inputs=self.goods, state='done')
 
         self.assertTrue(agg.is_reversible())
         gt = self.goods[0].type

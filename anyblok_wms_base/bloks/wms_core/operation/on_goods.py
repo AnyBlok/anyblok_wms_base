@@ -6,17 +6,13 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-"""Mixins for Operations that take some Goods as inputs and operate on them.
-
-In principle, this would apply to all except purely creating operations.
-It's quite possible, if not recommended, to have special Operations inputting
-Goods yet not using these Mixins.
+"""Mixins for Operations that take exactly on Goods record as input.
 """
 
 from anyblok import Declarations
 
 from anyblok_wms_base.exceptions import (
-    OperationGoodsError,
+    OperationInputsError,
     OperationQuantityError,
 )
 
@@ -26,46 +22,41 @@ Wms = Model.Wms
 
 
 @Declarations.register(Mixin)
-class WmsSingleGoodsOperation:
+class WmsSingleInputOperation:
     """Mixin for operations that apply to a single record of Goods."""
 
-    working_on_number = 1
+    inputs_number = 1
 
     @property
-    def goods(self):
-        return self.working_on[0]
+    def input(self):
+        return self.inputs[0]
 
-    @goods.setter
-    def goods(self, goods):
-        self.link_working_on([goods], clear=True)
+    @input.setter
+    def input(self, goods):
+        self.link_inputs([goods], clear=True)
 
     def check_execute_conditions(self):
-        goods = self.goods
+        super(WmsSingleInputOperation, self).check_execute_conditions()
+        # TODO this should move to splitter, WmsSingleInputOperation
+        # is not quantity-aware anymore
+        goods = self.input
         if self.quantity > goods.quantity:
             raise OperationQuantityError(
                 self,
-                "Can't execute {op} with quantity {op.qty} on goods {goods} "
-                "(which have quantity={goods.quantity}), "
+                "Can't execute {op}, whose quantity {op.quantity} is greater "
+                "than on its input {goods}, "
                 "although it's been successfully planned.",
-                op=self, goods=self.goods)
-
-        if goods.state != 'present':
-            raise OperationGoodsError(
-                self,
-                "Can't execute for goods {goods} "
-                "because their state {state} is not 'present'",
-                goods=goods,
-                state=goods.state)
+                op=self, goods=self.input)
 
     @classmethod
-    def create(cls, goods=None, working_on=None, **kwargs):
-        if goods is not None and working_on is not None:
-            raise OperationGoodsError(
+    def create(cls, input=None, inputs=None, **kwargs):
+        if input is not None and inputs is not None:
+            raise OperationInputsError(
                 cls,
-                "You must choose between the 'goods' and the 'working_on' "
-                "kwargs (got goods={goods}, working_on={working_on}",
-                goods=goods, working_on=working_on)
-        if goods is not None:
-            working_on = (goods, )
-        return super(WmsSingleGoodsOperation, cls).create(
-            working_on=working_on, **kwargs)
+                "You must choose between the 'input' and the 'inputs' "
+                "kwargs (got input={input}, inputs={inputs}",
+                input=input, inputs=inputs)
+        if input is not None:
+            inputs = (input, )
+        return super(WmsSingleInputOperation, cls).create(
+            inputs=inputs, **kwargs)

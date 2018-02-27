@@ -52,7 +52,7 @@ class Arrival(Operation):
     location = Many2One(model='Model.Wms.Location')
     quantity = Decimal(label="Quantity")
 
-    working_on_number = 0
+    inputs_number = 0
     """This Operation is a purely creative one."""
 
     @classmethod

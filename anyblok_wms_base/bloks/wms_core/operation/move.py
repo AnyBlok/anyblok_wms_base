@@ -31,11 +31,11 @@ class Move(SingleGoodsSplitter, Operation):
                            nullable=False)
 
     def specific_repr(self):
-        return ("goods={self.goods!r}, "
+        return ("input={self.input!r}, "
                 "destination={self.destination!r}").format(self=self)
 
     def after_insert(self):
-        state, to_move, dt_exec = self.state, self.goods, self.dt_execution
+        state, to_move, dt_exec = self.state, self.input, self.dt_execution
 
         self.registry.Wms.Goods.insert(
             location=self.destination,
@@ -61,10 +61,10 @@ class Move(SingleGoodsSplitter, Operation):
         after_move.update(state='present', dt_from=dt_execution)
         self.registry.flush()
 
-        self.goods.update(state='past', reason=self, dt_until=dt_execution)
+        self.input.update(state='past', reason=self, dt_until=dt_execution)
 
     def cancel_single(self):
-        self.reset_goods_original_values()
+        self.reset_inputs_original_values()
         self.registry.flush()
         Goods = self.registry.Wms.Goods
         Goods.query().filter(Goods.reason == self).delete(
@@ -74,7 +74,7 @@ class Move(SingleGoodsSplitter, Operation):
         """Restore the moved Goods.
         """
         self.outcomes[0].delete()
-        self.reset_goods_original_values(state='present')
+        self.reset_inputs_original_values(state='present')
         self.registry.flush()
 
     def is_reversible(self):
@@ -98,8 +98,8 @@ class Move(SingleGoodsSplitter, Operation):
         # TODO introduce an outcome() generic API for all operations ?
         goods = Goods.query().filter(Goods.reason == reason,
                                      Goods.quantity > 0).one()
-        return self.create(goods=goods,
+        return self.create(input=goods,
                            quantity=self.quantity,
-                           destination=self.goods.location,
+                           destination=self.input.location,
                            dt_execution=dt_execution,
                            state='planned')

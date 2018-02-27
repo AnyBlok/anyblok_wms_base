@@ -51,10 +51,10 @@ class TestDeparture(WmsTestCase):
         dep = self.Departure.create(quantity=3,
                                     state='planned',
                                     dt_execution=self.dt_test2,
-                                    goods=self.goods)
+                                    input=self.goods)
 
         self.assertEqual(dep.follows, [self.arrival])
-        self.assertEqual(dep.goods, self.goods)
+        self.assertEqual(dep.input, self.goods)
         self.assertEqual(self.goods.dt_until, self.dt_test2)
 
         self.goods.state = 'present'
@@ -81,7 +81,7 @@ class TestDeparture(WmsTestCase):
         dep = self.Departure.create(quantity=3,
                                     state='planned',
                                     dt_execution=self.dt_test2,
-                                    goods=self.goods)
+                                    input=self.goods)
         dep.execute()
         dep.obliviate()
 
@@ -97,7 +97,7 @@ class TestDeparture(WmsTestCase):
         dep = self.Departure.create(quantity=3,
                                     state='planned',
                                     dt_execution=self.dt_test2,
-                                    goods=self.goods)
+                                    input=self.goods)
         dep.cancel()
 
         new_goods = self.single_result(self.Goods.query())
@@ -112,10 +112,10 @@ class TestDeparture(WmsTestCase):
         dep = self.Departure.create(quantity=3,
                                     state='done',
                                     dt_execution=self.dt_test2,
-                                    goods=self.goods)
+                                    input=self.goods)
 
         self.assertEqual(dep.follows, [self.arrival])
-        self.assertEqual(dep.goods, self.goods)
+        self.assertEqual(dep.input, self.goods)
         self.assertQuantities(future=(0, self.dt_test2),
                               present=0,
                               past=(3, self.dt_test1))
@@ -128,7 +128,7 @@ class TestDeparture(WmsTestCase):
         dep = self.Departure.create(quantity=3,
                                     state='done',
                                     dt_execution=self.dt_test2,
-                                    goods=self.goods)
+                                    input=self.goods)
         dep.obliviate()
         new_goods = self.single_result(self.Goods.query())
         self.assertEqual(new_goods.state, 'present')
@@ -141,7 +141,7 @@ class TestDeparture(WmsTestCase):
         dep = self.Departure.create(quantity=1,
                                     state='done',
                                     dt_execution=self.dt_test2,
-                                    goods=self.goods)
+                                    input=self.goods)
 
         self.assertEqual(dep.follows.type, ['wms_split'])
         self.assertEqual(dep.follows[0].follows, [self.arrival])
@@ -165,7 +165,7 @@ class TestDeparture(WmsTestCase):
         dep = self.Departure.create(quantity=1,
                                     state='planned',
                                     dt_execution=self.dt_test2,
-                                    goods=self.goods)
+                                    input=self.goods)
 
         self.assertEqual(dep.follows.type, ['wms_split'])
         self.assertEqual(dep.follows[0].follows, [self.arrival])
@@ -194,6 +194,6 @@ class TestDeparture(WmsTestCase):
         dep = self.Departure.create(quantity=3,
                                     state='planned',
                                     dt_execution=self.dt_test2,
-                                    goods=self.goods)
+                                    input=self.goods)
         repr(dep)
         str(dep)

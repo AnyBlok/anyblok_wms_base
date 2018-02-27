@@ -21,7 +21,7 @@ Mixin = Declarations.Mixin
 
 
 @Declarations.register(Mixin)
-class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleGoodsOperation):
+class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleInputOperation):
     """Mixin for operations on a single record of Goods that can split.
 
     In case the value of :attr:`quantity` is less than in the Goods record,
@@ -54,18 +54,18 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleGoodsOperation):
             )
 
     def specific_repr(self):
-        return ("goods={self.goods!r}, "
+        return ("input={self.input!r}, "
                 "quantity={self.quantity}").format(self=self)
 
     @classmethod
     def check_create_conditions(cls, state, dt_execution,
-                                working_on=None, quantity=None, **kwargs):
+                                inputs=None, quantity=None, **kwargs):
 
         super(WmsSingleGoodsSplitterOperation, cls).check_create_conditions(
             state, dt_execution,
-            working_on=working_on, quantity=quantity, **kwargs)
+            inputs=inputs, quantity=quantity, **kwargs)
 
-        goods = working_on[0]
+        goods = inputs[0]
         if quantity is None:
             raise OperationMissingQuantityError(
                 cls,
@@ -80,23 +80,23 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleGoodsOperation):
                 goods=goods)
 
     def check_execute_conditions(self):
-        goods = self.goods
+        goods = self.input
         if self.quantity != goods.quantity:
             raise OperationQuantityError(
                 self,
-                "Can't execute planned for a different quantity {qty} "
-                "than held in goods {goods} "
+                "Can't execute planned for a different quantity {quantityy} "
+                "than held in its input {goods} "
                 "(which have quantity={goods.quantity}). "
                 "For lesser quantities, a split should have occured first ",
                 goods=goods, quantity=self.quantity)
         if not self.partial:
-            # if partial, then it's normal that self.goods be in 'future'
+            # if partial, then it's normal that self.input be in 'future'
             # state: the current Operation execution will complete the split
             super(WmsSingleGoodsSplitterOperation,
                   self).check_execute_conditions()
 
     @classmethod
-    def before_insert(cls, state='planned', follows=None, working_on=None,
+    def before_insert(cls, state='planned', follows=None, inputs=None,
                       quantity=None, dt_execution=None, dt_start=None,
                       **kwargs):
         """Override to introduce a Split if needed
@@ -107,13 +107,13 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleGoodsOperation):
         subclasses can implement :meth:`after_insert` as if the quantities were
         matching from the beginning.
         """
-        goods = working_on[0]
+        goods = inputs[0]
         partial = quantity < goods.quantity
         if not partial:
-            return working_on, None
+            return inputs, None
 
         Split = cls.registry.Wms.Operation.Split
-        split = Split.create(goods=goods, quantity=quantity, state=state,
+        split = Split.create(input=goods, quantity=quantity, state=state,
                              dt_execution=dt_execution)
         return [split.wished_outcome], dict(partial=partial)
 

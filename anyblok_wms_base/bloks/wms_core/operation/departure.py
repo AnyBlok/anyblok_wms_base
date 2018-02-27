@@ -41,24 +41,24 @@ class Departure(SingleGoodsSplitter, Operation):
 
     def depart(self):
         """Common logic for final departure step."""
-        self.goods.update(state='past', reason=self, dt_until=self.dt_execution)
+        self.input.update(state='past', reason=self,
+                          dt_until=self.dt_execution)
 
     def after_insert(self):
         """Either finish right away, or represent the future decrease."""
-        self.orig_goods_dt_until = self.goods.dt_until
         self.registry.flush()
         if self.state == 'done':
             self.depart()
         else:
-            self.goods.dt_until = self.dt_execution
+            self.input.dt_until = self.dt_execution
 
     def execute_planned_after_split(self):
         self.registry.flush()
         self.depart()
 
     def cancel_single(self):
-        self.reset_goods_original_values()
+        self.reset_inputs_original_values()
 
     def obliviate_single(self):
-        self.reset_goods_original_values(state='present')
+        self.reset_inputs_original_values(state='present')
         self.registry.flush()

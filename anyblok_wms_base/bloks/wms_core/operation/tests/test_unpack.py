@@ -8,7 +8,7 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 from .testcase import WmsTestCase
 from anyblok_wms_base.exceptions import (
-    OperationGoodsError,
+    OperationInputsError,
 )
 
 
@@ -66,7 +66,7 @@ class TestUnpack(WmsTestCase):
         unp = self.Unpack.create(quantity=5,
                                  state='done',
                                  dt_execution=self.dt_test2,
-                                 goods=self.packs)
+                                 input=self.packs)
         self.assertEqual(unp.follows, [self.arrival])
 
         unpacked_goods = self.Goods.query().filter(
@@ -102,7 +102,7 @@ class TestUnpack(WmsTestCase):
         unp = self.Unpack.create(quantity=5,
                                  state='done',
                                  dt_execution=self.dt_test2,
-                                 goods=self.packs)
+                                 input=self.packs)
         self.assertEqual(unp.follows, [self.arrival])
 
         unpacked_goods_cloned_props = self.Goods.query().filter(
@@ -140,7 +140,7 @@ class TestUnpack(WmsTestCase):
         unp = self.Unpack.create(quantity=5,
                                  state='done',
                                  dt_execution=self.dt_test2,
-                                 goods=self.packs)
+                                 input=self.packs)
         self.assertEqual(unp.follows, [self.arrival])
 
         unpacked_goods = self.Goods.query().filter(
@@ -177,7 +177,7 @@ class TestUnpack(WmsTestCase):
         unp = self.Unpack.create(quantity=5,
                                  state='done',
                                  dt_execution=self.dt_test2,
-                                 goods=self.packs)
+                                 input=self.packs)
         self.assertEqual(unp.follows, [self.arrival])
 
         unpacked_goods = self.Goods.query().filter(
@@ -209,10 +209,10 @@ class TestUnpack(WmsTestCase):
             self.Unpack.create(quantity=5,
                                state='done',
                                dt_execution=self.dt_test2,
-                               goods=self.packs)
+                               input=self.packs)
 
         # No property at all, we fail explicitely
-        with self.assertRaises(OperationGoodsError) as arc:
+        with self.assertRaises(OperationInputsError) as arc:
             unpack()
         str(arc.exception)
         repr(arc.exception)
@@ -225,7 +225,7 @@ class TestUnpack(WmsTestCase):
         self.packs.properties = self.Goods.Properties.insert(
             flexible=dict(bar=1))
 
-        with self.assertRaises(OperationGoodsError) as arc:
+        with self.assertRaises(OperationInputsError) as arc:
             unpack()
         str(arc.exception)
         repr(arc.exception)
@@ -246,7 +246,7 @@ class TestUnpack(WmsTestCase):
         unp = self.Unpack.create(quantity=5,
                                  state='done',
                                  dt_execution=self.dt_test2,
-                                 goods=self.packs)
+                                 input=self.packs)
         self.assertEqual(unp.follows, [self.arrival])
 
         unpacked_goods = self.Goods.query().filter(
@@ -279,7 +279,7 @@ class TestUnpack(WmsTestCase):
         unp = self.Unpack.create(quantity=5,
                                  state='planned',
                                  dt_execution=self.dt_test2,
-                                 goods=self.packs)
+                                 input=self.packs)
         self.assertEqual(unp.follows, [self.arrival])
 
         unpacked_goods = self.Goods.query().filter(
@@ -336,7 +336,7 @@ class TestUnpack(WmsTestCase):
         unp = self.Unpack.create(quantity=4,
                                  state='planned',
                                  dt_execution=self.dt_test2,
-                                 goods=self.packs)
+                                 input=self.packs)
         self.assertEqual(unp.follows[0].type, 'wms_split')
         self.assertEqual(unp.partial, True)
 
@@ -394,7 +394,7 @@ class TestUnpack(WmsTestCase):
         unp = self.Unpack.create(quantity=4,
                                  state='planned',
                                  dt_execution=self.dt_test2,
-                                 goods=self.packs)
+                                 input=self.packs)
         self.assertEqual(unp.follows[0].type, 'wms_split')
         self.assertEqual(unp.partial, True)
 
@@ -415,11 +415,11 @@ class TestUnpack(WmsTestCase):
             type_behaviours=dict(unpack=dict(outcomes=[])),
         )
         self.packs.update(state='present')
-        with self.assertRaises(OperationGoodsError) as arc:
+        with self.assertRaises(OperationInputsError) as arc:
             self.Unpack.create(quantity=5,
                                state='done',
                                dt_execution=self.dt_test2,
-                               goods=self.packs)
+                               input=self.packs)
         str(arc.exception)
         repr(arc.exception)
         self.assertEqual(arc.exception.kwargs,
@@ -434,11 +434,11 @@ class TestUnpack(WmsTestCase):
             type_behaviours=dict(other_op=[]),
         )
         self.packs.update(state='present')
-        with self.assertRaises(OperationGoodsError) as arc:
+        with self.assertRaises(OperationInputsError) as arc:
             self.Unpack.create(quantity=5,
                                state='done',
                                dt_execution=self.dt_test2,
-                               goods=self.packs)
+                               input=self.packs)
         str(arc.exception)
         repr(arc.exception)
         self.assertEqual(arc.exception.kwargs,
@@ -457,7 +457,7 @@ class TestUnpack(WmsTestCase):
                 ]),
             ),
             properties={})
-        unp = self.Unpack.create(quantity=5, state='planned', goods=self.packs,
+        unp = self.Unpack.create(quantity=5, state='planned', input=self.packs,
                                  dt_execution=self.dt_test2)
         repr(unp)
         str(unp)

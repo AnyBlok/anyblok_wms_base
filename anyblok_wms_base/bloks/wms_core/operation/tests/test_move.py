@@ -9,8 +9,8 @@
 from .testcase import WmsTestCase
 from anyblok_wms_base.exceptions import (
     OperationError,
-    OperationGoodsError,
-    OperationMissingGoodsError,
+    OperationInputsError,
+    OperationMissingInputsError,
     OperationQuantityError,
     OperationMissingQuantityError,
 )
@@ -57,9 +57,9 @@ class TestMove(WmsTestCase):
                                 quantity=3,
                                 state='planned',
                                 dt_execution=self.dt_test2,
-                                goods=self.goods)
+                                input=self.goods)
         self.assertEqual(move.follows, [self.arrival])
-        self.assertEqual(move.goods, self.goods)
+        self.assertEqual(move.input, self.goods)
         self.goods.update(state='present')
 
         move.execute()
@@ -82,7 +82,7 @@ class TestMove(WmsTestCase):
                                 quantity=3,
                                 state='done',
                                 dt_execution=self.dt_test2,
-                                goods=self.goods)
+                                input=self.goods)
         self.assertEqual(move.follows, [self.arrival])
 
         after_move = move.outcomes[0]
@@ -91,7 +91,7 @@ class TestMove(WmsTestCase):
         self.assertEqual(after_move.state, 'present')
         self.assertEqual(after_move.reason, move)
 
-        not_moved = move.goods
+        not_moved = move.input
         self.assertEqual(not_moved.state, 'past')
 
     def test_whole_done_obliviate(self):
@@ -99,7 +99,7 @@ class TestMove(WmsTestCase):
         move = self.Move.create(destination=self.stock,
                                 quantity=3,
                                 state='done',
-                                goods=self.goods)  # result already tested
+                                input=self.goods)  # result already tested
         move.obliviate()
         self.assertBackToBeginning()
 
@@ -108,7 +108,7 @@ class TestMove(WmsTestCase):
                                 quantity=3,
                                 dt_execution=self.dt_test2,
                                 state='planned',
-                                goods=self.goods)
+                                input=self.goods)
         self.goods.update(state='present')
         move.execute()  # result already tested
         move.obliviate()
@@ -120,7 +120,7 @@ class TestMove(WmsTestCase):
                                 quantity=1,
                                 state='done',
                                 dt_execution=self.dt_test2,
-                                goods=self.goods)
+                                input=self.goods)
         split = self.assert_singleton(move.follows)
         self.assertEqual(split.type, 'wms_split')
 
@@ -145,7 +145,7 @@ class TestMove(WmsTestCase):
                                 quantity=1,
                                 state='planned',
                                 dt_execution=self.dt_test2,
-                                goods=self.goods)
+                                input=self.goods)
         split = self.assert_singleton(move.follows)
         self.assertEqual(split.type, 'wms_split')
 
@@ -173,14 +173,14 @@ class TestMove(WmsTestCase):
         self.assertEqual(after_move.state, 'present')
 
 
-class TestSingleGoodsOperation(WmsTestCase):
+class TestSingleInputOperation(WmsTestCase):
     """Test the WmsSingleGoodOperation mixin
 
     In these test cases, Operation.Move is considered the canonical example of
     the mixin.
     """
     def setUp(self):
-        super(TestSingleGoodsOperation, self).setUp()
+        super(TestSingleInputOperation, self).setUp()
         Wms = self.registry.Wms
         Operation = Wms.Operation
         self.goods_type = Wms.Goods.Type.insert(label="My good type")
@@ -203,8 +203,8 @@ class TestSingleGoodsOperation(WmsTestCase):
         self.Goods = Wms.Goods
         self.op_model_name = 'Model.Wms.Operation.Move'
 
-    def test_create_goods_working_on(self):
-        """Test that in create(), the goods and working_on kwargs work."""
+    def test_create_goods_inputs(self):
+        """Test that in create(), the goods and inputs kwargs work."""
         goods = self.goods
 
         def create(**kwargs):
@@ -212,21 +212,21 @@ class TestSingleGoodsOperation(WmsTestCase):
             return self.Move.create(destination=self.stock, quantity=3,
                                     state='done', **kwargs)
 
-        move = create(goods=goods)
-        self.assertEqual(move.working_on, [goods])
+        move = create(input=goods)
+        self.assertEqual(move.inputs, [goods])
 
-        move = create(working_on=[goods])
-        self.assertEqual(move.working_on, [goods])
+        move = create(inputs=[goods])
+        self.assertEqual(move.inputs, [goods])
 
-        with self.assertRaises(OperationGoodsError) as arc:
-            create(working_on=[goods], goods=goods)
+        with self.assertRaises(OperationInputsError) as arc:
+            create(inputs=[goods], input=goods)
         self.assertEqual(arc.exception.kwargs,
-                         dict(goods=goods, working_on=[goods]))
+                         dict(input=goods, inputs=[goods]))
 
-    def test_goods_attr(self):
+    def test_input_attr(self):
         # TODO should go to test_single_goods
         move = self.Move.create(destination=self.stock, quantity=3,
-                                working_on=[self.goods],
+                                inputs=[self.goods],
                                 state='planned', dt_execution=self.dt_test2)
         other = self.Goods.insert(quantity=2,
                                   type=self.goods_type,
@@ -234,22 +234,23 @@ class TestSingleGoodsOperation(WmsTestCase):
                                   state='future',
                                   dt_from=self.dt_test1,
                                   reason=self.arrival)
-        move.goods = other
-        self.assertEqual(move.goods, other)
-        self.assertEqual(move.working_on, [other])
+        move.input = other
+        self.assertEqual(move.input, other)
+        self.assertEqual(move.inputs, [other])
 
     def test_whole_done_but_not_ready(self):
         # TODO should go to test_operation
         self.assertEqual(self.goods.state, 'future')
-        with self.assertRaises(OperationGoodsError) as arc:
+        with self.assertRaises(OperationInputsError) as arc:
             self.Move.create(destination=self.stock,
                              quantity=3,
                              dt_execution=self.dt_test2,
                              state='done',
-                             goods=self.goods)
+                             input=self.goods)
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
-        self.assertEqual(exc.kwargs.get('goods')[0], self.goods)
+        self.assertEqual(exc.kwargs.get('record'), self.goods)
+        self.assertEqual(list(exc.kwargs.get('goods')), [self.goods])
 
     def test_missing_quantity(self):
         # TODO should go to test_splitter
@@ -258,14 +259,14 @@ class TestSingleGoodsOperation(WmsTestCase):
             self.Move.create(destination=self.stock,
                              dt_execution=self.dt_test2,
                              state='done',
-                             goods=self.goods)
+                             input=self.goods)
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
 
     def test_missing_goods(self):
         # TODO should go to test_operation
         self.goods.state = 'present'
-        with self.assertRaises(OperationMissingGoodsError) as arc:
+        with self.assertRaises(OperationMissingInputsError) as arc:
             self.Move.create(destination=self.stock,
                              dt_execution=self.dt_test2,
                              state='done',
@@ -281,7 +282,7 @@ class TestSingleGoodsOperation(WmsTestCase):
                              dt_execution=self.dt_test2,
                              quantity=7,
                              state='done',
-                             goods=self.goods)
+                             input=self.goods)
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
         self.assertEqual(exc.kwargs.get('quantity'), 7)
@@ -293,14 +294,15 @@ class TestSingleGoodsOperation(WmsTestCase):
                                 quantity=3,
                                 dt_execution=self.dt_test2,
                                 state='planned',
-                                goods=self.goods)
+                                input=self.goods)
         self.assertEqual(move.follows, [self.arrival])
-        self.assertEqual(move.goods, self.goods)
-        with self.assertRaises(OperationGoodsError) as arc:
+        self.assertEqual(move.input, self.goods)
+        with self.assertRaises(OperationInputsError) as arc:
             move.execute()
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
-        self.assertEqual(exc.kwargs.get('goods'), self.goods)
+        self.assertEqual(list(exc.kwargs.get('goods')), [self.goods])
+        self.assertEqual(exc.kwargs.get('record'), self.goods)
 
     def test_create_planned_dt_execution_required(self):
         """SingleGoodsSplitters.create() requires dt_execution."""
@@ -310,7 +312,7 @@ class TestSingleGoodsOperation(WmsTestCase):
             self.Move.create(destination=self.stock,
                              quantity=3,
                              state='planned',
-                             goods=self.goods)
+                             input=self.goods)
 
     def test_quantity_changed_no_split(self):
         """SingleGoodsSplitters demand exact quantity (no split)"""
@@ -319,9 +321,9 @@ class TestSingleGoodsOperation(WmsTestCase):
                                 quantity=3,
                                 dt_execution=self.dt_test2,
                                 state='planned',
-                                goods=self.goods)
+                                input=self.goods)
         self.assertEqual(move.follows, [self.arrival])
-        self.assertEqual(move.goods, self.goods)
+        self.assertEqual(move.input, self.goods)
         self.goods.state = 'present'
         self.goods.quantity = 2
         self.registry.flush()
@@ -343,9 +345,9 @@ class TestSingleGoodsOperation(WmsTestCase):
                                 quantity=2,
                                 dt_execution=self.dt_test2,
                                 state='planned',
-                                goods=self.goods)
-        self.assertNotEqual(move.goods, self.goods)
-        move.goods.quantity = 3
+                                input=self.goods)
+        self.assertNotEqual(move.input, self.goods)
+        move.input.quantity = 3
 
         self.goods.state = 'present'
         self.registry.flush()
@@ -353,7 +355,7 @@ class TestSingleGoodsOperation(WmsTestCase):
             move.execute()
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
-        self.assertEqual(exc.kwargs.get('goods'), move.goods)
+        self.assertEqual(exc.kwargs.get('goods'), move.input)
 
     def test_quantity_too_big_split(self):
         # TODO should go to test_splitter
@@ -361,15 +363,17 @@ class TestSingleGoodsOperation(WmsTestCase):
                                 quantity=2,
                                 dt_execution=self.dt_test2,
                                 state='planned',
-                                goods=self.goods)
+                                input=self.goods)
         self.assertEqual(len(move.follows), 1)
         split = move.follows[0]
-        self.assertEqual(split.goods, self.goods)
-        self.goods.quantity = 1
+        self.assertEqual(split.input, self.goods)
+        self.goods.update(quantity=1, state='present')
 
         with self.assertRaises(OperationQuantityError) as arc:
             split.execute()
         exc = arc.exception
+        str(exc)
+        repr(exc)
         self.assertEqual(exc.model_name, 'Model.Wms.Operation.Split')
         self.assertEqual(exc.kwargs.get('goods'), self.goods)
 
@@ -378,6 +382,6 @@ class TestSingleGoodsOperation(WmsTestCase):
                                 quantity=3,
                                 state='planned',
                                 dt_execution=self.dt_test1,
-                                goods=self.goods)
+                                input=self.goods)
         repr(move)
         str(move)

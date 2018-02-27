@@ -31,22 +31,19 @@ class OperationCreateArgFollows(OperationError):
             create_kw=create_kw)
 
 
-class OperationGoodsError(OperationError):
-    """Used for operations that take Goods records as input.
-
-    Note that creation operations do not belong to that category.
-    """
+class OperationInputsError(OperationError):
+    """Used in Operations for errors about their inputs."""
 
 
-class OperationMissingGoodsError(OperationGoodsError):
-    """Used if the Goods the operation is about are required yet not passed."""
+class OperationMissingInputsError(OperationInputsError):
+    """Used in Operation creation if inputs aren't passed."""
 
 
-class OperationQuantityError(OperationGoodsError):
+class OperationQuantityError(OperationInputsError):
     """Used if an operation has an issue with some quantity."""
 
 
-class OperationMissingQuantityError(OperationGoodsError):
+class OperationMissingQuantityError(OperationInputsError):
     """Used if the operation requires some quantity that's not passed."""
 
 

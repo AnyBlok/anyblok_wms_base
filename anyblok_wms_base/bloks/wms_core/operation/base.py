@@ -22,8 +22,8 @@ from anyblok_wms_base.utils import NonZero
 from anyblok_wms_base.constants import OPERATION_STATES, OPERATION_TYPES
 from anyblok_wms_base.exceptions import (
     OperationCreateArgFollows,
-    OperationMissingGoodsError,
-    OperationGoodsError,
+    OperationMissingInputsError,
+    OperationInputsError,
     OperationError,
     OperationIrreversibleError,
     )
@@ -94,15 +94,17 @@ class Operation:
               be simply removed.
     """
 
-    working_on = Many2Many(model='Model.Wms.Goods',
-                           # TODO this should be the same table as
-                           # WorkingOn model
-                           join_table='tmp_wms_operation_workingon',
-                           m2m_remote_columns='goods_id',
-                           m2m_local_columns='acting_op_id',
-                           label="Goods record to apply the operation to")
+    inputs = Many2Many(model='Model.Wms.Goods',
+                       # TODO this should be the same table as
+                       # WorkingOn model
+                       join_table='tmp_wms_operation_workingon',
+                       m2m_remote_columns='goods_id',
+                       m2m_local_columns='acting_op_id',
+                       label="Goods record to apply the operation to")
 
     follows = Many2Many(model='Model.Wms.Operation',
+                        # TODO this should be the same table as
+                        # WorkingOn model
                         m2m_remote_columns='parent_id',
                         m2m_local_columns='child_id',
                         join_table='wms_operation_history',
@@ -180,11 +182,11 @@ class Operation:
     field ``dt_execution`` is.
     """
 
-    working_on_number = NONZERO
+    inputs_number = NONZERO
     """Number of Goods record the operation is meant to :attr:`work on <goods>`
 
     This can be set by subclasses to impose a fixed number, as in
-    :attr:`working_on_number <.on_goods.WmsSingleGoodsOperation>`
+    :attr:`inputs_number <.on_goods.WmsSingleGoodsOperation>`
 
     In particular, purely creative subclasses must set this to 0
     """
@@ -217,23 +219,23 @@ class Operation:
         if follows is not None:
             raise OperationCreateArgFollows(cls, kwargs)
 
-    def link_working_on(self, working_on=None, clear=False, **fields):
+    def link_inputs(self, inputs=None, clear=False, **fields):
         WO = self.registry.Wms.Operation.WorkingOn
         if clear:
             # TODO while the enriched m2m pattern doesn't work readily
-            self.working_on.clear()
+            self.inputs.clear()
             WO.query().filter(WO.acting_op == self).delete(
                 synchronize_session='fetch')
-        for record in working_on:
+        for record in inputs:
             WO.insert(goods=record,
                       acting_op=self,
                       orig_reason=record.reason,
                       orig_dt_until=record.dt_until)
         # TODO while the enriched m2m pattern doesn't work readily
-        self.working_on.extend(working_on)
+        self.inputs.extend(inputs)
 
     @classmethod
-    def create(cls, state='planned', follows=None, working_on=None,
+    def create(cls, state='planned', follows=None, inputs=None,
                dt_execution=None, dt_start=None, **fields):
         """Main method for creation of operations
 
@@ -289,25 +291,25 @@ class Operation:
                     "it's supposed to be done).",
                     state=state)
         cls.check_create_conditions(
-            state, dt_execution, working_on=working_on, **fields)
-        working_on, fields_upd = cls.before_insert(state=state,
-                                                   working_on=working_on,
-                                                   dt_execution=dt_execution,
-                                                   dt_start=dt_start,
-                                                   **fields)
+            state, dt_execution, inputs=inputs, **fields)
+        inputs, fields_upd = cls.before_insert(state=state,
+                                               inputs=inputs,
+                                               dt_execution=dt_execution,
+                                               dt_start=dt_start,
+                                               **fields)
         if fields_upd is not None:
             fields.update(fields_upd)
-        follows = cls.find_parent_operations(working_on=working_on, **fields)
+        follows = cls.find_parent_operations(inputs=inputs, **fields)
         op = cls.insert(state=state, dt_execution=dt_execution, **fields)
         op.follows.extend(follows)
-        if working_on is not None:  # happens with creative Operations
-            op.link_working_on(working_on)
+        if inputs is not None:  # happens with creative Operations
+            op.link_inputs(inputs)
         op.after_insert()
         return op
 
     @classmethod
-    def before_insert(cls, working_on=None, **fields):
-        return working_on, None
+    def before_insert(cls, inputs=None, **fields):
+        return inputs, None
 
     def execute(self, dt_execution=None):
         """Execute the operation.
@@ -482,8 +484,8 @@ class Operation:
         self.delete()
         logger.info("Obliviated operation %r", self)
 
-    def iter_goods_original_values(self):
-        """List incoming goods together with original values kept in WorkingOn.
+    def iter_inputs_original_values(self):
+        """List input goods together with original values kept in WorkingOn.
 
         Depending on the needs, it might be interesting to avoid
         actually fetching all those records.
@@ -497,7 +499,7 @@ class Operation:
                 for wo in WorkingOn.query().filter(
                         WorkingOn.acting_op == self).all())
 
-    def reset_goods_original_values(self, state=None):
+    def reset_inputs_original_values(self, state=None):
         """Reset all input Goods to their original reason and state if passed.
 
         :param state: if not None, will be state on the input Goods
@@ -511,36 +513,36 @@ class Operation:
         TODO: consider generalization to the base class to simplify
         implementation of all Operation subclasses.
         """
-        for goods, reason, dt_until in self.iter_goods_original_values():
+        for goods, reason, dt_until in self.iter_inputs_original_values():
             if state is not None:
                 goods.state = state
             goods.update(reason=reason, dt_until=dt_until)
 
     @classmethod
     def check_create_conditions(cls, state, dt_execution,
-                                working_on=None, **kwargs):
-        expected = cls.working_on_number
-        if not working_on and (isinstance(expected, NonZero) or expected):
-            raise OperationMissingGoodsError(
+                                inputs=None, **kwargs):
+        expected = cls.inputs_number
+        if not inputs and (isinstance(expected, NonZero) or expected):
+            raise OperationMissingInputsError(
                 cls,
-                "The 'working_on' keyword argument must be passed to the "
+                "The 'inputs' keyword argument must be passed to the "
                 "create() method, and must not be empty")
 
-        if not isinstance(expected, NonZero) and len(working_on) != expected:
-            raise OperationGoodsError(
+        if not isinstance(expected, NonZero) and len(inputs) != expected:
+            raise OperationInputsError(
                 cls,
                 "Expecting exactly {exp} Goods records, got {nb} of them: "
-                "{goods}", exp=expected, nb=len(working_on), goods=working_on)
+                "{goods}", exp=expected, nb=len(inputs), goods=inputs)
 
         if state == 'done':
-            for record in working_on:
+            for record in inputs:
                 if record.state != 'present':
-                    raise OperationGoodsError(
+                    raise OperationInputsError(
                         cls,
                         "Can't create in state 'done' for goods {goods} "
                         "because one of them (id={record.id}) has state "
                         "{record.state} instead of the expected 'present'",
-                        goods=working_on, record=record)
+                        goods=inputs, record=record)
 
     @property
     def outcomes(self):
@@ -565,10 +567,10 @@ class Operation:
                                     Goods.state != 'past').all()
 
     @classmethod
-    def find_parent_operations(cls, working_on=None, **kwargs):
+    def find_parent_operations(cls, inputs=None, **kwargs):
         """Return the list or tuple of operations that this one follows
         """
-        return set(g.reason for g in working_on)
+        return set(g.reason for g in inputs)
 
     def after_insert(self):
         """Perform specific logic after insert during creation process
@@ -583,14 +585,14 @@ class Operation:
         To be implemented in subclasses, by raising an exception if something's
         wrong.
         """
-        for record in self.working_on:
+        for record in self.inputs:
             if record.state != 'present':
-                raise OperationGoodsError(
+                raise OperationInputsError(
                     self,
                     "Can't execute {op} for goods {goods} "
                     "because one of them (id={record.id}) has state "
                     "{record.state} instead of the expected 'present'",
-                    goods=self.working_on, record=record)
+                    op=self, goods=self.inputs, record=record)
 
     def execute_planned(self):
         """Execute an operation that has been up to now in the 'planned' state.

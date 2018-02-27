@@ -11,7 +11,7 @@ from datetime import timedelta
 from .testcase import WmsTestCase
 from anyblok_wms_base.exceptions import (
     OperationError,
-    OperationGoodsError,
+    OperationInputsError,
     OperationIrreversibleError,
     )
 
@@ -44,11 +44,11 @@ class TestOperation(WmsTestCase):
                                           quantity=3,
                                           dt_execution=self.dt_test2,
                                           state='planned',
-                                          goods=goods)
+                                          input=goods)
         self.assertEqual(move.follows, [arrival])
         self.assertEqual(arrival.followers, [move])
 
-    def test_len_working_on(self):
+    def test_len_inputs(self):
         arrival = self.Operation.Arrival.insert(goods_type=self.goods_type,
                                                 dt_execution=self.dt_test1,
                                                 location=self.incoming_loc,
@@ -62,13 +62,13 @@ class TestOperation(WmsTestCase):
                                    reason=arrival)
                  for qty in (1, 2)]
 
-        with self.assertRaises(OperationGoodsError) as arc:
-            self.Operation.Departure.create(working_on=goods,
+        with self.assertRaises(OperationInputsError) as arc:
+            self.Operation.Departure.create(inputs=goods,
                                             state='planned',
                                             dt_execution=self.dt_test2)
         self.assertEqual(arc.exception.kwargs.get('nb'), 2)
 
-    def test_link_working_on(self):
+    def test_link_inputs(self):
         arrival = self.Operation.Arrival.insert(goods_type=self.goods_type,
                                                 dt_execution=self.dt_test1,
                                                 location=self.incoming_loc,
@@ -88,14 +88,14 @@ class TestOperation(WmsTestCase):
         op = self.Operation.insert(state='done',
                                    dt_execution=self.dt_test3,
                                    type='wms_move')
-        op.link_working_on(working_on=goods[:1])
-        self.assertEqual(op.working_on, goods[:1])
+        op.link_inputs(inputs=goods[:1])
+        self.assertEqual(op.inputs, goods[:1])
         wo = self.single_result(WO.query().filter(WO.acting_op == op))
         self.assertEqual(wo.orig_dt_until, self.dt_test1)
         self.assertEqual(wo.orig_reason, arrival)
 
-        op.link_working_on(working_on=goods[1:2])
-        self.assertEqual(op.working_on, goods[:2])
+        op.link_inputs(inputs=goods[1:2])
+        self.assertEqual(op.inputs, goods[:2])
         wos = WO.query().filter(WO.acting_op == op).order_by(
             WO.orig_dt_until).all()
         self.assertEqual(len(wos), 2)
@@ -103,8 +103,8 @@ class TestOperation(WmsTestCase):
         self.assertEqual(wos[1].orig_dt_until, self.dt_test2)
         self.assertEqual(wos[1].orig_reason, arrival)
 
-        op.link_working_on(working_on=goods[2:], clear=True)
-        self.assertEqual(op.working_on, goods[2:])
+        op.link_inputs(inputs=goods[2:], clear=True)
+        self.assertEqual(op.inputs, goods[2:])
         wo = self.single_result(WO.query().filter(WO.acting_op == op))
         self.assertEqual(wo.orig_dt_until, self.dt_test3)
         self.assertEqual(wo.orig_reason, arrival)
@@ -141,19 +141,19 @@ class TestOperation(WmsTestCase):
                                                 quantity=3)
         goods = self.Goods.query().filter(self.Goods.reason == arrival).one()
         Move = self.Operation.Move
-        Move.create(goods=goods,
+        Move.create(input=goods,
                     quantity=1,
                     dt_execution=self.dt_test2,
                     destination=self.stock,
                     state='planned')
-        move2 = Move.create(goods=goods,
+        move2 = Move.create(input=goods,
                             quantity=2,
                             dt_execution=self.dt_test2,
                             destination=self.stock,
                             state='planned')
         self.registry.flush()
         goods2 = self.Goods.query().filter(self.Goods.reason == move2).one()
-        self.Operation.Departure.create(goods=goods2,
+        self.Operation.Departure.create(input=goods2,
                                         quantity=2,
                                         dt_execution=self.dt_test3,
                                         state='planned')
@@ -175,12 +175,12 @@ class TestOperation(WmsTestCase):
         Move = self.Operation.Move
 
         # full moves don't generate splits, that's why the history is linear
-        move1 = Move.create(goods=goods,
+        move1 = Move.create(input=goods,
                             quantity=3,
                             dt_execution=self.dt_test2,
                             destination=self.stock,
                             state='done')
-        move2 = Move.create(goods=self.assert_singleton(move1.outcomes),
+        move2 = Move.create(input=self.assert_singleton(move1.outcomes),
                             quantity=3,
                             dt_execution=self.dt_test3,
                             destination=workshop,
@@ -217,7 +217,7 @@ class TestOperation(WmsTestCase):
 
         goods = self.Goods.query().filter(self.Goods.reason == arrival).one()
 
-        move = self.Operation.Move.create(goods=goods,
+        move = self.Operation.Move.create(input=goods,
                                           quantity=3,
                                           dt_execution=self.dt_test2,
                                           destination=self.stock,
@@ -234,14 +234,14 @@ class TestOperation(WmsTestCase):
 
         goods = self.Goods.query().filter(self.Goods.reason == arrival).one()
 
-        move = self.Operation.Move.create(goods=goods,
+        move = self.Operation.Move.create(input=goods,
                                           quantity=2,
                                           destination=self.stock,
                                           dt_execution=self.dt_test2,
                                           state='done')
 
         outgoing = self.Goods.query().filter(self.Goods.reason == move).one()
-        departure = self.Operation.Departure.create(goods=outgoing,
+        departure = self.Operation.Departure.create(input=outgoing,
                                                     quantity=2,
                                                     dt_execution=self.dt_test3,
                                                     state='done')
@@ -274,12 +274,12 @@ class TestOperation(WmsTestCase):
         Move = self.Operation.Move
 
         # full moves don't generate splits, that's why the history is linear
-        move1 = Move.create(goods=goods,
+        move1 = Move.create(input=goods,
                             quantity=3,
                             dt_execution=self.dt_test2,
                             destination=self.stock,
                             state='done')
-        Move.create(goods=self.assert_singleton(move1.outcomes),
+        Move.create(input=self.assert_singleton(move1.outcomes),
                     quantity=3,
                     dt_execution=self.dt_test3,
                     destination=workshop,
