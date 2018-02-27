@@ -79,6 +79,14 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleInputOperation):
                 op_quantity=quantity, input=goods)
 
     def check_execute_conditions(self):
+        """Check that the quantity (after possible Split) is as on the input.
+
+        If a Split has been inserted, then this calls the base class
+        for the input of the Split, instead of ``self``, because the input of
+        ``self`` is in that case the outcome of the Split, and it's normal
+        that it's in state ``future``: the Split will be executed during
+        ``self.execute()``, which comes once the present method has agreed.
+        """
         goods = self.input
         if self.quantity != goods.quantity:
             raise OperationQuantityError(
@@ -87,9 +95,9 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleInputOperation):
                 "than held in its input {input} "
                 "(which have quantity={goods.quantity}). "
                 "If it's less, a Split should have occured first ")
-        if not self.partial:
-            # if partial, then it's normal that self.input be in 'future'
-            # state: the current Operation execution will complete the split
+        if self.partial:
+            self.input.reason.check_execute_conditions()
+        else:
             super(WmsSingleGoodsSplitterOperation,
                   self).check_execute_conditions()
 

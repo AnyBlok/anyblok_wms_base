@@ -13,7 +13,6 @@ from anyblok import Declarations
 
 from anyblok_wms_base.exceptions import (
     OperationError,
-    OperationQuantityError,
 )
 
 Mixin = Declarations.Mixin
@@ -23,32 +22,30 @@ Wms = Model.Wms
 
 @Declarations.register(Mixin)
 class WmsSingleInputOperation:
-    """Mixin for operations that apply to a single record of Goods."""
+    """Mixin for Operations that apply to a single record of Goods.
+
+    This is synctactical sugar, allowing to work with such Operations as if
+    Operations weren't meant in general for multiple inputs.
+    """
 
     inputs_number = 1
+    """Tell the base class that, indeed, we expect a single input."""
 
     @property
     def input(self):
+        """Convenience attribute to refer to the single element of ``inputs``.
+        """
         inps = self.inputs
         if not inps:  # can happen as an intermediate deletion step
             return '<unlinked>'
         return inps[0]
 
-    def check_execute_conditions(self):
-        super(WmsSingleInputOperation, self).check_execute_conditions()
-        # TODO this should move to splitter, WmsSingleInputOperation
-        # is not quantity-aware anymore
-        goods = self.input
-        if self.quantity > goods.quantity:
-            raise OperationQuantityError(
-                self,
-                "Can't execute {op}, whose quantity {op.quantity} is greater "
-                "than on its input {goods}, "
-                "although it's been successfully planned.",
-                op=self, goods=self.input)
-
     @classmethod
     def create(cls, input=None, inputs=None, **kwargs):
+        """Accept the alternative ``input`` arg and call back the base class.
+
+        This override is for convenience in a case of a single input.
+        """
         if input is not None and inputs is not None:
             # not an OperationInputsError, because it's not about the
             # contents of the inputs (one could say they aren't really known

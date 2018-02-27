@@ -13,6 +13,7 @@ from anyblok.column import Decimal
 
 from anyblok_wms_base.exceptions import (
     OperationError,
+    OperationQuantityError,
 )
 
 register = Declarations.register
@@ -120,6 +121,19 @@ class Split(SingleInput, Operation):
         if outcome is None:
             raise OperationError(self, "The split outcomes have disappeared")
         return outcome
+
+    def check_execute_conditions(self):
+        """Call the base class's version and check that quantity is suitable.
+        """
+        super(Split, self).check_execute_conditions()
+        goods = self.input
+        if self.quantity > goods.quantity:
+            raise OperationQuantityError(
+                self,
+                "Can't execute {op}, whose quantity {op.quantity} is greater "
+                "than on its input {goods}, "
+                "although it's been successfully planned.",
+                op=self, goods=self.input)
 
     def execute_planned(self):
         for outcome in self.outcomes:
