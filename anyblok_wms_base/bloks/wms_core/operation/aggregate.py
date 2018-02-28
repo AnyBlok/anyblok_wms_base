@@ -29,8 +29,9 @@ class Aggregate(Operation):
     that have to be considered internal details of wms_core, and are not
     guaranteed to exist in the future.
 
-    Aggregates replace some records of Goods at the same location,
-    sharing equal properties with a single one bearing the total quantity.
+    Aggregates replace some records of Goods
+    sharing equal properties and type, with Avatars at the same location with
+    a single one bearing the total quantity, and a new Avatar.
 
     While non trivial in the database, they may have no physical counterpart in
     the real world. We call them *formal* in that case.
@@ -84,10 +85,11 @@ class Aggregate(Operation):
     @classmethod
     def check_create_conditions(cls, state, dt_execution, inputs=None,
                                 **kwargs):
-        """Check that the Goods to aggregate are indeed indistinguishable.
+        """Check that the inputs to aggregate are indeed indistinguishable.
 
         This performs the check from superclasses, and then compares all
-        fields from :attr:`UNIFORM_FIELDS` in the specified ``goods``.
+        fields from :attr:`UNIFROM_AVATAR_FIELDS` on the inputs (Avatars) and
+        :attr:`UNIFORM_GOODS_FIELDS` (on the underlying Goods).
         """
         super(Aggregate, cls).check_create_conditions(
             state, dt_execution, inputs=inputs, **kwargs)

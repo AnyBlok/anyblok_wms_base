@@ -19,14 +19,20 @@ Splitter = Declarations.Mixin.WmsSplitterOperation
 
 @register(Operation)
 class Unpack(Splitter, Operation):
-    """Unpacking some Goods, creating new Goods records.
+    """Unpacking some goods, creating new Goods and Avatar records.
+
+    This is a destructive Operation, in the usual mild sense: once it's done,
+    the input Goods Avatars is in the ``past`` state, and their underlying Goods
+    have no new Avatars. It is
+    meant to be reversible through appropriate Pack / Assembly Operations,
+    which are not implemented yet at the time being.
 
     What happens during unpacking is specified as behaviours of the
     Goods Type of the Goods being unpacked.
 
-    For the time being, Unpacks will create the new Goods records in the
-    same location. Downstream libraries and applications can prepend moves to
-    unpacking areas, and/or append moves to final destinations.
+    For the time being, Unpacks will create the new Avatar records
+    in the same location. Downstream libraries and applications can prepend
+    moves to unpacking areas, and/or append moves to final destinations.
 
     It's possible that we'd introduce an optional 'destination' column
     in the future, if the current schema is too inconvenient or bloats the

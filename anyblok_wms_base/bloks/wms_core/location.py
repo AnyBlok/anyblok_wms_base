@@ -43,13 +43,13 @@ class Location:
         :param goods_state:
             if not 'present', then ``at_datetime`` is
             mandatory, the query is filtered for this
-            date and time, and the query includes the Goods
+            date and time, and the query includes the Goods Avatars
             with state == 'present' anyway.
 
             #TODO renaming as ``with_state`` or similar would be clearer.
 
             Hence, for ``goods_state='past'``, we have the
-            Goods that were already there and still are,
+            Goods Avatars that were already there and still are,
             as well as those that aren't there any more,
             and similarly for the future.
 

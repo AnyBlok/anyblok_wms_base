@@ -25,9 +25,13 @@ SingleInput = Declarations.Mixin.WmsSingleInputOperation
 class Split(SingleInput, Operation):
     """A split of Goods record in two.
 
-    Splits replace a :class:`Goods <.goods.Goods>` record with two of them,
-    keeping the same properties and location, and the same total
-    quantity.
+    Splits replace their input's :class:`Goods <.goods.Goods>` record with
+    two of them, along with Avatars at the same location,
+    keeping the same properties and the same total quantity.
+
+    This is therefore destructive for the input's Goods, which is not
+    conceptually satisfactory, but will be good enough at this stage of
+    development.
 
     While non trivial in the database, they may have no physical counterpart in
     the real world. We call them *formal* in that case.

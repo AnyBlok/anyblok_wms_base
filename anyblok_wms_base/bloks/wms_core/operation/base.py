@@ -89,9 +89,9 @@ class Operation:
     which themselves have dedicated models. This is implemented with the
     polymorphic features of SQLAlchemy and AnyBlok.
 
-    The main purpose of this separation is to simplify auditing purposes: the
-    Goods model can bear a ``reason`` column, operations can be linked whatever
-    their types are.
+    The main purpose of this separation is to simplify the representation of
+    operational history: Goods Avatars and Operations can be :class:`linked
+    together <HistoryInput>` in full generality.
 
     Downstream applications and libraries can add columns on the present model
     to satisfy their auditing needs (some notion of "user" or "operator" comes

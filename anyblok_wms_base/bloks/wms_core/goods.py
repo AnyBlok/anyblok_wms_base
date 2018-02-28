@@ -327,16 +327,14 @@ class Type:
 class Properties:
     """Properties of Goods.
 
-    This is kept in a separate Model and table for the following reasons:
+    This is kept in a separate Model (and SQL table) to provide sharing
+    among several :class:`Goods` instances, as they can turn out to be
+    identical for a large number of them.
 
-    - properties are typically seldom written, whereas the columns directly
-      present on Goods are often written, and we want these latter writes
-      to be as fast as possible
-    - in some cases, it can useful to share properties across items, either
-      because some sets of properties are in real life indeed identical for
-      large counts of items lines, or to propagate changes to 'future' items
-      into account (TODO this latter example would be obsoleted by
-      :ref:`improvement_avatars`)
+    Use-case: receive a truckload of milk bottles that all have the same
+    expiration date, and unpack everything down to the bottles. The expiration
+    date would be stored in a single Properties instance, assuming there aren't
+    also non-uniform properties to store, of course.
 
     Applications are welcome to overload this model to add new fields rather
     than storing their meaningful information in the :attr:`flexible` field,
@@ -420,16 +418,17 @@ class Properties:
 class Avatar:
     """Goods Avatar.
 
-    An Avatar represents the idea that some Goods are somewhere in a certain
-    state at a certain time, and also point to the latest Operation that's
-    responsible for that.
+    An Avatar represents the idea that some Goods are, should be or were
+    somewhere in a certain state at a certain time, and also point to the latest
+    :class:`Operation anyblok_wms_base.bloks.wms_core.operation.base.Operation`
+    that's responsible for that.
 
     :class:`Operations
     <anyblok_wms_base.bloks.wms_core.operation.base.Operation>` work
-    on Avatars.
+    primarily on Avatars, but can also affect the underlying :class:`Goods`.
 
-    A contrario, a reservation system needs to reserve physical objects, and
-    only restrict where they can go or how they can change.
+    A contrario, a reservation system needs to reserve physical objects
+    (:class:`Goods` instances) instead  of Avatars whose instances are volatile.
     """
 
     id = Integer(label="Identifier", primary_key=True)

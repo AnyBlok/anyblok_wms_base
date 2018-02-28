@@ -124,7 +124,7 @@ Mixin.WmsSplitterOperation: splitting, then working on a single Goods Record
 .. note:: will maybe be moved to another Blok or even Python project
           (see also :ref:`improvement_no_quantities`)
 
-This one inherits from :class:`WmsSingleGoodsOperation <anyblok_wmss_base.bloks.wms_core.operation.on_goods.WmsSingleGoodsOperation>`
+This one inherits from :class:`WmsSingleInputOperation <anyblok_wmss_base.bloks.wms_core.operation.single_input.WmsSingleInputOperation>`
 
 .. autoclass:: anyblok_wms_base.bloks.wms_core.operation.splitter.WmsSplitterOperation
 

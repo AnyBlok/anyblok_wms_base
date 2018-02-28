@@ -22,13 +22,18 @@ Mixin = Declarations.Mixin
 
 @Declarations.register(Mixin)
 class WmsSplitterOperation(Mixin.WmsSingleInputOperation):
-    """Mixin for operations on a single record of Goods that can split.
+    """Mixin for operations on a single input that can split.
 
-    In case the value of :attr:`quantity` is less than in the Goods record,
-    a :class:`Split <.split.Split>` will be inserted properly in history.
+    It defines the :attr:`quantity` field to express that the Operation only
+    works on some of the quantity held by the Goods of the single input.
 
-    Subclasses can use :attr:`partial` if they need to know if that happened,
-    but this should be useful only in very special cases.
+    In case the Operation's :attr:`quantity` is less than in the Goods record,
+    a :class:`Split <.split.Split>` will be inserted properly in history, and
+    the Operation implementation can ignore quantities completely, as it will
+    always, in truth, work on the whole of the input it will see.
+
+    Subclasses can use the :attr:`partial` field if they need to know
+    if that happened, but this should be useful only in special cases.
     """
     quantity = Decimal()
     """The quantity this Operation will work on.
