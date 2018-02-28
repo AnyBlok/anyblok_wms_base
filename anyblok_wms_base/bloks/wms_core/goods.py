@@ -342,12 +342,14 @@ class Properties:
     This has the obvious drawback of defining some properties for all Goods,
     regardless of their Types, so it should not be abused.
 
-    On :class:`Goods`, the ``get_property``/``set_property`` API will treat
-    direct fields and top-level keys of ``flexible`` indifferently, meaning
+    On :class:`Goods`, the :meth:`get_property <Goods.get_property>` /
+    :meth:`set_property <Goods.set_property>` API will treat
+    direct fields and top-level keys of :attr:`flexible` uniformely,
     that, as long as all pieces of code use only this API to handle properties,
-    flexible keys can be replaced with fields transparently at any time
+    flexible keys can be replaced with proper fields transparently at any time
+    in the development of downstream applications and libraries
     (assuming of course that any existing data is properly migrated to the new
-    schema)
+    schema).
     """
     id = Integer(label="Identifier", primary_key=True)
     """Primary key."""
