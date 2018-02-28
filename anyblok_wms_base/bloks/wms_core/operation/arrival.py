@@ -52,6 +52,9 @@ class Arrival(Operation):
     location = Many2One(model='Model.Wms.Location')
     quantity = Decimal(label="Quantity")
 
+    inputs_number = 0
+    """This Operation is a purely creative one."""
+
     @classmethod
     def define_table_args(cls):
         return super(Arrival, cls).define_table_args() + (
@@ -65,15 +68,18 @@ class Arrival(Operation):
 
     @classmethod
     def check_create_conditions(cls, state, dt_execution, **kwargs):
-        """An Arrival does not have preconditions."""
+        """An Arrival does not have preconditions.
 
-    @classmethod
-    def find_parent_operations(cls, goods=None, **kwargs):
-        """an Arrival does not follow anything."""
-        return ()
+        This is nicer to the database than to issue queries to find out
+        we have no Goods. TODO add a check for inputs_number in default impl
+        """
 
     def check_execute_conditions(self):
-        """An Arrival does not have preconditions."""
+        """An Arrival does not have preconditions.
+
+        This is nicer to the database than to issue queries to find out
+        we have no Goods. TODO add a check for inputs_number in default impl
+        """
 
     def after_insert(self):
         Goods = self.registry.Wms.Goods

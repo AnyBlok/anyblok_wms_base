@@ -4,8 +4,8 @@ Transforming Operations
 
 ModelWms.Operation.Move
 -----------------------
-This Operation Model inherits from :class:`WmsSingleGoodsSplitter
-<.splitter.WmsSingleGoodsSplitterOperation>`
+This Operation Model inherits from :class:`WmsSplitter
+<.splitter.WmsSplitterOperation>`
 
 .. autoclass:: anyblok_wms_base.bloks.wms_core.operation.move.Move
    :members:
@@ -13,8 +13,8 @@ This Operation Model inherits from :class:`WmsSingleGoodsSplitter
 
 Model.Wms.Operation.Unpack
 --------------------------
-This Operation Model inherits from :class:`WmsSingleGoodsSplitter
-<.splitter.WmsSingleGoodsSplitterOperation>`
+This Operation Model inherits from :class:`WmsSplitter
+<.splitter.WmsSplitterOperation>`
 
 .. autoclass:: anyblok_wms_base.bloks.wms_core.operation.unpack.Unpack
    :members:
@@ -40,20 +40,18 @@ This Operation Model inherits from :class:`WmsSingleGoods
 
    .. raw:: html
 
-      <h3>Optional methods of WmsSingleGoodsOperation inheritors</h3>
+      <h3>Optional methods of Operation subclasses</h3>
 
    .. automethod:: is_reversible
 
    .. raw:: html
 
-      <h3>Mandatory methods of WmsSingleGoodsOperation inheritors</h3>
+      <h3>Mandatory methods of Operation subclasses</h3>
 
 
    .. automethod:: after_insert
    .. automethod:: execute_planned
-   .. automethod:: cancel_single
    .. automethod:: plan_revert_single
-   .. automethod:: obliviate_single
 
 
 Model.Wms.Operation.Aggregate
@@ -74,18 +72,16 @@ This Operation Model inherits from :class:`WmsMultipleGoods
 
    .. raw:: html
 
-      <h3>Optional methods of WmsMultipleGoodsOperation inheritors</h3>
+      <h3>Optional methods of Operation subclasses</h3>
 
    .. automethod:: is_reversible
    .. automethod:: check_create_conditions
 
    .. raw:: html
 
-      <h3>Mandatory methods of WmsMultipleGoodsOperation inheritors</h3>
+      <h3>Mandatory methods of Operation subclasses</h3>
 
    .. automethod:: after_insert
    .. automethod:: execute_planned
-   .. automethod:: cancel_single
    .. TODO   .. automethod:: plan_revert_single
-   .. automethod:: obliviate_single
 

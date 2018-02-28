@@ -6,21 +6,22 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from datetime import datetime
+from sqlalchemy import CheckConstraint
 
 from anyblok import Declarations
 from anyblok.column import Boolean
+from anyblok.column import Decimal
 
 from anyblok_wms_base.exceptions import (
-    OperationError,
     OperationQuantityError,
+    OperationMissingQuantityError,
 )
 
 Mixin = Declarations.Mixin
 
 
 @Declarations.register(Mixin)
-class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleGoodsOperation):
+class WmsSplitterOperation(Mixin.WmsSingleInputOperation):
     """Mixin for operations on a single record of Goods that can split.
 
     In case the value of :attr:`quantity` is less than in the Goods record,
@@ -28,6 +29,11 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleGoodsOperation):
 
     Subclasses can use :attr:`partial` if they need to know if that happened,
     but this should be useful only in very special cases.
+    """
+    quantity = Decimal()
+    """The quantity this Operation will work on.
+
+    Can be less than the quantity of our single input.
     """
 
     partial = Boolean(label="Operation induced a split")
@@ -40,71 +46,82 @@ class WmsSingleGoodsSplitterOperation(Mixin.WmsSingleGoodsOperation):
     this information can't be deduced from the quantities involved any more.
     """
 
+    @classmethod
+    def define_table_args(cls):
+        return super(
+            WmsSplitterOperation, cls).define_table_args() + (
+                CheckConstraint('quantity > 0', name='positive_qty'),
+            )
+
     def specific_repr(self):
-        return ("goods={self.goods!r}, "
+        return ("input={self.input!r}, "
                 "quantity={self.quantity}").format(self=self)
 
+    @classmethod
+    def check_create_conditions(cls, state, dt_execution,
+                                inputs=None, quantity=None, **kwargs):
+
+        super(WmsSplitterOperation, cls).check_create_conditions(
+            state, dt_execution,
+            inputs=inputs, quantity=quantity, **kwargs)
+
+        goods = inputs[0]
+        if quantity is None:
+            raise OperationMissingQuantityError(
+                cls,
+                "The 'quantity keyword argument must be passed to "
+                "the create() method")
+        if quantity > goods.quantity:
+            raise OperationQuantityError(
+                cls,
+                "Can't split a greater quantity ({op_quantity}) than held in "
+                "{input} (which have quantity={input.quantity})",
+                op_quantity=quantity, input=goods)
+
     def check_execute_conditions(self):
-        goods = self.goods
+        """Check that the quantity (after possible Split) is as on the input.
+
+        If a Split has been inserted, then this calls the base class
+        for the input of the Split, instead of ``self``, because the input of
+        ``self`` is in that case the outcome of the Split, and it's normal
+        that it's in state ``future``: the Split will be executed during
+        ``self.execute()``, which comes once the present method has agreed.
+        """
+        goods = self.input
         if self.quantity != goods.quantity:
             raise OperationQuantityError(
                 self,
-                "Can't execute planned for a different quantity {qty} "
-                "than held in goods {goods} "
+                "Can't execute planned for a different quantity {op_quantity} "
+                "than held in its input {input} "
                 "(which have quantity={goods.quantity}). "
-                "For lesser quantities, a split should have occured first ",
-                goods=goods, quantity=self.quantity)
-        if not self.partial:
-            # if partial, then it's normal that self.goods be in 'future'
-            # state: the current Operation execution will complete the split
-            super(WmsSingleGoodsSplitterOperation,
+                "If it's less, a Split should have occured first ")
+        if self.partial:
+            self.input.reason.check_execute_conditions()
+        else:
+            super(WmsSplitterOperation,
                   self).check_execute_conditions()
 
     @classmethod
-    def create(cls, state='planned', follows=None, goods=None, quantity=None,
-               dt_execution=None, dt_start=None, **kwargs):
-        """Main method for creation of operations.
+    def before_insert(cls, state='planned', follows=None, inputs=None,
+                      quantity=None, dt_execution=None, dt_start=None,
+                      **kwargs):
+        """Override to introduce a Split if needed
 
         In case the value of :attr:`quantity` does not match the one from the
         ``goods`` field, a :class:`Split <.split.Split>` is inserted
         transparently in the history, as if it'd been there in the first place:
         subclasses can implement :meth:`after_insert` as if the quantities were
         matching from the beginning.
-
-        This is entirely overridden from :class:`.base.Operation`, because
-        in partial cases, it's simpler to create directly the Split, then
-        the current operation.
-
-        TODO provide another hook to limit duplication
         """
-        cls.forbid_follows_in_create(follows, kwargs)
-        if dt_execution is None:
-            if state == 'done':
-                dt_execution = datetime.now()
-            else:
-                raise OperationError(
-                    cls,
-                    "Creation in state {state!r} requires the "
-                    "'dt_execution' kwarg (date and time when "
-                    "it's supposed to be done).",
-                    state=state)
-        cls.check_create_conditions(state, dt_execution,
-                                    goods=goods, quantity=quantity,
-                                    **kwargs)
-        follows = cls.find_parent_operations(goods=goods, **kwargs)
+        goods = inputs[0]
         partial = quantity < goods.quantity
-        if partial:
-            Split = cls.registry.Wms.Operation.Split
-            split = Split.create(goods=goods, quantity=quantity, state=state,
-                                 dt_execution=dt_execution)
-            follows = [split]
-            goods = split.wished_outcome
+        if not partial:
+            return inputs, None
 
-        op = cls.insert(state=state, goods=goods, quantity=quantity,
-                        dt_execution=dt_execution, partial=partial, **kwargs)
-        op.follows.extend(follows)
-        op.after_insert()
-        return op
+        Split = cls.registry.Wms.Operation.Split
+        split = Split.create(input=goods, quantity=quantity, state=state,
+                             dt_execution=dt_execution)
+        return [split.wished_outcome], dict(partial=partial)
 
     def execute_planned(self):
         """Execute the :class:`Split <.split.Split>` if any, then self."""

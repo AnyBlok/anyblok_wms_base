@@ -10,15 +10,15 @@
 from anyblok import Declarations
 from anyblok.column import Integer
 
-from anyblok_wms_base.exceptions import OperationGoodsError
+from anyblok_wms_base.exceptions import OperationInputsError
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
-SingleGoodsSplitter = Declarations.Mixin.WmsSingleGoodsSplitterOperation
+Splitter = Declarations.Mixin.WmsSplitterOperation
 
 
 @register(Operation)
-class Unpack(SingleGoodsSplitter, Operation):
+class Unpack(Splitter, Operation):
     """Unpacking some Goods, creating new Goods records.
 
     What happens during unpacking is specified as behaviours of the
@@ -41,34 +41,35 @@ class Unpack(SingleGoodsSplitter, Operation):
 
     @classmethod
     def check_create_conditions(cls, state, dt_execution,
-                                goods=None, quantity=None, **kwargs):
+                                inputs=None, quantity=None, **kwargs):
         super(Unpack, cls).check_create_conditions(
-            state, dt_execution, goods=goods,
+            state, dt_execution, inputs=inputs,
             quantity=quantity,
             **kwargs)
 
-        if 'unpack' not in goods.type.behaviours:
-            raise OperationGoodsError(
+        goods_type = inputs[0].type
+        if 'unpack' not in goods_type.behaviours:
+            raise OperationInputsError(
                 cls,
-                "Can't create an Unpack for Goods {goods} "
+                "Can't create an Unpack for {inputs} "
                 "because their type {type} doesn't have the 'unpack' "
-                "behaviour", goods=goods, type=goods.type)
+                "behaviour", inputs=inputs, type=goods_type)
 
     def execute_planned_after_split(self):
         Goods = self.registry.Wms.Goods
-        packs = self.goods
+        packs = self.input
         touched = Goods.query().filter(Goods.reason == self)
         # TODO PERF direct update query would probably be faster
         for outcome in touched.filter(Goods.type != packs.type).all():
             outcome.state = 'present'
-        self.goods.update(state='past', reason=self)
+        packs.update(state='past', reason=self)
         touched.filter(Goods.quantity < 0).delete(
             synchronize_session='fetch')
 
     def after_insert(self):
         Goods = self.registry.Wms.Goods
         GoodsType = Goods.Type
-        packs = self.goods
+        packs = self.input
         dt_execution = self.dt_execution
         spec = self.get_outcome_specs()
         type_ids = set(outcome['type'] for outcome in spec)
@@ -77,7 +78,7 @@ class Unpack(SingleGoodsSplitter, Operation):
 
         outcome_state = 'present' if self.state == 'done' else 'future'
         if self.state == 'done':
-            packs.state = 'past'
+            packs.update(state='past', reason=self)
         for outcome_spec in spec:
             fields = dict(quantity=outcome_spec['quantity'] * self.quantity,
                           location=packs.location,
@@ -92,7 +93,7 @@ class Unpack(SingleGoodsSplitter, Operation):
             outcome = Goods.insert(**fields)
             if not clone:
                 self.forward_props(outcome_spec, outcome)
-        packs.update(dt_until=dt_execution, reason=self)
+        packs.dt_until = dt_execution
 
     def forward_props(self, spec, outcome):
         """Handle the properties for a given outcome (Goods record)
@@ -100,16 +101,16 @@ class Unpack(SingleGoodsSplitter, Operation):
         :param spec: the relevant part of behaviour for this outcome
         :param outcome: just-created Goods instance
         """
-        packs = self.goods
+        packs = self.input
         fwd_props = spec.get('forward_properties', ())
         req_props = spec.get('required_properties')
 
         if req_props and not packs.properties:
-            raise OperationGoodsError(
+            raise OperationInputsError(
                 self,
-                "Packs {packs} have no properties, yet their type {type} "
+                "Packs {inputs[0]} have no properties, yet their type {type} "
                 "requires these for Unpack operation: {req_props}",
-                packs=packs, type=packs.type, req_props=req_props)
+                type=packs.type, req_props=req_props)
         if not fwd_props:
             return
         for pname in fwd_props:
@@ -117,11 +118,11 @@ class Unpack(SingleGoodsSplitter, Operation):
             if pvalue is None:
                 if pname not in req_props:
                     continue
-                raise OperationGoodsError(
+                raise OperationInputsError(
                     self,
-                    "Packs {packs} lacks the property {prop}"
+                    "Packs {inputs[0]} lacks the property {prop}"
                     "required by their type for Unpack operation",
-                    packs=packs, prop=pname)
+                    prop=pname)
             outcome.set_property(pname, pvalue)
 
     def get_outcome_specs(self):
@@ -129,7 +130,7 @@ class Unpack(SingleGoodsSplitter, Operation):
 
         Unless ``uniform_outcomes`` is set to ``True``,
         the outcomes of the Unpack are obtained by merging those defined in
-        the Goods Types behaviour and in the packs (``self.goods``) properties.
+        the Goods Types behaviour and in the packs (``self.input``) properties.
 
         This accomodates various use cases:
 
@@ -140,10 +141,10 @@ class Unpack(SingleGoodsSplitter, Operation):
         - variable outcomes:
             a packaging with parts always present and some varying.
 
-        The properties on outcomes are set from those of ``self.goods``
+        The properties on outcomes are set from those of ``self.input``
         according to the ``forward_properties`` and ``required_properties``
         of the outcomes, unless again if ``uniform_outcomes`` is set to
-        ``True``, in which case the properties of the packs (``self.goods``)
+        ``True``, in which case the properties of the packs (``self.input``)
         aren't even read, they but simply
         cloned (referenced again) in the outcomes. This should be better
         for performance in high volume operation.
@@ -151,7 +152,7 @@ class Unpack(SingleGoodsSplitter, Operation):
         special ``'clone'`` value for ``forward_properties``.
 
         Otherwise, the ``forward_properties`` and ``required_properties``
-        unpack behaviour from the Goods Type of the packs (``self.goods``)
+        unpack behaviour from the Goods Type of the packs (``self.input``)
         are merged with those of the outcomes, so that, for instance
         ``forward_properties`` have three key/value sources:
 
@@ -177,7 +178,7 @@ class Unpack(SingleGoodsSplitter, Operation):
         # TODO PERF playing safe by performing a copy, in order not
         # to propagate mutability to the DB. Not sure how much of it
         # is necessary.
-        packs = self.goods
+        packs = self.input
         behaviour = packs.type.behaviours['unpack']
         specs = behaviour.get('outcomes', [])[:]
         if behaviour.get('uniform_outcomes', False):
@@ -188,13 +189,13 @@ class Unpack(SingleGoodsSplitter, Operation):
         specific_outcomes = packs.get_property('unpack_outcomes', ())
         specs.extend(specific_outcomes)
         if not specs:
-            raise OperationGoodsError(
+            raise OperationInputsError(
                 self,
-                "unpacking Goods {packs} has no outcomes. "
+                "unpacking {inputs[0]} yields no outcomes. "
                 "Type {type} 'unpack' behaviour: {behaviour}, "
                 "specific outcomes from Goods properties: "
                 "{specific}",
-                packs=packs, type=packs.type, behaviour=behaviour,
+                type=packs.type, behaviour=behaviour,
                 specific=specific_outcomes)
 
         global_fwd = behaviour.get('forward_properties', ())
@@ -205,11 +206,3 @@ class Unpack(SingleGoodsSplitter, Operation):
             outcome.setdefault('forward_properties', []).extend(global_fwd)
             outcome.setdefault('required_properties', []).extend(global_req)
         return specs
-
-    def cancel_single(self):
-        self.goods.update(reason=self.follows[0],
-                          dt_until=self.orig_goods_dt_until)
-        self.registry.flush()
-        Goods = self.registry.Wms.Goods
-        Goods.query().filter(Goods.reason == self).delete(
-            synchronize_session='fetch')

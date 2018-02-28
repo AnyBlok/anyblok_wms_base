@@ -8,8 +8,9 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 
+from . import ns
 from . import base
-from . import on_goods
+from . import single_input
 from . import splitter
 from . import arrival
 from . import departure

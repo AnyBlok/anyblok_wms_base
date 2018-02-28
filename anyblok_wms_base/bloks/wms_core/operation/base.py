@@ -15,21 +15,68 @@ from anyblok.column import String
 from anyblok.column import Selection
 from anyblok.column import Integer
 from anyblok.column import DateTime
-from anyblok.relationship import Many2Many
+from anyblok.relationship import Many2One
 
+from anyblok_wms_base.utils import NonZero
 from anyblok_wms_base.constants import OPERATION_STATES, OPERATION_TYPES
 from anyblok_wms_base.exceptions import (
-    OperationCreateArgFollows,
+    OperationMissingInputsError,
+    OperationInputsError,
+    OperationInputWrongState,
     OperationError,
     OperationIrreversibleError,
     )
 
 logger = logging.getLogger(__name__)
 register = Declarations.register
-Model = Declarations.Model
+Wms = Declarations.Model.Wms
 
 
-@register(Model.Wms)
+NONZERO = NonZero()
+
+
+@Declarations.register(Wms.Operation)
+class HistoryInput:
+    """Internal Model linking Operations with their inputs and together.
+
+    The main purpose of this model is to represent the Direct Acyclic Graph
+    (DAG) of Operations history, and its "weighing": the links to Operation
+    inputs.
+
+    Additionally, some things to keep track of for :ref:`cancel and oblivion
+    <op_cancel_revert_obliviate>` are also stored there.
+    """
+    operation = Many2One(model='Model.Wms.Operation',
+                         index=True,
+                         primary_key=True,
+                         foreign_key_options={'ondelete': 'cascade'})
+    """The Operation we are interested in."""
+
+    goods = Many2One(model='Model.Wms.Goods',
+                     primary_key=True,
+                     foreign_key_options={'ondelete': 'cascade'})
+    """One of the inputs of the :attr:`operation`."""
+
+    latest_previous_op = Many2One(model='Model.Wms.Operation',
+                                  index=True)
+    """The latest operation that affected :attr:`goods` before the current one.
+
+    This is both the fundamental data structure suporting history (DAG)
+    aspects of Operations, as is exposed in the :attr:`Operation.follows`
+    and :attr:`Operation.followers` attributes and, on the other hand, the
+    preservation of :attr:`reason
+    <anyblok_wms_base.bloks.wms_core.goods.Goods.reason>` for restore if
+    needed, even after the :attr:`current operation <operation>` is done.
+    """
+
+    orig_dt_until = DateTime(label="Original dt_until of goods")
+    """Saving the original ``dt_until`` value of the :attr:`Goods <goods>`
+
+    This is needed for :ref:`cancel and oblivion <op_cancel_revert_obliviate>`
+    """
+
+
+@register(Wms)
 class Operation:
     """Base class for all Operations.
 
@@ -87,35 +134,65 @@ class Operation:
               be simply removed.
     """
 
-    follows = Many2Many(model='Model.Wms.Operation',
-                        m2m_remote_columns='parent_id',
-                        m2m_local_columns='child_id',
-                        join_table='wms_operation_history',
-                        label="Immediate preceding operations",
-                        many2many="followers",
-                        )
-    """Immediate predecessors in the Operation history,
+    def query_history_input(self):
+        HI = self.registry.Wms.Operation.HistoryInput
+        return HI.query().filter(HI.operation == self)
 
-    the operations that are the direct reasons
-    for the presence of Goods the present one is about.
-    This is a Many2Many relationship because there might be
-    several Goods involved in the operation, but for each of them,
-    it'll be exactly one operation, namely the latest before
-    the present one. In other words, operations history is a directed
-    acyclic graph, whose edges are encoded by this Many2Many.
+    @property
+    def inputs(self):
+        """The Goods records the Operation is working on.
 
-    This field can be empty in case of initial operations.
+        This is a read-only pseudo field, initialized by :meth:`create()`.
+        The backing data is actually stored in
+        :class:`Model.Wms.Operation.HistoryInput <HistoryInput>`.
+        """
+        return [hi.goods for hi in self.query_history_input().all()]
 
-    Examples:
+    @property
+    def follows(self):
+        """Immediate predecessors in the Operation history,
 
-    * a move of a bottle of milk that follows the unpacking
-      of a 6-pack, which itself follows a move from somewhere else
-    * a parcel packing operation that follows exactly one move
-      to the shipping area for each Goods to be packed.
-      they themselves would follow more operations.
-    * an :class:`Arrival <.arrival.Arrival>` typically doesn't
-      follow anything (but might be due to some kind of purchase order).
-    """
+        the operations that are the direct reasons
+        for the presence of Goods the present one is about.
+        This is a Many2Many relationship because there might be
+        several Goods involved in the operation, but for each of them,
+        it'll be exactly one operation, namely the latest before
+        the present one. In other words, operations history is a directed
+        acyclic graph, whose edges are encoded by this Many2Many.
+
+        This field can be empty in case of initial operations.
+
+        Examples:
+
+        * a move of a bottle of milk that follows the unpacking
+          of a 6-pack, which itself follows a move from somewhere else
+        * a parcel packing operation that follows exactly one move
+          to the shipping area for each Goods to be packed.
+          they themselves would follow more operations.
+        * an :class:`Arrival <.arrival.Arrival>` typically doesn't
+          follow anything (but might be due to some kind of purchase order).
+
+        This is a read-only pseudo field, initialized by :meth:`create()`,
+        The backing data is actually stored in
+        :class:`Model.Wms.Operation.HistoryInput <HistoryInput>`.
+        """
+        return [hi.latest_previous_op
+                for hi in self.query_history_input().all()]
+
+    @property
+    def followers(self):
+        """The converse of :attr:`follows`
+
+        These are the Operations that are directly after the curent one.
+
+        This is a read-only pseudo field, initialized by :meth:`create()`,
+        The backing data is actually stored in
+        :class:`Model.Wms.Operation.HistoryInput <HistoryInput>`.
+        """
+        HI = self.registry.Wms.Operation.HistoryInput
+        return [hi.operation
+                for hi in HI.query().filter(
+                        HI.latest_previous_op == self).all()]
 
     dt_execution = DateTime(label="date and time of execution",
                             nullable=False)
@@ -165,6 +242,15 @@ class Operation:
     field ``dt_execution`` is.
     """
 
+    inputs_number = NONZERO
+    """Number of Goods record the operation is meant to :attr:`work on <goods>`
+
+    This can be set by subclasses to impose a fixed number, as in
+    :attr:`inputs_number <.on_goods.WmsSingleGoodsOperation>`
+
+    In particular, purely creative subclasses must set this to 0
+    """
+
     @classmethod
     def define_mapper_args(cls):
         mapper_args = super(Operation, cls).define_mapper_args()
@@ -188,13 +274,19 @@ class Operation:
 
     __str__ = __repr__
 
-    @classmethod
-    def forbid_follows_in_create(cls, follows, kwargs):
-        if follows is not None:
-            raise OperationCreateArgFollows(cls, kwargs)
+    def link_inputs(self, inputs=None, clear=False, **fields):
+        HI = self.registry.Wms.Operation.HistoryInput
+        if clear:
+            HI.query().filter(HI.operation == self).delete(
+                synchronize_session='fetch')
+        for record in inputs:
+            HI.insert(goods=record,
+                      operation=self,
+                      latest_previous_op=record.reason,
+                      orig_dt_until=record.dt_until)
 
     @classmethod
-    def create(cls, state='planned', follows=None,
+    def create(cls, state='planned', inputs=None,
                dt_execution=None, dt_start=None, **fields):
         """Main method for creation of operations
 
@@ -217,8 +309,6 @@ class Operation:
            value of the attr:`dt_execution` right at creation. If
            ``state==planned``, this is mandatory. Otherwise, it defaults to
            the current date and time (:meth:`datetime.now`)
-        :param follows:
-           singled out to forbid to pass it in ``kwargs``
         :return Operation: concrete instance of the appropriate Operation
                            subclass.
 
@@ -238,7 +328,6 @@ class Operation:
         (yes, the same could be achieved by forcing to use the Model class
         methods instead).
         """
-        cls.forbid_follows_in_create(follows, fields)
         if dt_execution is None:
             if state == 'done':
                 dt_execution = datetime.now()
@@ -249,12 +338,24 @@ class Operation:
                     "'dt_execution' field (date and time when "
                     "it's supposed to be done).",
                     state=state)
-        cls.check_create_conditions(state, dt_execution, **fields)
-        follows = cls.find_parent_operations(**fields)
+        cls.check_create_conditions(
+            state, dt_execution, inputs=inputs, **fields)
+        inputs, fields_upd = cls.before_insert(state=state,
+                                               inputs=inputs,
+                                               dt_execution=dt_execution,
+                                               dt_start=dt_start,
+                                               **fields)
+        if fields_upd is not None:
+            fields.update(fields_upd)
         op = cls.insert(state=state, dt_execution=dt_execution, **fields)
-        op.follows.extend(follows)
+        if inputs is not None:  # happens with creative Operations
+            op.link_inputs(inputs)
         op.after_insert()
         return op
+
+    @classmethod
+    def before_insert(cls, inputs=None, **fields):
+        return inputs, None
 
     def execute(self, dt_execution=None):
         """Execute the operation.
@@ -429,28 +530,99 @@ class Operation:
         self.delete()
         logger.info("Obliviated operation %r", self)
 
-    @classmethod
-    def check_create_conditions(cls, state, dt_execution, **kwargs):
-        """Used during creation to check that the Operation is indeed doable.
+    def iter_inputs_original_values(self):
+        """List input goods together with original values kept in WorkingOn.
 
-        The given state obviously plays a role, and this pre insertion check
-        can spare us some costly operations.
+        Depending on the needs, it might be interesting to avoid
+        actually fetching all those records.
 
-        :param dt_execution: the date and time at which the Operation is
-                             (supposed to be) done.
-
-        To be implemented in subclasses, by raising exceptions if something's
-        wrong.
+        :return: a generator of pairs (goods, their original reasons,
+        their original ``dt_until``)
         """
-        raise NotImplementedError  # pragma: no cover
+        # TODO simple 2-column query instead
+        return ((hi.goods, hi.latest_previous_op, hi.orig_dt_until)
+                for hi in self.query_history_input().all())
+
+    def reset_inputs_original_values(self, state=None):
+        """Reset all input Goods to their original reason and state if passed.
+
+        :param state: if not None, will be state on the input Goods
+
+        The original values are those currently held in
+        :class:`Model.Wms.Operation.WorkingOn <WorkingOn>`.
+
+        TODO PERF: it should be more efficient not to fetch the goods and
+        their records, but work directly on ids (and maybe do this in one pass
+        with a clever UPDATE query).
+        TODO: consider generalization to the base class to simplify
+        implementation of all Operation subclasses.
+        """
+        for goods, reason, dt_until in self.iter_inputs_original_values():
+            if state is not None:
+                goods.state = state
+            goods.update(reason=reason, dt_until=dt_until)
 
     @classmethod
-    def find_parent_operations(cls, **kwargs):
-        """Return the list or tuple of operations that this one follows
+    def check_create_conditions(cls, state, dt_execution,
+                                inputs=None, **kwargs):
+        """Check that the conditions are met for the creation.
 
-        To be implemented in subclasses.
+        This is done before calling ``insert()``.
+
+        In this default implementation, we check
+
+        - that the number of inputs is correct, by comparing
+          with :attr:`inputs_number`, and
+        - that they are all in the proper
+          state for the wished :attr:`Operation state <state>`.
+
+        Subclasses are welcome to override this, and will probably want to
+        call it back, using ``super``.
         """
-        raise NotImplementedError  # pragma: no cover
+        expected = cls.inputs_number
+        if not inputs and (isinstance(expected, NonZero) or expected):
+            raise OperationMissingInputsError(
+                cls,
+                "The 'inputs' keyword argument must be passed to the "
+                "create() method, and must not be empty "
+                "got {inputs})", inputs=inputs)
+
+        if not isinstance(expected, NonZero) and len(inputs) != expected:
+            raise OperationInputsError(
+                cls,
+                "Expecting exactly {exp} inputs, got {nb} of them: "
+                "{inputs}", exp=expected, nb=len(inputs), inputs=inputs)
+
+        if state == 'done':
+            for record in inputs:
+                if record.state != 'present':
+                    raise OperationInputWrongState(
+                        cls, record, 'present',
+                        prelude="Can't create in state 'done' "
+                        "for inputs {inputs}",
+                        inputs=inputs)
+
+    @property
+    def outcomes(self):
+        """Return the outcomes of the present operation.
+
+        Outcomes are the Goods (Avatars) that the current Operation produces,
+        unless another Operation has been executed afterwards, becoming their
+        reason.
+        If no Operation is downstream, one can think of outcomes as the results
+        of the current Operation.
+
+        This default implementation considers that the Goods the current
+        Operation is working on never are outcomes.
+
+        This is a Python property, because it might become a field at some
+        point.
+        """
+        Goods = self.registry.Wms.Goods
+        # if already executed, might be the 'reason' for some Goods
+        # from self.goods to be in 'past' state.
+        return Goods.query().filter(Goods.reason == self,
+                                    Goods.state != 'past').all()
 
     def after_insert(self):
         """Perform specific logic after insert during creation process
@@ -459,14 +631,20 @@ class Operation:
         """
         raise NotImplementedError  # pragma: no cover
 
-    @classmethod
-    def check_execute_conditions(cls, **kwargs):
+    def check_execute_conditions(self):
         """Used during execution to check that the Operation is indeed doable.
 
-        To be implemented in subclasses, by raising an exception if something's
-        wrong.
+        In this default implementation, we check that all the :attr:`inputs`
+        are in the ``present`` state.
+
+        Subclasses are welcome to override this, and will probably want to
+        call it back, using ``super``.
         """
-        raise NotImplementedError  # pragma: no cover
+        for record in self.inputs:
+            if record.state != 'present':
+                raise OperationInputWrongState(
+                    self, record, 'present',
+                    prelude="Can't execute {operation}")
 
     def execute_planned(self):
         """Execute an operation that has been up to now in the 'planned' state.
@@ -499,14 +677,20 @@ class Operation:
         taken care of. It removes all planned consequences of the current one,
         but dos not delete it.
 
+        The default implementation calls :meth:`reset_inputs_original_values`,
+        then deletes all the outcomes (that should be in the `future` state).
+        Subclasses should override this if there's more to be done.
+
         Downstream applications and libraries are
         not supposed to call this method: they should use :meth:`cancel`,
         which takes care of the necessary recursivity and the final deletion.
-
-        To be implemented in sublasses
         """
-        raise NotImplementedError(
-            "for %s" % self.__registry_name__)  # pragma: no cover
+        self.reset_inputs_original_values()
+        self.registry.flush()
+        Goods = self.registry.Wms.Goods
+        Goods.query().filter(Goods.reason == self).delete(
+            synchronize_session='fetch')
+        self.registry.flush()
 
     def obliviate_single(self):
         """Oblivate just the current operation.
@@ -515,14 +699,21 @@ class Operation:
         taken care of. It removes all consequences of the current one,
         but does not delete it.
 
+        The default implementation calls :meth:`reset_inputs_original_values`,
+        and resets the state field on inputs, then deletes all the outcomes.
+        Subclasses should override this if there's more to be done.
+
         Downstream applications and libraries are
         not supposed to call this method: they should use :meth:`obliviate`,
         which takes care of the necessary recursivity and the final deletion.
 
         To be implemented in sublasses
         """
-        raise NotImplementedError(
-            "for %s" % self.__registry_name__)  # pragma: no cover
+        self.reset_inputs_original_values(state='present')
+        self.registry.flush()
+        Goods = self.registry.Wms.Goods
+        Goods.query().filter(Goods.reason == self).delete(
+            synchronize_session='fetch')
 
     def plan_revert_single(self, dt_execution, follows=()):
         """Create a planned operation to revert the present one.

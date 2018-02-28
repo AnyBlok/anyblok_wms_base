@@ -7,9 +7,11 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from datetime import timedelta
+
 from .testcase import WmsTestCase
 from anyblok_wms_base.exceptions import (
     OperationError,
+    OperationInputsError,
     OperationIrreversibleError,
     )
 
@@ -38,14 +40,74 @@ class TestOperation(WmsTestCase):
                                   dt_from=self.dt_test1,
                                   state='future',
                                   reason=arrival)
-        move = self.Operation.Move.insert(destination=self.stock,
-                                          quantity=2,
+        move = self.Operation.Move.create(destination=self.stock,
+                                          quantity=3,
                                           dt_execution=self.dt_test2,
                                           state='planned',
-                                          goods=goods)
-        move.follows.append(arrival)
+                                          input=goods)
         self.assertEqual(move.follows, [arrival])
         self.assertEqual(arrival.followers, [move])
+
+    def test_len_inputs(self):
+        arrival = self.Operation.Arrival.insert(goods_type=self.goods_type,
+                                                dt_execution=self.dt_test1,
+                                                location=self.incoming_loc,
+                                                state='planned',
+                                                quantity=3)
+        goods = [self.Goods.insert(quantity=qty,
+                                   type=self.goods_type,
+                                   location=self.incoming_loc,
+                                   dt_from=self.dt_test1,
+                                   state='future',
+                                   reason=arrival)
+                 for qty in (1, 2)]
+
+        with self.assertRaises(OperationInputsError) as arc:
+            self.Operation.Departure.create(inputs=goods,
+                                            state='planned',
+                                            dt_execution=self.dt_test2)
+        self.assertEqual(arc.exception.kwargs.get('nb'), 2)
+
+    def test_link_inputs(self):
+        arrival = self.Operation.Arrival.insert(goods_type=self.goods_type,
+                                                dt_execution=self.dt_test1,
+                                                location=self.incoming_loc,
+                                                state='planned',
+                                                quantity=3)
+        goods = [self.Goods.insert(quantity=1,
+                                   type=self.goods_type,
+                                   location=self.incoming_loc,
+                                   dt_from=self.dt_test1,
+                                   dt_until=dt,
+                                   state='future',
+                                   reason=arrival)
+                 for dt in (self.dt_test1, self.dt_test2, self.dt_test3)]
+
+        HI = self.Operation.HistoryInput
+
+        op = self.Operation.insert(state='done',
+                                   dt_execution=self.dt_test3,
+                                   type='wms_move')
+        op.link_inputs(inputs=goods[:1])
+        self.assertEqual(op.inputs, goods[:1])
+        hi = self.single_result(HI.query().filter(HI.operation == op))
+        self.assertEqual(hi.orig_dt_until, self.dt_test1)
+        self.assertEqual(hi.latest_previous_op, arrival)
+
+        op.link_inputs(inputs=goods[1:2])
+        self.assertEqual(op.inputs, goods[:2])
+        his = HI.query().filter(HI.operation == op).order_by(
+            HI.orig_dt_until).all()
+        self.assertEqual(len(his), 2)
+        self.assertEqual(his[0], hi)
+        self.assertEqual(his[1].orig_dt_until, self.dt_test2)
+        self.assertEqual(his[1].latest_previous_op, arrival)
+
+        op.link_inputs(inputs=goods[2:], clear=True)
+        self.assertEqual(op.inputs, goods[2:])
+        hi = self.single_result(HI.query().filter(HI.operation == op))
+        self.assertEqual(hi.orig_dt_until, self.dt_test3)
+        self.assertEqual(hi.latest_previous_op, arrival)
 
     def test_cancel(self):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
@@ -79,19 +141,19 @@ class TestOperation(WmsTestCase):
                                                 quantity=3)
         goods = self.Goods.query().filter(self.Goods.reason == arrival).one()
         Move = self.Operation.Move
-        Move.create(goods=goods,
+        Move.create(input=goods,
                     quantity=1,
                     dt_execution=self.dt_test2,
                     destination=self.stock,
                     state='planned')
-        move2 = Move.create(goods=goods,
+        move2 = Move.create(input=goods,
                             quantity=2,
                             dt_execution=self.dt_test2,
                             destination=self.stock,
                             state='planned')
         self.registry.flush()
         goods2 = self.Goods.query().filter(self.Goods.reason == move2).one()
-        self.Operation.Departure.create(goods=goods2,
+        self.Operation.Departure.create(input=goods2,
                                         quantity=2,
                                         dt_execution=self.dt_test3,
                                         state='planned')
@@ -113,12 +175,12 @@ class TestOperation(WmsTestCase):
         Move = self.Operation.Move
 
         # full moves don't generate splits, that's why the history is linear
-        move1 = Move.create(goods=goods,
+        move1 = Move.create(input=goods,
                             quantity=3,
                             dt_execution=self.dt_test2,
                             destination=self.stock,
                             state='done')
-        move2 = Move.create(goods=self.assert_singleton(move1.outcomes),
+        move2 = Move.create(input=self.assert_singleton(move1.outcomes),
                             quantity=3,
                             dt_execution=self.dt_test3,
                             destination=workshop,
@@ -155,7 +217,7 @@ class TestOperation(WmsTestCase):
 
         goods = self.Goods.query().filter(self.Goods.reason == arrival).one()
 
-        move = self.Operation.Move.create(goods=goods,
+        move = self.Operation.Move.create(input=goods,
                                           quantity=3,
                                           dt_execution=self.dt_test2,
                                           destination=self.stock,
@@ -172,14 +234,14 @@ class TestOperation(WmsTestCase):
 
         goods = self.Goods.query().filter(self.Goods.reason == arrival).one()
 
-        move = self.Operation.Move.create(goods=goods,
+        move = self.Operation.Move.create(input=goods,
                                           quantity=2,
                                           destination=self.stock,
                                           dt_execution=self.dt_test2,
                                           state='done')
 
         outgoing = self.Goods.query().filter(self.Goods.reason == move).one()
-        departure = self.Operation.Departure.create(goods=outgoing,
+        departure = self.Operation.Departure.create(input=outgoing,
                                                     quantity=2,
                                                     dt_execution=self.dt_test3,
                                                     state='done')
@@ -212,12 +274,12 @@ class TestOperation(WmsTestCase):
         Move = self.Operation.Move
 
         # full moves don't generate splits, that's why the history is linear
-        move1 = Move.create(goods=goods,
+        move1 = Move.create(input=goods,
                             quantity=3,
                             dt_execution=self.dt_test2,
                             destination=self.stock,
                             state='done')
-        Move.create(goods=self.assert_singleton(move1.outcomes),
+        Move.create(input=self.assert_singleton(move1.outcomes),
                     quantity=3,
                     dt_execution=self.dt_test3,
                     destination=workshop,

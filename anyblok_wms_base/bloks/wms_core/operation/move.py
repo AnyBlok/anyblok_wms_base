@@ -10,16 +10,15 @@
 from anyblok import Declarations
 from anyblok.column import Integer
 from anyblok.relationship import Many2One
-from anyblok_wms_base.exceptions import OperationError
 
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
-SingleGoodsSplitter = Declarations.Mixin.WmsSingleGoodsSplitterOperation
+Splitter = Declarations.Mixin.WmsSplitterOperation
 
 
 @register(Operation)
-class Move(SingleGoodsSplitter, Operation):
+class Move(Splitter, Operation):
     """A stock move
     """
     TYPE = 'wms_move'
@@ -30,25 +29,13 @@ class Move(SingleGoodsSplitter, Operation):
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
     destination = Many2One(model='Model.Wms.Location',
                            nullable=False)
-    origin = Many2One(model='Model.Wms.Location',
-                      label="Set during execution, for cancel/revert/rollback")
 
     def specific_repr(self):
-        return ("goods={self.goods!r}, "
+        return ("input={self.input!r}, "
                 "destination={self.destination!r}").format(self=self)
 
-    @classmethod
-    def check_create_conditions(cls, state, dt_execution,
-                                origin=None, **kwargs):
-        if origin is not None:
-            raise OperationError(cls, "The 'origin' field must *not* "
-                                 "be passed to the create() method")
-        super(Move, cls).check_create_conditions(state, dt_execution, **kwargs)
-
     def after_insert(self):
-        state, to_move, dt_exec = self.state, self.goods, self.dt_execution
-        self.origin = to_move.location
-        self.orig_goods_dt_until = to_move.dt_until
+        state, to_move, dt_exec = self.state, self.input, self.dt_execution
 
         self.registry.Wms.Goods.insert(
             location=self.destination,
@@ -74,29 +61,7 @@ class Move(SingleGoodsSplitter, Operation):
         after_move.update(state='present', dt_from=dt_execution)
         self.registry.flush()
 
-        self.goods.update(state='past', reason=self, dt_until=dt_execution)
-
-    def cancel_single(self):
-        goods = self.goods
-        if self.partial:
-            split = self.follows[0]
-            goods.reason = split
-        # TODO dates
-        goods.location = self.origin
-        self.registry.flush()
-        Goods = self.registry.Wms.Goods
-        Goods.query().filter(Goods.reason == self).delete(
-            synchronize_session='fetch')
-
-    def obliviate_single(self):
-        """Restore the moved Goods.
-        """
-        self.outcomes[0].delete()
-        self.goods.update(location=self.origin,
-                          reason=self.follows[0],
-                          dt_until=self.orig_goods_dt_until,
-                          state='present')
-        self.registry.flush()
+        self.input.update(state='past', reason=self, dt_until=dt_execution)
 
     def is_reversible(self):
         """Moves are always reversible.
@@ -109,18 +74,14 @@ class Move(SingleGoodsSplitter, Operation):
     def plan_revert_single(self, dt_execution, follows=()):
         if not follows:
             # reversal of an end-of-chain move
-            reason = self
+            after = self
         else:
             # A move has at most a single follower, hence
             # its reversal follows at most one operation, whose
             # outcome is one Goods record
-            reason = follows[0]
-        Goods = self.registry.Wms.Goods
-        # TODO introduce an outcome() generic API for all operations ?
-        goods = Goods.query().filter(Goods.reason == reason,
-                                     Goods.quantity > 0).one()
-        return self.create(goods=goods,
+            after = follows[0]
+        return self.create(input=after.outcomes[0],
                            quantity=self.quantity,
-                           destination=self.origin,
+                           destination=self.input.location,
                            dt_execution=dt_execution,
                            state='planned')

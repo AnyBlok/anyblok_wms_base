@@ -12,11 +12,11 @@ from anyblok.column import Integer
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
-SingleGoodsSplitter = Declarations.Mixin.WmsSingleGoodsSplitterOperation
+Splitter = Declarations.Mixin.WmsSplitterOperation
 
 
 @register(Operation)
-class Departure(SingleGoodsSplitter, Operation):
+class Departure(Splitter, Operation):
     """Operation to represent Goods physically leaving the system.
 
     Departures can be partial, i.e., there's no need to match the exact
@@ -41,25 +41,24 @@ class Departure(SingleGoodsSplitter, Operation):
 
     def depart(self):
         """Common logic for final departure step."""
-        self.goods.update(state='past', reason=self, dt_until=self.dt_execution)
+        self.input.update(state='past', reason=self,
+                          dt_until=self.dt_execution)
 
     def after_insert(self):
         """Either finish right away, or represent the future decrease."""
-        self.orig_goods_dt_until = self.goods.dt_until
         self.registry.flush()
         if self.state == 'done':
             self.depart()
         else:
-            self.goods.dt_until = self.dt_execution
+            self.input.dt_until = self.dt_execution
 
     def execute_planned_after_split(self):
         self.registry.flush()
         self.depart()
 
     def cancel_single(self):
-        self.goods.dt_until = self.orig_goods_dt_until
+        self.reset_inputs_original_values()
 
     def obliviate_single(self):
-        self.goods.update(state='present', reason=self.follows[0],
-                          dt_until=self.orig_goods_dt_until)
+        self.reset_inputs_original_values(state='present')
         self.registry.flush()

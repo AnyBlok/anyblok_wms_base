@@ -6,12 +6,10 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+
 from anyblok import Declarations
 
-register = Declarations.register
-Model = Declarations.Model
 
-
-@register(Model)
-class Wms:
-    """Namespace for WMS related models"""
+@Declarations.register(Declarations.Model.Wms)
+class Operation:
+    """Namespace for WMS Operation related models"""

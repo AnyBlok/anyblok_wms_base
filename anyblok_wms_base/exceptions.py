@@ -1,8 +1,24 @@
+# -*- coding: utf-8 -*-
+# This file is a part of the AnyBlok / WMS Base project
+#
+#    Copyright (C) 2018 Georges Racinet <gracinet@anybox.fr>
+#
+# This Source Code Form is subject to the terms of the Mozilla Public License,
+# v. 2.0. If a copy of the MPL was not distributed with this file,You can
+# obtain one at http://mozilla.org/MPL/2.0/.
+"""All exceptions for anyblok_wms_base bloks."""
+
+
 class OperationError(ValueError):
+
+    operation = None
+    """``None`` if raised for a Model class, Operation instance otherwise"""
 
     def __init__(self, model_or_record, fmt, **kwargs):
         self.fmt = fmt
         self.model_name = model_or_record.__registry_name__
+        if not isinstance(model_or_record, type):
+            kwargs['operation'] = self.operation = model_or_record
         self.kwargs = kwargs
 
     def __repr__(self):
@@ -15,38 +31,66 @@ class OperationError(ValueError):
         return self.model_name + ': ' + self.fmt.format(**self.kwargs)
 
 
-class OperationCreateArgFollows(OperationError):
-    """Used to forbid direct passing of 'follows' kwarg at creation.
+class OperationInputsError(OperationError):
+    """Used in Operations for errors about their inputs.
 
-    The purpose is to avoid downstream programmers believe that they can
-    control it (of course, they can tamper with follows afterwards, this is
-    Python)
-    """
-    def __init__(self, model_or_record, create_kw):
-        OperationError.__init__(
-            self, model_or_record,
-            "'follows' should not be passed create() keyword arguments, "
-            "as it is automatically computed upon "
-            "operation creation. Other keyword arguments: {create_kw})",
-            create_kw=create_kw)
-
-
-class OperationGoodsError(OperationError):
-    """Used for operations that take Goods records as input.
-
-    Note that creation operations do not belong to that category.
+    classmethods, such as :meth:`create
+    <anyblok_wms_base.bloks.wms_core.operation.base.Operation.create>`
+    must pass the ``inputs`` kwarg.
     """
 
+    def __init__(self, model_or_record, fmt, **kwargs):
+        OperationError.__init__(self, model_or_record, fmt, **kwargs)
+        op = self.operation
+        if op is None:
+            if 'inputs' not in kwargs:
+                raise ValueError("OperationInputsError for classmethods must "
+                                 "pass the 'inputs' kwarg")
+        else:
+            self.kwargs['inputs'] = self.operation.inputs
 
-class OperationMissingGoodsError(OperationGoodsError):
-    """Used if the Goods the operation is about are required yet not passed."""
+
+class OperationInputWrongState(OperationInputsError):
+
+    def __init__(self, op_model_or_record, record, expected_state,
+                 prelude=None, fmt=None, **kwargs):
+        if fmt is None:
+            if prelude is None:
+                prelude = "Error for {operation}"
+            fmt = prelude + (" because at least one of the inputs "
+                             "(id={record.id}) has state {record.state!r} "
+                             "instead of the expected {expected_state!r}")
+        OperationInputsError.__init__(
+            self, op_model_or_record, fmt, record=record,
+            expected_state=expected_state, **kwargs)
 
 
-class OperationQuantityError(OperationGoodsError):
+class OperationMissingInputsError(OperationInputsError):
+    """Used in Operation creation if inputs aren't passed."""
+
+
+class OperationQuantityError(OperationInputsError):
     """Used if an operation has an issue with some quantity."""
 
+    def __init__(self, model_or_class, fmt,
+                 input=None, op_quantity=None, **kwargs):
+        if input is not None:
+            kwargs['inputs'] = [input]
+            kwargs['input'] = input
 
-class OperationMissingQuantityError(OperationGoodsError):
+        super(OperationQuantityError, self).__init__(model_or_class, fmt,
+                                                     op_quantity=op_quantity,
+                                                     **kwargs)
+
+        op = self.operation
+        if op is not None:
+            if op_quantity is None:
+                self.kwargs['op_quantity'] = op.quantity
+            if input is None:
+                kwargs['input'] = op.input
+
+
+class OperationMissingQuantityError(OperationError):
     """Used if the operation requires some quantity that's not passed."""
 
 

@@ -30,3 +30,22 @@ def min_upper_bounds(inputs):
         if res is None or inp < res:
             res = inp
     return res
+
+
+class NonZero:
+    """Marker to mean any unspecified non zero value.
+
+    >>> str(NonZero())
+    'NONZERO'
+
+    We don't implement __repr__ because with reloads and the like, one
+    can have subtle bugs with constants, and in that case, the default
+    ``repr()`` including the object id (memory address with CPython)
+    is really useful.
+
+    For these subtle bugs reasons, it's probably better to test with
+    ``isinstance`` rather than with ``is`` on a constant.
+    """
+
+    def __str__(self):
+        return "NONZERO"
