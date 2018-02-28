@@ -33,7 +33,7 @@ class WmsSplitterOperation(Mixin.WmsSingleInputOperation):
     quantity = Decimal()
     """The quantity this Operation will work on.
 
-    Can be less than the quantity of our single Goods record.
+    Can be less than the quantity of our single input.
     """
 
     partial = Boolean(label="Operation induced a split")

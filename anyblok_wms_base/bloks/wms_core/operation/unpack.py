@@ -14,11 +14,11 @@ from anyblok_wms_base.exceptions import OperationInputsError
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
-SingleGoodsSplitter = Declarations.Mixin.WmsSingleGoodsSplitterOperation
+Splitter = Declarations.Mixin.WmsSplitterOperation
 
 
 @register(Operation)
-class Unpack(SingleGoodsSplitter, Operation):
+class Unpack(Splitter, Operation):
     """Unpacking some Goods, creating new Goods records.
 
     What happens during unpacking is specified as behaviours of the

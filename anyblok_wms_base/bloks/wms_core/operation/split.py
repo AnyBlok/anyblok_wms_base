@@ -108,7 +108,8 @@ class Split(SingleInput, Operation):
     def wished_outcome(self):
         """Return the Goods record with the wished quantity.
 
-        This is only one of ``self.outcome``
+        This is only one of :attr:`outcomes
+        <anyblok_wms_base.bloks.wms_core.operation.base.Operation.outcomes>`
 
         :rtype: Goods
         """

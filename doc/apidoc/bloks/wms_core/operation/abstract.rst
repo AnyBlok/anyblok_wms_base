@@ -3,24 +3,30 @@ Abstract classes
 
 .. py:module:: anyblok_wms_base.bloks.wms_core.operation
 
+Fundamental Models
+~~~~~~~~~~~~~~~~~~
+
 Model.Wms.Operation
-~~~~~~~~~~~~~~~~~~~
+-------------------
 .. autoclass:: anyblok_wms_base.bloks.wms_core.operation.base.Operation
 
    .. raw:: html
 
-      <h3>Fields and their semantics</h3>
+      <h4>Fields and their semantics</h4>
 
    .. autoattribute:: id
    .. autoattribute:: type
    .. autoattribute:: state
+   .. autoattribute:: inputs
+   .. autoattribute:: outcomes
    .. autoattribute:: follows
+   .. autoattribute:: followers
    .. autoattribute:: dt_execution
    .. autoattribute:: dt_start
 
    .. raw:: html
 
-      <h3>Main API</h3>
+      <h4>Main API</h4>
 
    These are the methods end applications and downstream libraries are
    supposed to use.
@@ -33,7 +39,7 @@ Model.Wms.Operation
 
    .. raw:: html
 
-      <h3>Mandatory API of subclasses</h3>
+      <h4>Mandatory API of subclasses</h4>
 
 
    These are the methods the concrete Operation subclasses must implement.
@@ -41,24 +47,41 @@ Model.Wms.Operation
    .. note:: we provide helper Mixins to help reduce boilerplate and
              duplication.
 
-   .. automethod:: check_create_conditions
-   .. automethod:: find_parent_operations
    .. automethod:: after_insert
-   .. automethod:: check_execute_conditions
    .. automethod:: execute_planned
-   .. automethod:: cancel_single
    .. automethod:: plan_revert_single
-   .. automethod:: obliviate_single
 
    .. raw:: html
 
-      <h3>Optional API of subclasses</h3>
+      <h4>Optional API of subclasses</h4>
 
 
    These methods have a default implementation in the base class, and
    are meant for the concrete Operation subclasses to override them if needed.
 
    .. automethod:: is_reversible
+   .. automethod:: check_create_conditions
+   .. automethod:: check_execute_conditions
+   .. automethod:: cancel_single
+   .. automethod:: obliviate_single
+   .. automethod:: before_insert
+
+Model.Wms.Operation.HistoryInput
+--------------------------------
+
+.. autoclass:: anyblok_wms_base.bloks.wms_core.operation.base.HistoryInput
+
+
+   .. raw:: html
+
+      <h4 class="section" style="font-size: 160%">
+            Fields and their semantics</h4>
+
+   .. autoattribute:: operation
+   .. autoattribute:: goods
+   .. autoattribute:: latest_previous_op
+   .. autoattribute:: orig_dt_until
+
 
 Helper Mixin classes
 ~~~~~~~~~~~~~~~~~~~~
@@ -73,10 +96,10 @@ Being Mixins, they can themselves be overridden in concrete
 applications, but this is not recommended except for quick bug fixing.
 
 
-Mixin.WmsSingleGoodsOperation: working on a single Goods record
+Mixin.WmsSingleInputOperation: working on a single Goods record
 ---------------------------------------------------------------
 
-.. autoclass:: anyblok_wms_base.bloks.wms_core.operation.on_goods.WmsSingleGoodsOperation
+.. autoclass:: anyblok_wms_base.bloks.wms_core.operation.single_input.WmsSingleInputOperation
 
 
    .. raw:: html
@@ -84,58 +107,26 @@ Mixin.WmsSingleGoodsOperation: working on a single Goods record
       <h4 class="section" style="font-size: 160%">
             Fields and their semantics</h4>
 
-   .. autoattribute:: goods
-   .. autoattribute:: quantity
-   .. autoattribute:: orig_goods_dt_until
+   .. autoattribute:: inputs_number
+   .. autoattribute:: input
 
    .. raw:: html
 
       <h4 class="section" style="font-size: 160%">
-            Implemented subset of the operation subclass API</h4>
+            Overrides of the base class.</h4>
 
-   .. automethod:: find_parent_operations
-   .. automethod:: check_create_conditions
-   .. automethod:: check_execute_conditions
+   .. automethod:: create
 
 
-Mixin.WmsMultipleGoodsOperation: working on several Goods records
------------------------------------------------------------------
-
-.. autoclass:: anyblok_wms_base.bloks.wms_core.operation.on_goods.WmsMultipleGoodsOperation
-
-   .. raw:: html
-
-      <h4 class="section" style="font-size: 160%">
-            Fields and their semantics</h4>
-
-   .. autoattribute:: goods
-
-   .. raw:: html
-
-      <h4 class="section" style="font-size: 160%">
-            Specific methods</h4>
-
-   .. automethod:: iter_goods_original_reasons
-   .. automethod:: reset_goods_original_reasons
-
-   .. raw:: html
-
-      <h4 class="section" style="font-size: 160%">
-            Implemented subset of the operation subclass API</h4>
-
-   .. automethod:: find_parent_operations
-   .. automethod:: check_create_conditions
-   .. automethod:: check_execute_conditions
-
-Mixin.WmsSingleGoodsSplitterOperation: splitting, then working on a Goods Record
---------------------------------------------------------------------------------
+Mixin.WmsSplitterOperation: splitting, then working on a single Goods Record
+----------------------------------------------------------------------------
 
 .. note:: will maybe be moved to another Blok or even Python project
           (see also :ref:`improvement_no_quantities`)
 
 This one inherits from :class:`WmsSingleGoodsOperation <anyblok_wmss_base.bloks.wms_core.operation.on_goods.WmsSingleGoodsOperation>`
 
-.. autoclass:: anyblok_wms_base.bloks.wms_core.operation.splitter.WmsSingleGoodsSplitterOperation
+.. autoclass:: anyblok_wms_base.bloks.wms_core.operation.splitter.WmsSplitterOperation
 
    .. raw:: html
 
@@ -143,6 +134,7 @@ This one inherits from :class:`WmsSingleGoodsOperation <anyblok_wmss_base.bloks.
             Fields and their semantics</h4>
 
    .. autoattribute:: partial
+   .. autoattribute:: quantity
 
    .. raw:: html
 
@@ -158,7 +150,7 @@ This one inherits from :class:`WmsSingleGoodsOperation <anyblok_wmss_base.bloks.
 
    (we list only those methods that override the base classes).
 
-   .. automethod:: create
+   .. automethod:: before_insert
    .. automethod:: check_execute_conditions
    .. automethod:: execute_planned
 

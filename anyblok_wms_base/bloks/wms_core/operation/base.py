@@ -37,12 +37,14 @@ NONZERO = NonZero()
 
 @Declarations.register(Wms.Operation)
 class HistoryInput:
-    """Internal table to help reconcile followed operations with their goods.
+    """Internal Model linking Operations with their inputs and together.
 
-    For Operations with multiple goods, tracking the followed operations and
-    the goods is not enough: we also need to record the original association
-    between them.
-    use case: oblivion.
+    The main purpose of this model is to represent the Direct Acyclic Graph
+    (DAG) of Operations history, and its "weighing": the links to Operation
+    inputs.
+
+    Additionally, some things to keep track of for :ref:`cancel and oblivion
+    <op_cancel_revert_obliviate>` are also stored there.
     """
     operation = Many2One(model='Model.Wms.Operation',
                          index=True,
@@ -53,23 +55,24 @@ class HistoryInput:
     goods = Many2One(model='Model.Wms.Goods',
                      primary_key=True,
                      foreign_key_options={'ondelete': 'cascade'})
-    """One of the Goods record for the :attr:`acting Operation <acting_op>."""
+    """One of the inputs of the :attr:`operation`."""
 
     latest_previous_op = Many2One(model='Model.Wms.Operation',
                                   index=True)
     """The latest operation that affected :attr:`goods` before the current one.
 
     This is both the fundamental data structure suporting history (DAG)
-    aspects of Operations, as is expresses in the :attr:`Operation.follows`
+    aspects of Operations, as is exposed in the :attr:`Operation.follows`
     and :attr:`Operation.followers` attributes and, on the other hand, the
-    preservation of :attr:`..goods.Goods.reason` for restore, even after
-    the :attr:`current operation <operation>` is done.
+    preservation of :attr:`reason
+    <anyblok_wms_base.bloks.wms_core.goods.Goods.reason>` for restore if
+    needed, even after the :attr:`current operation <operation>` is done.
     """
 
     orig_dt_until = DateTime(label="Original dt_until of goods")
     """Saving the original ``dt_until`` value of the :attr:`Goods <goods>`
 
-    This is needed to implement :ref:`oblivion op_revert_cancel_obliviate`
+    This is needed for :ref:`cancel and oblivion <op_cancel_revert_obliviate>`
     """
 
 
@@ -137,38 +140,55 @@ class Operation:
 
     @property
     def inputs(self):
+        """The Goods records the Operation is working on.
+
+        This is a read-only pseudo field, initialized by :meth:`create()`.
+        The backing data is actually stored in
+        :class:`Model.Wms.Operation.HistoryInput <HistoryInput>`.
+        """
         return [hi.goods for hi in self.query_history_input().all()]
 
     @property
     def follows(self):
+        """Immediate predecessors in the Operation history,
+
+        the operations that are the direct reasons
+        for the presence of Goods the present one is about.
+        This is a Many2Many relationship because there might be
+        several Goods involved in the operation, but for each of them,
+        it'll be exactly one operation, namely the latest before
+        the present one. In other words, operations history is a directed
+        acyclic graph, whose edges are encoded by this Many2Many.
+
+        This field can be empty in case of initial operations.
+
+        Examples:
+
+        * a move of a bottle of milk that follows the unpacking
+          of a 6-pack, which itself follows a move from somewhere else
+        * a parcel packing operation that follows exactly one move
+          to the shipping area for each Goods to be packed.
+          they themselves would follow more operations.
+        * an :class:`Arrival <.arrival.Arrival>` typically doesn't
+          follow anything (but might be due to some kind of purchase order).
+
+        This is a read-only pseudo field, initialized by :meth:`create()`,
+        The backing data is actually stored in
+        :class:`Model.Wms.Operation.HistoryInput <HistoryInput>`.
+        """
         return [hi.latest_previous_op
                 for hi in self.query_history_input().all()]
 
-    """Immediate predecessors in the Operation history,
-
-    the operations that are the direct reasons
-    for the presence of Goods the present one is about.
-    This is a Many2Many relationship because there might be
-    several Goods involved in the operation, but for each of them,
-    it'll be exactly one operation, namely the latest before
-    the present one. In other words, operations history is a directed
-    acyclic graph, whose edges are encoded by this Many2Many.
-
-    This field can be empty in case of initial operations.
-
-    Examples:
-
-    * a move of a bottle of milk that follows the unpacking
-      of a 6-pack, which itself follows a move from somewhere else
-    * a parcel packing operation that follows exactly one move
-      to the shipping area for each Goods to be packed.
-      they themselves would follow more operations.
-    * an :class:`Arrival <.arrival.Arrival>` typically doesn't
-      follow anything (but might be due to some kind of purchase order).
-    """
-
     @property
     def followers(self):
+        """The converse of :attr:`follows`
+
+        These are the Operations that are directly after the curent one.
+
+        This is a read-only pseudo field, initialized by :meth:`create()`,
+        The backing data is actually stored in
+        :class:`Model.Wms.Operation.HistoryInput <HistoryInput>`.
+        """
         HI = self.registry.Wms.Operation.HistoryInput
         return [hi.operation
                 for hi in HI.query().filter(
@@ -545,6 +565,20 @@ class Operation:
     @classmethod
     def check_create_conditions(cls, state, dt_execution,
                                 inputs=None, **kwargs):
+        """Check that the conditions are met for the creation.
+
+        This is done before calling ``insert()``.
+
+        In this default implementation, we check
+
+        - that the number of inputs is correct, by comparing
+          with :attr:`inputs_number`, and
+        - that they are all in the proper
+          state for the wished :attr:`Operation state <state>`.
+
+        Subclasses are welcome to override this, and will probably want to
+        call it back, using ``super``.
+        """
         expected = cls.inputs_number
         if not inputs and (isinstance(expected, NonZero) or expected):
             raise OperationMissingInputsError(
@@ -600,8 +634,11 @@ class Operation:
     def check_execute_conditions(self):
         """Used during execution to check that the Operation is indeed doable.
 
-        To be implemented in subclasses, by raising an exception if something's
-        wrong.
+        In this default implementation, we check that all the :attr:`inputs`
+        are in the ``present`` state.
+
+        Subclasses are welcome to override this, and will probably want to
+        call it back, using ``super``.
         """
         for record in self.inputs:
             if record.state != 'present':
