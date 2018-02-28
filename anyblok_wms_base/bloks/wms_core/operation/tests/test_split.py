@@ -37,58 +37,48 @@ class TestSplit(WmsTestCase):
         self.incoming_loc = Wms.Location.insert(label="Incoming location")
         self.stock = Wms.Location.insert(label="Stock")
 
-        self.arrival = Operation.Arrival.insert(goods_type=self.goods_type,
+        self.arrival = Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 state='planned',
                                                 dt_execution=self.dt_test1,
                                                 quantity=3)
-
-        self.goods = self.Goods.insert(quantity=3,
-                                       type=self.goods_type,
-                                       dt_from=self.dt_test1,
-                                       location=self.incoming_loc,
-                                       state='future',
-                                       reason=self.arrival)
+        self.avatar = self.assert_singleton(self.arrival.outcomes)
+        self.goods = self.avatar.goods
 
     def test_create_done(self):
-        self.goods.state = 'present'
+        self.avatar.state = 'present'
         split = self.Operation.Split.create(state='done',
-                                            input=self.goods,
+                                            input=self.avatar,
                                             dt_execution=self.dt_test2,
                                             quantity=2)
 
-        outcomes = self.Goods.query().filter(self.Goods.reason == split,
-                                             self.Goods.state != 'past').all()
+        outcomes = split.outcomes
         self.assertEqual(len(outcomes), 2)
-        self.assertEqual(self.goods.state, 'past')
-        self.assertEqual(self.goods.dt_from, self.dt_test1)
-        self.assertEqual(self.goods.dt_until, self.dt_test2)
-        self.assertEqual(sum(out.quantity for out in outcomes), 3)
+        self.assertEqual(self.avatar.state, 'past')
+        self.assertEqual(self.avatar.dt_from, self.dt_test1)
+        self.assertEqual(self.avatar.dt_until, self.dt_test2)
+        self.assertEqual(sum(out.goods.quantity for out in outcomes), 3)
         for outcome in outcomes:
             self.assertEqual(outcome.dt_from, self.dt_test2)
             self.assertEqual(outcome.location, self.incoming_loc)
-            self.assertEqual(outcome.type, self.goods_type)
-            # I prefer this to the less explicit assertGreater (ambiguity
-            # for French speakers with math background)
-            self.assertTrue(outcome.quantity > 0)
             self.assertEqual(outcome.state, 'present')
+            self.assertEqual(outcome.goods.type, self.goods_type)
+            # No need to test quantity > 0, we now have a constraint on that
 
     def test_create_planned_execute(self):
-        self.goods.state = 'present'
+        self.avatar.state = 'present'
         split = self.Operation.Split.create(state='planned',
-                                            input=self.goods,
+                                            input=self.avatar,
                                             dt_execution=self.dt_test2,
                                             quantity=2)
 
-        all_outcomes = self.Goods.query().filter(
-            self.Goods.reason == split,
-            self.Goods.state != 'past').all()
+        all_outcomes = split.outcomes
 
         self.assertEqual(len(all_outcomes), 2)
 
-        self.assertEqual(self.goods.state, 'present')
-        self.assertEqual(self.goods.dt_from, self.dt_test1)
-        self.assertEqual(self.goods.dt_until, self.dt_test2)
+        self.assertEqual(self.avatar.state, 'present')
+        self.assertEqual(self.avatar.dt_from, self.dt_test1)
+        self.assertEqual(self.avatar.dt_until, self.dt_test2)
         self.assertEqual(sum(out.quantity for out in all_outcomes), 3)
         # this will fail if me mangle the datetimes severely
         self.assertEqual(self.incoming_loc.quantity(self.goods_type,
@@ -99,13 +89,10 @@ class TestSplit(WmsTestCase):
         for outcome in all_outcomes:
             self.assertEqual(outcome.dt_from, self.dt_test2)
             self.assertEqual(outcome.location, self.incoming_loc)
-            self.assertEqual(outcome.type, self.goods_type)
-            # I prefer this to the less explicit assertGreater (ambiguity
-            # for French speakers with math background)
-            self.assertTrue(outcome.quantity > 0)
             self.assertEqual(outcome.state, 'future')
+            self.assertEqual(outcome.goods.type, self.goods_type)
         wished_outcome = split.wished_outcome
-        self.assertEqual(wished_outcome.quantity, 2)
+        self.assertEqual(wished_outcome.goods.quantity, 2)
         self.assertTrue(wished_outcome in all_outcomes)
 
         split.execute(self.dt_test2)
@@ -113,11 +100,8 @@ class TestSplit(WmsTestCase):
             self.assertEqual(outcome.dt_from, self.dt_test2)
             self.assertEqual(outcome.dt_until, None)
             self.assertEqual(outcome.location, self.incoming_loc)
-            self.assertEqual(outcome.type, self.goods_type)
-            # I prefer this to the less explicit assertGreater (ambiguity
-            # for French speakers with math background)
-            self.assertTrue(outcome.quantity > 0)
             self.assertEqual(outcome.state, 'present')
+            self.assertEqual(outcome.goods.type, self.goods_type)
 
         # whatever the time we pick at the total quantity should still be
         # unchanged (using the right goods_state, of course)
@@ -135,7 +119,7 @@ class TestSplit(WmsTestCase):
 
     def test_create_planned_outcome_disappears(self):
         split = self.Operation.Split.create(state='planned',
-                                            input=self.goods,
+                                            input=self.avatar,
                                             dt_execution=self.dt_test2,
                                             quantity=2)
 
@@ -149,9 +133,9 @@ class TestSplit(WmsTestCase):
         # if that fails, then the issue is not in Split implementation:
         self.assertEqual(self.goods_type.is_split_reversible(), False)
 
-        self.goods.state = 'present'
+        self.avatar.state = 'present'
         split = self.Operation.Split.create(state='done',
-                                            input=self.goods,
+                                            input=self.avatar,
                                             quantity=2)
         self.assertFalse(split.is_reversible())
 
@@ -168,53 +152,51 @@ class TestSplit(WmsTestCase):
         Starting point of the test is exactly the same as in
         :meth:`test_create_done`, we don't repeat assertions about that.
         """
-        self.goods.state = 'present'
+        self.avatar.state = 'present'
         split = self.Operation.Split.create(state='done',
-                                            input=self.goods,
+                                            input=self.avatar,
                                             dt_execution=self.dt_test2,
                                             quantity=2)
 
-        outcomes = self.Goods.query().filter(self.Goods.reason == split,
-                                             self.Goods.state != 'past').all()
+        outcomes = split.outcomes
         split.plan_revert(dt_execution=self.dt_test3)
-
         aggregate = self.single_result(self.Operation.Aggregate.query())
         self.assertEqual(set(aggregate.inputs), set(outcomes))
         aggregate.execute()
 
-        new_goods = self.single_result(
-            self.Goods.query().filter(self.Goods.state == 'present'))
+        Avatar = self.Goods.Avatar
+        new_avatar = self.single_result(
+            Avatar.query().filter(Avatar.state == 'present'))
+        new_goods = new_avatar.goods
         self.assertEqual(new_goods.quantity, 3)
         # TODO would be neat for the outcome to actually be self.goods,
         # i.e., the Goods record we started with
-        self.assertEqual(new_goods.location, self.goods.location)
+        self.assertEqual(new_avatar.location, self.avatar.location)
         self.assertEqual(new_goods.type, self.goods.type)
         self.assertEqual(new_goods.properties, self.goods.properties)
 
         # TODO we might actually want in case Splits have no meaning
         # in real life to simply forget an end-of-chain Split.
-        self.assertEqual(self.Goods.query().filter(
-            self.Goods.state == 'past',
-            self.Goods.reason == aggregate).all(), outcomes)
+        self.assertEqual(Avatar.query().filter(
+            Avatar.state == 'past',
+            Avatar.reason == aggregate).all(), outcomes)
 
         # no weird leftovers
         self.assertEqual(
-            self.Goods.query().filter(self.Goods.quantity < 0).count(), 0)
-        self.assertEqual(
-            self.Goods.query().filter(self.Goods.state == 'future').count(), 0)
+            Avatar.query().filter(Avatar.state == 'future').count(), 0)
 
     def test_revert_implicit_intermediate(self):
         """Test reversal of a Split that's been inserted implictely.
         """
-        self.goods.state = 'present'
+        self.avatar.state = 'present'
         move = self.Operation.Move.create(state='done',
                                           destination=self.stock,
-                                          input=self.goods,
+                                          input=self.avatar,
                                           quantity=2)
 
         self.assertEqual(len(move.follows), 1)
         split = move.follows[0]
-        self.assertEqual(self.goods.reason, split)
+        self.assertEqual(self.avatar.reason, split)
 
         aggregate, rev_leafs = split.plan_revert()
         self.assertEqual(len(rev_leafs), 1)
@@ -223,20 +205,21 @@ class TestSplit(WmsTestCase):
         self.assertEqual(rev_move.follows, [move])
         rev_move.execute()
         aggregate.execute()
-        new_goods = self.single_result(
-            self.Goods.query().filter(self.Goods.state == 'present'))
+
+        Avatar = self.Goods.Avatar
+        new_avatar = self.single_result(
+            Avatar.query().filter(Avatar.state == 'present'))
+        new_goods = new_avatar.goods
         self.assertEqual(new_goods.quantity, 3)
         # TODO would be neat for the outcome to actually be self.goods,
         # i.e., the Goods record we started with
-        self.assertEqual(new_goods.location, self.goods.location)
+        self.assertEqual(new_avatar.location, self.avatar.location)
         self.assertEqual(new_goods.type, self.goods.type)
         self.assertEqual(new_goods.properties, self.goods.properties)
 
         # no weird leftovers
         self.assertEqual(
-            self.Goods.query().filter(self.Goods.quantity < 0).count(), 0)
-        self.assertEqual(
-            self.Goods.query().filter(self.Goods.state == 'future').count(), 0)
+            Avatar.query().filter(Avatar.state == 'future').count(), 0)
 
     def test_obliviate_final(self):
         """Test oblivion of a Split that's the latest operation on goods.
@@ -244,16 +227,21 @@ class TestSplit(WmsTestCase):
         Starting point of the test is exactly the same as in
         :meth:`test_create_done`, we don't repeat assertions about that.
         """
-        self.goods.state = 'present'
+        self.avatar.state = 'present'
         split = self.Operation.Split.create(state='done',
-                                            input=self.goods,
+                                            input=self.avatar,
                                             quantity=2)
 
         split.obliviate()
-        new_goods = self.single_result(self.Goods.query())
-        self.assertEqual(new_goods.quantity, 3)
+        Avatar = self.Goods.Avatar
+        restored_avatar = self.single_result(Avatar.query())
+        restored_goods = self.single_result(self.Goods.query())
+        self.assertEqual(restored_avatar.goods, restored_goods)
+
+        self.assertEqual(restored_avatar.location, self.avatar.location)
         # TODO would be neat for the outcome to actually be self.goods,
         # i.e., the Goods record we started with
-        self.assertEqual(new_goods.location, self.goods.location)
-        self.assertEqual(new_goods.type, self.goods.type)
-        self.assertEqual(new_goods.properties, self.goods.properties)
+        self.assertEqual(restored_goods, self.goods)
+        self.assertEqual(restored_goods.type, self.goods.type)
+        self.assertEqual(restored_goods.quantity, 3)
+        self.assertEqual(restored_goods.properties, self.goods.properties)

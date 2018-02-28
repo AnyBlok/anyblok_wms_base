@@ -27,46 +27,41 @@ class TestSplitterOperation(WmsTestCase):
         self.incoming_loc = Wms.Location.insert(label="Incoming location")
         self.stock = Wms.Location.insert(label="Stock")
 
-        self.arrival = Operation.Arrival.insert(goods_type=self.goods_type,
+        self.arrival = Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 state='planned',
                                                 dt_execution=self.dt_test1,
                                                 quantity=3)
 
-        self.goods = Wms.Goods.insert(quantity=3,
-                                      type=self.goods_type,
-                                      location=self.incoming_loc,
-                                      state='future',
-                                      dt_from=self.dt_test1,
-                                      reason=self.arrival)
+        self.avatar = self.assert_singleton(self.arrival.outcomes)
+        self.goods = self.avatar.goods
+
         self.Move = Operation.Move
         self.Goods = Wms.Goods
         self.op_model_name = 'Model.Wms.Operation.Move'
 
     def test_missing_quantity(self):
-        # TODO should go to test_splitter
-        self.goods.state = 'present'
+        self.avatar.state = 'present'
         with self.assertRaises(OperationMissingQuantityError) as arc:
             self.Move.create(destination=self.stock,
                              dt_execution=self.dt_test2,
                              state='done',
-                             input=self.goods)
+                             input=self.avatar)
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
 
     def test_too_much(self):
-        # TODO should go to test_splitter
-        self.goods.state = 'present'
+        self.avatar.state = 'present'
         with self.assertRaises(OperationQuantityError) as arc:
             self.Move.create(destination=self.stock,
                              dt_execution=self.dt_test2,
                              quantity=7,
                              state='done',
-                             input=self.goods)
+                             input=self.avatar)
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
         self.assertEqual(exc.kwargs.get('op_quantity'), 7)
-        self.assertEqual(exc.kwargs.get('input'), self.goods)
+        self.assertEqual(exc.kwargs.get('input'), self.avatar)
 
     def test_quantity_changed_no_split(self):
         """Splitters demand exact quantity (no split)"""
@@ -76,17 +71,17 @@ class TestSplitterOperation(WmsTestCase):
                                 quantity=3,
                                 dt_execution=self.dt_test2,
                                 state='planned',
-                                input=self.goods)
+                                input=self.avatar)
         self.assertEqual(move.follows, [self.arrival])
-        self.assertEqual(move.input, self.goods)
-        self.goods.state = 'present'
+        self.assertEqual(move.input, self.avatar)
+        self.avatar.state = 'present'
         self.goods.quantity = 2
         self.registry.flush()
         with self.assertRaises(OperationQuantityError) as arc:
             move.execute()
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
-        self.assertEqual(exc.kwargs.get('inputs'), [self.goods])
+        self.assertEqual(exc.kwargs.get('inputs'), [self.avatar])
 
     def test_quantity_changed_split(self):
         """Splitters demand exact quantity (after split)
@@ -98,11 +93,11 @@ class TestSplitterOperation(WmsTestCase):
                                 quantity=2,
                                 dt_execution=self.dt_test2,
                                 state='planned',
-                                input=self.goods)
-        self.assertNotEqual(move.input, self.goods)
-        move.input.quantity = 3
+                                input=self.avatar)
+        self.assertNotEqual(move.input, self.avatar)
+        move.input.goods.quantity = 3
 
-        self.goods.state = 'present'
+        self.avatar.state = 'present'
         self.registry.flush()
         with self.assertRaises(OperationQuantityError) as arc:
             move.execute()
@@ -111,16 +106,15 @@ class TestSplitterOperation(WmsTestCase):
         self.assertEqual(exc.kwargs.get('inputs'), move.inputs)
 
     def test_quantity_too_big_split(self):
-        # TODO should go to test_splitter
         move = self.Move.create(destination=self.stock,
                                 quantity=2,
                                 dt_execution=self.dt_test2,
                                 state='planned',
-                                input=self.goods)
-        self.assertEqual(len(move.follows), 1)
-        split = move.follows[0]
-        self.assertEqual(split.input, self.goods)
-        self.goods.update(quantity=1, state='present')
+                                input=self.avatar)
+        split = self.assert_singleton(move.follows)
+        self.assertEqual(split.input, self.avatar)
+        self.goods.quantity = 1
+        self.avatar.state = 'present'
 
         with self.assertRaises(OperationQuantityError) as arc:
             split.execute()
@@ -128,7 +122,7 @@ class TestSplitterOperation(WmsTestCase):
         str(exc)
         repr(exc)
         self.assertEqual(exc.model_name, 'Model.Wms.Operation.Split')
-        self.assertEqual(exc.kwargs.get('inputs'), [self.goods])
+        self.assertEqual(exc.kwargs.get('inputs'), [self.avatar])
 
     def test_repr(self):
         """For splitter operations, quantity is displayed in repr() and str()
@@ -139,6 +133,6 @@ class TestSplitterOperation(WmsTestCase):
                                 quantity=3,
                                 state='planned',
                                 dt_execution=self.dt_test1,
-                                input=self.goods)
+                                input=self.avatar)
         repr(move)
         str(move)

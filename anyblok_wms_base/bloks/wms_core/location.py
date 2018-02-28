@@ -30,9 +30,12 @@ class Location:
     parent = Many2One(label="Parent location",
                       model='Model.Wms.Location')
 
-    def __repr__(self):
-        return ("Wms.Location(id={self.id}, code={self.code!r}, "
+    def __str__(self):
+        return ("(id={self.id}, code={self.code!r}, "
                 "label={self.label!r})".format(self=self))
+
+    def __repr__(self):
+        return "Wms.Location" + str(self)
 
     def quantity(self, goods_type, goods_state='present', at_datetime=None):
         """Return the full quantity in location for the given type.
@@ -62,19 +65,22 @@ class Location:
         Let's get a DB with serious volume and datetimes first.
         """
         Goods = self.registry.Wms.Goods
-        query = Goods.query(func.sum(Goods.quantity)).filter(
-            Goods.type == goods_type, Goods.location == self)
+        Avatar = Goods.Avatar
+        query = Avatar.query(
+            func.sum(Goods.quantity)).join(
+                Avatar.goods).filter(
+                    Goods.type == goods_type, Avatar.location == self)
         if goods_state == 'present':
-            query = query.filter(Goods.state == goods_state)
+            query = query.filter(Avatar.state == goods_state)
         else:
             if at_datetime is None:
                 # TODO precise exc or define infinites and apply them
                 raise ValueError(
                     "Querying quantities in state {!r} requires "
                     "to specify the 'at_datetime' kwarg".format(goods_state))
-            query = query.filter(Goods.state.in_((goods_state, 'present')),
-                                 Goods.dt_from <= at_datetime,
-                                 or_(Goods.dt_until.is_(None),
-                                     Goods.dt_until > at_datetime))
+            query = query.filter(Avatar.state.in_((goods_state, 'present')),
+                                 Avatar.dt_from <= at_datetime,
+                                 or_(Avatar.dt_until.is_(None),
+                                     Avatar.dt_until > at_datetime))
         res = query.one()[0]
         return 0 if res is None else res

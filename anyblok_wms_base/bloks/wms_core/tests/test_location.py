@@ -19,6 +19,7 @@ class TestLocation(WmsTestCase):
         Wms = self.registry.Wms
 
         self.Goods = Wms.Goods
+        self.Avatar = Wms.Goods.Avatar
         self.goods_type = self.Goods.Type.insert(label="My goods")
         self.stock = Wms.Location.insert(label="Stock", code='STK')
         self.arrival = Wms.Operation.Arrival.insert(
@@ -29,11 +30,12 @@ class TestLocation(WmsTestCase):
             quantity=5)
 
     def insert_goods(self, qty, state, dt_from, until=None):
-        self.Goods.insert(type=self.goods_type, quantity=qty,
-                          reason=self.arrival, location=self.stock,
-                          dt_from=dt_from,
-                          dt_until=until,
-                          state=state)
+        self.Avatar.insert(
+            goods=self.Goods.insert(type=self.goods_type, quantity=qty),
+            reason=self.arrival, location=self.stock,
+            dt_from=dt_from,
+            dt_until=until,
+            state=state)
 
     def test_str_repr(self):
         self.assertTrue('STK' in repr(self.stock))

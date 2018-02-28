@@ -82,27 +82,32 @@ class Split(SingleInput, Operation):
 
     def after_insert(self):
         self.registry.flush()
-        goods = self.input
-        Goods = self.registry.Wms.Goods
+        avatar = self.input
+        goods = avatar.goods
         qty = self.quantity
         new_goods = dict(
-            location=goods.location,
-            reason=self,
             type=goods.type,
             code=goods.code,
-            dt_from=self.dt_execution,
-            dt_until=goods.dt_until,
             properties=goods.properties,
         )
-        goods.dt_until = self.dt_execution
+        new_avatars = dict(
+            location=avatar.location,
+            reason=self,
+            dt_from=self.dt_execution,
+            dt_until=avatar.dt_until,
+        )
+        avatar.dt_until = self.dt_execution
         if self.state == 'done':
-            goods.update(state='past', reason=self)
-            new_goods['state'] = 'present'
+            avatar.update(state='past', reason=self)
+            new_avatars['state'] = 'present'
         else:
-            new_goods['state'] = 'future'
+            new_avatars['state'] = 'future'
 
-        return (Goods.insert(quantity=qty, **new_goods),
-                Goods.insert(quantity=goods.quantity - qty, **new_goods))
+        return tuple(
+            avatar.insert(
+                goods=goods.insert(quantity=new_qty, **new_goods),
+                **new_avatars)
+            for new_qty in (qty, goods.quantity - qty))
 
     @property
     def wished_outcome(self):
@@ -114,11 +119,13 @@ class Split(SingleInput, Operation):
         :rtype: Goods
         """
         Goods = self.registry.Wms.Goods
+        Avatar = Goods.Avatar
         # in case the split is exactly in half, there's no difference
         # between the two records we created, let's pick any.
-        outcome = Goods.query().filter(Goods.reason == self,
-                                       Goods.state != 'past',
-                                       Goods.quantity == self.quantity).first()
+        outcome = Avatar.query().join(Avatar.goods).filter(
+            Avatar.reason == self,
+            Avatar.state != 'past',
+            Goods.quantity == self.quantity).first()
         if outcome is None:
             raise OperationError(self, "The split outcomes have disappeared")
         return outcome
@@ -157,14 +164,24 @@ class Split(SingleInput, Operation):
             # reversal of an end-of-chain split
             follows = [self]
         Wms = self.registry.Wms
-        Goods = Wms.Goods
+        Avatars = Wms.Goods.Avatar
         # here in that case, that's for multiple operations
         # in_ is not implemented for Many2Ones
         reason_ids = set(f.id for f in follows)
         reason_ids.add(self.id)
-        to_aggregate = Goods.query().filter(
-            Goods.reason_id.in_(reason_ids),
-            Goods.state != 'past').all()
+        to_aggregate = Avatars.query().filter(
+            Avatars.reason_id.in_(reason_ids),
+            Avatars.state != 'past').all()
         return Wms.Operation.Aggregate.create(inputs=to_aggregate,
                                               dt_execution=dt_execution,
                                               state='planned')
+
+    def obliviate_single(self):
+        """Remove the created Goods in addition to base class operation.
+
+        The base class would only take care of the created Avatars
+        """
+        outcomes_goods = [o.goods for o in self.outcomes]
+        super(Split, self).obliviate_single()
+        for goods in outcomes_goods:
+            goods.delete()

@@ -88,25 +88,32 @@ class Arrival(Operation):
             props = None
         else:
             props = Goods.Properties.create(**self_props)
-        Goods.insert(
+        goods = Goods.insert(type=self.goods_type,
+                             properties=props,
+                             quantity=self.quantity,
+                             code=self.goods_code)
+        Goods.Avatar.insert(
+            goods=goods,
             location=self.location,
-            quantity=self.quantity,
             reason=self,
             state='present' if self.state == 'done' else 'future',
             dt_from=self.dt_execution,
-            type=self.goods_type,
-            properties=props,
-            code=self.goods_code,
         )
 
     def execute_planned(self):
-        Goods = self.registry.Wms.Goods
-        Goods.query().filter(Goods.reason == self).one().update(
+        Avatar = self.registry.Wms.Goods.Avatar
+        Avatar.query().filter(Avatar.reason == self).one().update(
             state='present', dt_from=self.dt_execution)
 
     def cancel_single(self):
-        Goods = self.registry.Wms.Goods
-        Goods.query().filter(Goods.reason == self).delete(
-            synchronize_session='fetch')
+        """Arrival being a creation Operation, canceling it deletes the Goods.
+        """
+        all_goods = set()
+        # in two direct queries using RETURNING ?
+        for avatar in self.outcomes:
+            all_goods.add(avatar.goods)
+            avatar.delete()
+        for goods in all_goods:
+            goods.delete()
 
     obliviate_single = cancel_single

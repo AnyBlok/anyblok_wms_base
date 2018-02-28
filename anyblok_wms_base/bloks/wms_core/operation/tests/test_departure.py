@@ -24,15 +24,15 @@ class TestDeparture(WmsTestCase):
                                                 dt_execution=self.dt_test1,
                                                 state='planned',
                                                 quantity=3)
-
-        self.goods = Wms.Goods.insert(quantity=3,
-                                      type=self.goods_type,
-                                      location=self.incoming_loc,
-                                      state='future',
-                                      dt_from=self.dt_test1,
-                                      reason=self.arrival)
-        self.Departure = Operation.Departure
         self.Goods = Wms.Goods
+        self.Avatar = Avatar = Wms.Goods.Avatar
+        self.goods = Avatar.insert(
+            goods=Wms.Goods.insert(quantity=3, type=self.goods_type),
+            location=self.incoming_loc,
+            state='future',
+            dt_from=self.dt_test1,
+            reason=self.arrival)
+        self.Departure = Operation.Departure
 
     def assertQuantities(self, loc=None, **quantities):
         if loc is None:
@@ -65,7 +65,7 @@ class TestDeparture(WmsTestCase):
         dep.execute(self.dt_test3)
         self.assertEqual(dep.state, 'done')
 
-        sent = self.Goods.query().filter(self.Goods.reason == dep).all()
+        sent = self.Avatar.query().filter(self.Avatar.reason == dep).all()
         self.assertEqual(len(sent), 1)
         sent = sent[0]
         self.assertEqual(sent.state, 'past')
@@ -85,7 +85,7 @@ class TestDeparture(WmsTestCase):
         dep.execute()
         dep.obliviate()
 
-        new_goods = self.single_result(self.Goods.query())
+        new_goods = self.single_result(self.Avatar.query())
         self.assertEqual(new_goods.state, 'present')
         self.assertEqual(new_goods.quantity, 3)
         self.assertEqual(new_goods.dt_from, self.dt_test1)
@@ -100,7 +100,7 @@ class TestDeparture(WmsTestCase):
                                     input=self.goods)
         dep.cancel()
 
-        new_goods = self.single_result(self.Goods.query())
+        new_goods = self.single_result(self.Avatar.query())
         self.assertEqual(new_goods.state, 'present')
         self.assertEqual(new_goods.dt_from, self.dt_test1)
         self.assertEqual(new_goods.dt_until, self.dt_test3)
@@ -130,7 +130,7 @@ class TestDeparture(WmsTestCase):
                                     dt_execution=self.dt_test2,
                                     input=self.goods)
         dep.obliviate()
-        new_goods = self.single_result(self.Goods.query())
+        new_goods = self.single_result(self.Avatar.query())
         self.assertEqual(new_goods.state, 'present')
         self.assertEqual(new_goods.quantity, 3)
         self.assertEqual(new_goods.dt_from, self.dt_test1)
@@ -147,7 +147,7 @@ class TestDeparture(WmsTestCase):
         self.assertEqual(dep.follows[0].follows, [self.arrival])
 
         sent = self.single_result(
-            self.Goods.query().filter(self.Goods.reason == dep))
+            self.Avatar.query().filter(self.Avatar.reason == dep))
         self.assertEqual(sent.state, 'past')
         self.assertEqual(sent.dt_until, self.dt_test2)
         self.assertEqual(sent.quantity, 1)
@@ -177,7 +177,7 @@ class TestDeparture(WmsTestCase):
         self.assertQuantities(past=(3, self.dt_test1))
         dep.execute(dt_execution=self.dt_test3)
 
-        sent = self.Goods.query().filter(self.Goods.reason == dep).all()
+        sent = self.Avatar.query().filter(self.Avatar.reason == dep).all()
         self.assertEqual(len(sent), 1)
         sent = sent[0]
         self.assertEqual(sent.state, 'past')

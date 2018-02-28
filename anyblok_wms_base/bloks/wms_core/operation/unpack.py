@@ -56,15 +56,11 @@ class Unpack(Splitter, Operation):
                 "behaviour", inputs=inputs, type=goods_type)
 
     def execute_planned_after_split(self):
-        Goods = self.registry.Wms.Goods
         packs = self.input
-        touched = Goods.query().filter(Goods.reason == self)
         # TODO PERF direct update query would probably be faster
-        for outcome in touched.filter(Goods.type != packs.type).all():
+        for outcome in self.outcomes:
             outcome.state = 'present'
         packs.update(state='past', reason=self)
-        touched.filter(Goods.quantity < 0).delete(
-            synchronize_session='fetch')
 
     def after_insert(self):
         Goods = self.registry.Wms.Goods
@@ -80,17 +76,21 @@ class Unpack(Splitter, Operation):
         if self.state == 'done':
             packs.update(state='past', reason=self)
         for outcome_spec in spec:
-            fields = dict(quantity=outcome_spec['quantity'] * self.quantity,
-                          location=packs.location,
-                          type=outcome_types[outcome_spec['type']],
-                          reason=self,
-                          dt_from=dt_execution,
-                          dt_until=packs.dt_until,
-                          state=outcome_state)
+            # TODO what would be *really* neat would be to be able
+            # to recognize the goods after a chain of pack/unpack
+            goods_fields = dict(
+                quantity=outcome_spec['quantity'] * self.quantity,
+                type=outcome_types[outcome_spec['type']])
             clone = outcome_spec.get('forward_properties') == 'clone'
             if clone:
-                fields['properties'] = packs.properties
-            outcome = Goods.insert(**fields)
+                goods_fields['properties'] = packs.goods.properties
+            outcome = Goods.insert(**goods_fields)
+            Goods.Avatar.insert(goods=outcome,
+                                location=packs.location,
+                                reason=self,
+                                dt_from=dt_execution,
+                                dt_until=packs.dt_until,
+                                state=outcome_state)
             if not clone:
                 self.forward_props(outcome_spec, outcome)
         packs.dt_until = dt_execution
@@ -101,7 +101,7 @@ class Unpack(Splitter, Operation):
         :param spec: the relevant part of behaviour for this outcome
         :param outcome: just-created Goods instance
         """
-        packs = self.input
+        packs = self.input.goods
         fwd_props = spec.get('forward_properties', ())
         req_props = spec.get('required_properties')
 
@@ -206,3 +206,16 @@ class Unpack(Splitter, Operation):
             outcome.setdefault('forward_properties', []).extend(global_fwd)
             outcome.setdefault('required_properties', []).extend(global_req)
         return specs
+
+    def cancel_single(self):
+        """Remove the newly created Goods, not only their Avatars."""
+        self.reset_inputs_original_values()
+        self.registry.flush()
+        all_goods = set()
+        # TODO PERF in two queries using RETURNING, or be braver and
+        # make the avatars cascade
+        for avatar in self.outcomes:
+            all_goods.add(avatar.goods)
+            avatar.delete()
+        for goods in all_goods:
+            goods.delete()

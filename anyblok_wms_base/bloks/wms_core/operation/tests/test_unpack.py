@@ -20,6 +20,7 @@ class TestUnpack(WmsTestCase):
         self.Operation = Operation = Wms.Operation
         self.Unpack = Operation.Unpack
         self.Goods = Wms.Goods
+        self.Avatar = Wms.Goods.Avatar
 
         self.stock = Wms.Location.insert(label="Stock")
 
@@ -27,26 +28,15 @@ class TestUnpack(WmsTestCase):
         self.packed_goods_type = self.Goods.Type.insert(
             label="Pack",
             behaviours=type_behaviours)
-        goods_type = self.Goods.Type.insert(label="My good type")
-
-        self.arrival = self.Operation.Arrival.insert(
-            goods_type=goods_type,
+        self.arrival = self.Operation.Arrival.create(
+            goods_type=self.packed_goods_type,
             location=self.stock,
             dt_execution=self.dt_test1,
+            goods_properties=properties,
             state='planned',
-            quantity=3)
+            quantity=5)
 
-        if properties is None:
-            props = None
-        else:
-            props = self.Goods.Properties.insert(**properties)
-        self.packs = self.Goods.insert(quantity=5,
-                                       type=self.packed_goods_type,
-                                       location=self.stock,
-                                       dt_from=self.dt_test1,
-                                       state='future',
-                                       properties=props,
-                                       reason=self.arrival)
+        self.packs = self.assert_singleton(self.arrival.outcomes)
 
     def test_whole_done_one_unpacked_type_props(self):
         unpacked_type = self.Goods.Type.insert(label="Unpacked")
@@ -60,7 +50,7 @@ class TestUnpack(WmsTestCase):
                          )
                 ],
             )),
-            properties=dict(flexible=dict(foo=3)),
+            properties=dict(foo=3),
             )
         self.packs.update(state='present')
         unp = self.Unpack.create(quantity=5,
@@ -69,11 +59,9 @@ class TestUnpack(WmsTestCase):
                                  input=self.packs)
         self.assertEqual(unp.follows, [self.arrival])
 
-        unpacked_goods = self.Goods.query().filter(
-            self.Goods.type == unpacked_type).all()
+        unpacked_goods = self.single_result(
+            self.Goods.query().filter(self.Goods.type == unpacked_type))
 
-        self.assertEqual(len(unpacked_goods), 1)
-        unpacked_goods = unpacked_goods[0]
         self.assertEqual(unpacked_goods.quantity, 15)
         self.assertEqual(unpacked_goods.type, unpacked_type)
 
@@ -96,7 +84,7 @@ class TestUnpack(WmsTestCase):
                          )
                 ],
             )),
-            properties=dict(flexible=dict(foo=3, other='xyz')),
+            properties=dict(foo=3, other='xyz'),
             )
         self.packs.update(state='present')
         unp = self.Unpack.create(quantity=5,
@@ -105,21 +93,17 @@ class TestUnpack(WmsTestCase):
                                  input=self.packs)
         self.assertEqual(unp.follows, [self.arrival])
 
-        unpacked_goods_cloned_props = self.Goods.query().filter(
-            self.Goods.type == unpacked_clone_type).all()
-        self.assertEqual(len(unpacked_goods_cloned_props), 1)
-        unpacked_goods_cloned_props = unpacked_goods_cloned_props[0]
+        unpacked_goods_cloned_props = self.single_result(
+            self.Goods.query().filter(self.Goods.type == unpacked_clone_type))
         self.assertEqual(unpacked_goods_cloned_props.quantity, 10)
         self.assertEqual(unpacked_goods_cloned_props.properties,
-                         self.packs.properties)
+                         self.packs.goods.properties)
 
-        unpacked_goods_fwd_props = self.Goods.query().filter(
-            self.Goods.type == unpacked_fwd_type).all()
-        self.assertEqual(len(unpacked_goods_fwd_props), 1)
-        unpacked_goods_fwd_props = unpacked_goods_fwd_props[0]
+        unpacked_goods_fwd_props = self.single_result(
+            self.Goods.query().filter(self.Goods.type == unpacked_fwd_type))
         self.assertEqual(unpacked_goods_fwd_props.quantity, 15)
         self.assertNotEqual(unpacked_goods_fwd_props.properties,
-                            self.packs.properties)
+                            self.packs.goods.properties)
         self.assertIsNone(unpacked_goods_fwd_props.get_property('other'))
         self.assertEqual(unpacked_goods_fwd_props.get_property('foo'), 3)
 
@@ -134,7 +118,7 @@ class TestUnpack(WmsTestCase):
                          )
                 ],
             )),
-            properties=dict(flexible=dict(foo=3, po_ref='ABC')),
+            properties=dict(foo=3, po_ref='ABC'),
             )
         self.packs.update(state='present')
         unp = self.Unpack.create(quantity=5,
@@ -143,14 +127,13 @@ class TestUnpack(WmsTestCase):
                                  input=self.packs)
         self.assertEqual(unp.follows, [self.arrival])
 
-        unpacked_goods = self.Goods.query().filter(
-            self.Goods.type == unpacked_type).all()
+        unpacked_goods = self.single_result(self.Goods.query().filter(
+            self.Goods.type == unpacked_type))
 
-        self.assertEqual(len(unpacked_goods), 1)
-        unpacked_goods = unpacked_goods[0]
         self.assertEqual(unpacked_goods.quantity, 15)
         self.assertEqual(unpacked_goods.type, unpacked_type)
-        self.assertEqual(unpacked_goods.properties, self.packs.properties)
+        self.assertEqual(unpacked_goods.properties,
+                         self.packs.goods.properties)
 
     def test_whole_done_non_uniform(self):
         """Unpack with outcomes defined in pack properties.
@@ -164,15 +147,14 @@ class TestUnpack(WmsTestCase):
                 forward_properties=['foo', 'bar'],
                 required_properties=['foo'],
             )),
-            properties=dict(
-                flexible=dict(foo=3,
-                              baz='second hand',
-                              unpack_outcomes=[
-                                  dict(type=unpacked_type.id,
-                                       quantity=2,
-                                       forward_properties=['bar', 'baz']
-                                       )
-                                  ])))
+            properties=dict(foo=3,
+                            baz='second hand',
+                            unpack_outcomes=[
+                                dict(type=unpacked_type.id,
+                                     quantity=2,
+                                     forward_properties=['bar', 'baz']
+                                     )
+                            ]))
         self.packs.update(state='present')
         unp = self.Unpack.create(quantity=5,
                                  state='done',
@@ -225,7 +207,7 @@ class TestUnpack(WmsTestCase):
         # we don't have a create() returned value to compare
 
         # Having properties, still missing the required one
-        self.packs.properties = self.Goods.Properties.insert(
+        self.packs.goods.properties = self.Goods.Properties.insert(
             flexible=dict(bar=1))
 
         with self.assertRaises(OperationInputsError) as arc:
@@ -271,32 +253,32 @@ class TestUnpack(WmsTestCase):
                 forward_properties=['foo', 'bar'],
                 required_properties=['foo'],
             )),
-            properties=dict(
-                flexible=dict(foo=3,
-                              baz='second hand',
-                              unpack_outcomes=[
-                                  dict(type=unpacked_type.id,
-                                       quantity=2,
-                                       forward_properties=['bar', 'baz']
-                                       )
-                                  ])))
+            properties=dict(foo=3,
+                            baz='second hand',
+                            unpack_outcomes=[
+                                dict(type=unpacked_type.id,
+                                     quantity=2,
+                                     forward_properties=['bar', 'baz']
+                                     )
+                            ]))
         unp = self.Unpack.create(quantity=5,
                                  state='planned',
                                  dt_execution=self.dt_test2,
                                  input=self.packs)
         self.assertEqual(unp.follows, [self.arrival])
 
-        unpacked_goods = self.Goods.query().filter(
-            self.Goods.type == unpacked_type).all()
+        unpacked_goods = self.single_result(self.Goods.query().filter(
+            self.Goods.type == unpacked_type))
 
-        self.assertEqual(len(unpacked_goods), 1)
-        unpacked_goods = unpacked_goods[0]
         self.assertEqual(unpacked_goods.quantity, 10)
-        self.assertEqual(unpacked_goods.state, 'future')
         self.assertEqual(unpacked_goods.type, unpacked_type)
         self.assertEqual(unpacked_goods.get_property('foo'), 3)
         self.assertEqual(unpacked_goods.get_property('baz'), 'second hand')
-        self.assertEqual(unpacked_goods.reason, unp)
+
+        avatar = self.single_result(self.Avatar.query().filter(
+            self.Avatar.goods == unpacked_goods))
+        self.assertEqual(avatar.state, 'future')
+        self.assertEqual(avatar.reason, unp)
 
         self.assertEqual(
             self.stock.quantity(self.packed_goods_type,
@@ -307,7 +289,7 @@ class TestUnpack(WmsTestCase):
         self.packs.state = 'present'
         self.registry.flush()
         unp.execute()
-        self.assertEqual(unpacked_goods.state, 'present')
+        self.assertEqual(avatar.state, 'present')
         self.assertEqual(self.packs.state, 'past')
         self.assertEqual(self.packs.reason, unp)
 
@@ -317,9 +299,9 @@ class TestUnpack(WmsTestCase):
                                 goods_state='future'),
             0)
         self.assertEqual(
-            self.Goods.query().filter(
+            self.Avatar.query().join(self.Avatar.goods).filter(
                 self.Goods.type == self.packed_goods_type,
-                self.Goods.state == 'future').count(),
+                self.Avatar.state == 'future').count(),
             0)
 
     def test_partial_plan_execute(self):
@@ -335,7 +317,7 @@ class TestUnpack(WmsTestCase):
                          ),
                 ],
             )),
-            properties=dict(flexible=dict(foo=7)))
+            properties=dict(foo=7))
 
         unp = self.Unpack.create(quantity=4,
                                  state='planned',
@@ -345,16 +327,17 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(unp.partial, True)
 
         Goods = self.Goods
-        unpacked_goods = Goods.query().filter(
-            Goods.type == unpacked_type).all()
+        unpacked_goods = self.single_result(
+            Goods.query().filter(Goods.type == unpacked_type))
 
-        self.assertEqual(len(unpacked_goods), 1)
-        unpacked_goods = unpacked_goods[0]
-        self.assertEqual(unpacked_goods.reason, unp)
         self.assertEqual(unpacked_goods.quantity, 24)
-        self.assertEqual(unpacked_goods.state, 'future')
         self.assertEqual(unpacked_goods.type, unpacked_type)
         self.assertEqual(unpacked_goods.get_property('foo'), 7)
+
+        avatar = self.single_result(
+            self.Avatar.query().filter(self.Avatar.goods == unpacked_goods))
+        self.assertEqual(avatar.reason, unp)
+        self.assertEqual(avatar.state, 'future')
 
         self.assertEqual(
             self.stock.quantity(self.packed_goods_type,
@@ -362,23 +345,29 @@ class TestUnpack(WmsTestCase):
                                 at_datetime=self.dt_test2), 1)
 
         self.packs.state = 'present'
-        packs_query = self.Goods.query().filter(
-            self.Goods.type == self.packed_goods_type)
         unp.execute(dt_execution=self.dt_test3)
 
+        Goods, Avatar = self.Goods, self.Avatar
+
         # not unpacked
+        packs_goods_query = Goods.query().filter(
+            Goods.type == self.packed_goods_type)
         still_packed = self.single_result(
-            packs_query.filter(Goods.state == 'present'))
+            packs_goods_query.join(Avatar.goods).filter(
+                Avatar.state == 'present'))
         self.assertEqual(still_packed.quantity, 1)
 
         # check intermediate objects no leftover intermediate packs
         after_split = self.single_result(
-            packs_query.filter(
-                Goods.state == 'past',
-                Goods.reason == unp))
-        self.assertEqual(after_split.quantity, 4)
+            Avatar.query().join(Avatar.goods).filter(
+                Goods.type == self.packed_goods_type,
+                Avatar.state == 'past',
+                Avatar.reason == unp))
+        self.assertEqual(after_split.goods.quantity, 4)
         self.assertEqual(
-            packs_query.filter(Goods.state == 'future').count(), 0)
+            Goods.query().join(Avatar.goods).filter(
+                Avatar.state == 'future').count(),
+            0)
 
     def test_partial_cancel(self):
         """Plan a partial Unpack (uniform scenario), then cancel it
@@ -393,7 +382,7 @@ class TestUnpack(WmsTestCase):
                          ),
                 ],
             )),
-            properties=dict(flexible=dict(foo=7)))
+            properties=dict(foo=7))
 
         unp = self.Unpack.create(quantity=4,
                                  state='planned',
