@@ -73,7 +73,8 @@ class TestAggregate(WmsTestCase):
         self.assertEqual(new_goods.quantity, 3)
 
         for dt in (self.dt_test1, self.dt_test2, self.dt_test3):
-            self.assertQuantity(3, at_datetime=dt)
+            self.assertQuantity(3, at_datetime=dt,
+                                additional_states=('past', 'future'))
 
     def test_create_done_equal_props(self):
         """Test equality check for different records of properties."""
@@ -241,14 +242,17 @@ class TestAggregate(WmsTestCase):
 
         agg = self.plan_aggregate()
         self.assertEqual(agg.inputs, self.goods)
-
+        self.assertQuantity(3)
         for dt in (self.dt_test1, self.dt_test2, self.dt_test3):
-            self.assertQuantity(3, at_datetime=dt)
+            self.assertQuantity(3, at_datetime=dt,
+                                additional_states=('past', 'future'))
 
         agg.execute(dt_execution=self.dt_test3)
 
+        self.assertQuantity(3)
         for dt in (self.dt_test1, self.dt_test2, self.dt_test3):
-            self.assertQuantity(3, at_datetime=dt)
+            self.assertQuantity(3, at_datetime=dt,
+                                additional_states=('past', 'future'))
 
         for record in self.goods:
             self.assertEqual(record.state, 'past')

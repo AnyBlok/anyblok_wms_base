@@ -39,11 +39,12 @@ class TestDeparture(WmsTestCase):
             loc = self.incoming_loc
         for state, info in quantities.items():
             if state == 'present':
-                qty, at_datetime = info, None
+                qty, at_datetime, add_state = info, None, None
             else:
                 qty, at_datetime = info
+                add_state = [state]
             self.assertEqual(loc.quantity(self.goods_type,
-                                          goods_state=state,
+                                          additional_states=add_state,
                                           at_datetime=at_datetime),
                              qty)
 

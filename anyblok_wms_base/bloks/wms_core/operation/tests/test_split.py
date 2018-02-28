@@ -81,10 +81,11 @@ class TestSplit(WmsTestCase):
         self.assertEqual(self.avatar.dt_until, self.dt_test2)
         self.assertEqual(sum(out.quantity for out in all_outcomes), 3)
         # this will fail if me mangle the datetimes severely
-        self.assertEqual(self.incoming_loc.quantity(self.goods_type,
-                                                    goods_state='future',
-                                                    at_datetime=self.dt_test3),
-                         3)
+        self.assertEqual(
+            self.incoming_loc.quantity(self.goods_type,
+                                       additional_states=['future'],
+                                       at_datetime=self.dt_test3),
+            3)
 
         for outcome in all_outcomes:
             self.assertEqual(outcome.dt_from, self.dt_test2)
@@ -104,16 +105,16 @@ class TestSplit(WmsTestCase):
             self.assertEqual(outcome.goods.type, self.goods_type)
 
         # whatever the time we pick at the total quantity should still be
-        # unchanged (using the right goods_state, of course)
-        for state, dt in (('present', None),
-                          ('future', self.dt_test2),
-                          ('future', self.dt_test3),
-                          ('past', self.dt_test1),
-                          ('past', self.dt_test2),
-                          ('past', self.dt_test3)):
+        # unchanged (using the right states, of course)
+        for add_states, dt in ((None, None),
+                               (['future'], self.dt_test2),
+                               (['future'], self.dt_test3),
+                               (['past'], self.dt_test1),
+                               (['past'], self.dt_test2),
+                               (['past'], self.dt_test3)):
             self.assertEqual(
                 self.incoming_loc.quantity(self.goods_type,
-                                           goods_state=state,
+                                           additional_states=add_states,
                                            at_datetime=dt),
                 3)
 

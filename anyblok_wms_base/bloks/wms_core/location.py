@@ -37,21 +37,21 @@ class Location:
     def __repr__(self):
         return "Wms.Location" + str(self)
 
-    def quantity(self, goods_type, goods_state='present', at_datetime=None):
+    def quantity(self, goods_type, additional_states=None, at_datetime=None):
         """Return the full quantity in location for the given type.
 
-        :param goods_state:
-            if not 'present', then ``at_datetime`` is
-            mandatory, the query is filtered for this
-            date and time, and the query includes the Goods Avatars
-            with state == 'present' anyway.
+        :param additional_states:
+            Optionally, states of the Goods Avatar to take into account
+            in addition to the ``present`` state.
 
-            #TODO renaming as ``with_state`` or similar would be clearer.
-
-            Hence, for ``goods_state='past'``, we have the
+            Hence, for ``additional_states=['past']``, we have the
             Goods Avatars that were already there and still are,
             as well as those that aren't there any more,
-            and similarly for the future.
+            and similarly for 'future'.
+        :param at_datetime: take only into account Goods Avatar whose date
+                            and time contains the specified value.
+
+                            Mandatory if ``additional_states`` is specified.
 
         TODO: make recursive (not fully decided about the forest structure
         of locations)
@@ -70,16 +70,21 @@ class Location:
             func.sum(Goods.quantity)).join(
                 Avatar.goods).filter(
                     Goods.type == goods_type, Avatar.location == self)
-        if goods_state == 'present':
-            query = query.filter(Avatar.state == goods_state)
+
+        if additional_states is None:
+            query = query.filter(Avatar.state == 'present')
         else:
+            states = ('present',) + tuple(additional_states)
+            query = query.filter(Avatar.state.in_(states))
             if at_datetime is None:
                 # TODO precise exc or define infinites and apply them
                 raise ValueError(
-                    "Querying quantities in state {!r} requires "
-                    "to specify the 'at_datetime' kwarg".format(goods_state))
-            query = query.filter(Avatar.state.in_((goods_state, 'present')),
-                                 Avatar.dt_from <= at_datetime,
+                    "Querying quantities with additional states {!r} requires "
+                    "to specify the 'at_datetime' kwarg".format(
+                        additional_states))
+
+        if at_datetime is not None:
+            query = query.filter(Avatar.dt_from <= at_datetime,
                                  or_(Avatar.dt_until.is_(None),
                                      Avatar.dt_until > at_datetime))
         res = query.one()[0]

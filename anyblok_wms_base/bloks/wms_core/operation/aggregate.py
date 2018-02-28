@@ -129,6 +129,8 @@ class Aggregate(Operation):
         dt_exec = self.dt_execution
         Goods = self.registry.Wms.Goods
 
+        outcome_dt_until = min_upper_bounds(g.dt_until for g in inputs)
+
         if self.state == 'done':
             update = dict(dt_until=dt_exec, state='past', reason=self)
         else:
@@ -151,7 +153,7 @@ class Aggregate(Operation):
             reason=self,
             dt_from=dt_exec,
             # dt_until in states 'present' and 'future' is theoretical anyway
-            dt_until=min_upper_bounds(g.dt_until for g in inputs),
+            dt_until=outcome_dt_until,
             state='present' if self.state == 'done' else 'future',
             **uniform_avatar_fields)
 
