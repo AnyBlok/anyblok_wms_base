@@ -78,7 +78,7 @@ Model.Wms.Operation.HistoryInput
             Fields and their semantics</h4>
 
    .. autoattribute:: operation
-   .. autoattribute:: goods
+   .. autoattribute:: avatar
    .. autoattribute:: latest_previous_op
    .. autoattribute:: orig_dt_until
 

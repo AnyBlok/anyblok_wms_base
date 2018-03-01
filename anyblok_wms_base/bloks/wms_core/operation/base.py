@@ -52,25 +52,25 @@ class HistoryInput:
                          foreign_key_options={'ondelete': 'cascade'})
     """The Operation we are interested in."""
 
-    goods = Many2One(model='Model.Wms.Goods.Avatar',
-                     primary_key=True,
-                     foreign_key_options={'ondelete': 'cascade'})
+    avatar = Many2One(model='Model.Wms.Goods.Avatar',
+                      primary_key=True,
+                      foreign_key_options={'ondelete': 'cascade'})
     """One of the inputs of the :attr:`operation`."""
 
     latest_previous_op = Many2One(model='Model.Wms.Operation',
                                   index=True)
-    """The latest operation that affected :attr:`goods` before the current one.
+    """The latest operation that affected :attr:`avatars` before :attr:`operation`.
 
     This is both the fundamental data structure suporting history (DAG)
     aspects of Operations, as is exposed in the :attr:`Operation.follows`
     and :attr:`Operation.followers` attributes and, on the other hand, the
     preservation of :attr:`reason
-    <anyblok_wms_base.bloks.wms_core.goods.Goods.reason>` for restore if
+    <anyblok_wms_base.bloks.wms_core.goods.Avatar.reason>` for restore if
     needed, even after the :attr:`current operation <operation>` is done.
     """
 
-    orig_dt_until = DateTime(label="Original dt_until of goods")
-    """Saving the original ``dt_until`` value of the :attr:`Goods <goods>`
+    orig_dt_until = DateTime(label="Original dt_until of avatars")
+    """Saving the original ``dt_until`` value of the :attr:`Avatar <avatar>`
 
     This is needed for :ref:`cancel and oblivion <op_cancel_revert_obliviate>`
     """
@@ -140,27 +140,25 @@ class Operation:
 
     @property
     def inputs(self):
-        """The Goods records the Operation is working on.
+        """The Avatars records the Operation is working on.
 
         This is a read-only pseudo field, initialized by :meth:`create()`.
         The backing data is actually stored in
         :class:`Model.Wms.Operation.HistoryInput <HistoryInput>`.
         """
-        return [hi.goods for hi in self.query_history_input().all()]
+        return [hi.avatar for hi in self.query_history_input().all()]
 
     @property
     def follows(self):
         """Immediate predecessors in the Operation history,
 
-        the operations that are the direct reasons
-        for the presence of Goods the present one is about.
-        This is a Many2Many relationship because there might be
-        several Goods involved in the operation, but for each of them,
-        it'll be exactly one operation, namely the latest before
-        the present one. In other words, operations history is a directed
-        acyclic graph, whose edges are encoded by this Many2Many.
+        These are the latest Operations that affected the
+        :attr:`inputs` (and recorded themselves on them).
 
-        This field can be empty in case of initial operations.
+        There may be zero, one or more of them.
+
+        Don't assume it'd be a list, it could as well be a set or
+        tuple, or any iterable.
 
         Examples:
 
@@ -184,6 +182,10 @@ class Operation:
         """The converse of :attr:`follows`
 
         These are the Operations that are directly after the curent one.
+        There may be also 0, 1 or more of them.
+
+        Don't assume it'd be a list, it could as well be a set or
+        tuple, or any iterable.
 
         This is a read-only pseudo field, initialized by :meth:`create()`,
         The backing data is actually stored in
@@ -230,8 +232,8 @@ class Operation:
 
     .. note:: We will probably later on make use of this field in
               destructive Operations to update the :attr:`dt_until
-              <anyblok_wms_base.bloks.wms_core.goods.Goods.dt_until>` field
-              of their incoming Goods, meaning that they won't appear in
+              <anyblok_wms_base.bloks.wms_core.goods.Avatar.dt_until>` field
+              of their inputs, meaning that they won't appear in
               present quantity queries anymore.
 
     For Operations in states ``done`` and ``started`` this represents the time
@@ -243,7 +245,7 @@ class Operation:
     """
 
     inputs_number = NONZERO
-    """Number of Goods record the operation is meant to :attr:`work on <goods>`
+    """Number of :attr:`inputs` the Operation expects.
 
     This can be set by subclasses to impose a fixed number, as in
     :attr:`inputs_number <.on_goods.WmsSingleGoodsOperation>`
@@ -279,11 +281,11 @@ class Operation:
         if clear:
             HI.query().filter(HI.operation == self).delete(
                 synchronize_session='fetch')
-        for record in inputs:
-            HI.insert(goods=record,
+        for avatar in inputs:
+            HI.insert(avatar=avatar,
                       operation=self,
-                      latest_previous_op=record.reason,
-                      orig_dt_until=record.dt_until)
+                      latest_previous_op=avatar.reason,
+                      orig_dt_until=avatar.dt_until)
 
     @classmethod
     def create(cls, state='planned', inputs=None,
@@ -301,7 +303,7 @@ class Operation:
            right away.
 
            Creating an Operation in the ``started`` state should
-           make the relevant Goods locked or destroyed right away
+           make the relevant Goods and/or Avatar locked or destroyed right away
            (TODO not implemented)
         :param fields: remaining fields, to be forwarded to ``insert`` and
                        the various involved methods implemented in subclasses.
@@ -531,7 +533,7 @@ class Operation:
         logger.info("Obliviated operation %r", self)
 
     def iter_inputs_original_values(self):
-        """List input goods together with original values kept in WorkingOn.
+        """List inputs together with the original values stored in HistoryInput.
 
         Depending on the needs, it might be interesting to avoid
         actually fetching all those records.
@@ -539,28 +541,26 @@ class Operation:
         :return: a generator of pairs (goods, their original reasons,
         their original ``dt_until``)
         """
-        # TODO simple 2-column query instead
-        return ((hi.goods, hi.latest_previous_op, hi.orig_dt_until)
+        # TODO simple n-column query instead
+        return ((hi.avatar, hi.latest_previous_op, hi.orig_dt_until)
                 for hi in self.query_history_input().all())
 
     def reset_inputs_original_values(self, state=None):
-        """Reset all input Goods to their original reason and state if passed.
+        """Reset all inputs to their original values; set state if passed.
 
-        :param state: if not None, will be state on the input Goods
+        :param state: if not None, will be set on the inputs
 
         The original values are those currently held in
-        :class:`Model.Wms.Operation.WorkingOn <WorkingOn>`.
+        :class:`Model.Wms.Operation.HistoryInput <HistoryInput>`.
 
-        TODO PERF: it should be more efficient not to fetch the goods and
+        TODO PERF: it should be more efficient not to fetch the avatars and
         their records, but work directly on ids (and maybe do this in one pass
         with a clever UPDATE query).
-        TODO: consider generalization to the base class to simplify
-        implementation of all Operation subclasses.
         """
-        for goods, reason, dt_until in self.iter_inputs_original_values():
+        for avatar, reason, dt_until in self.iter_inputs_original_values():
             if state is not None:
-                goods.state = state
-            goods.update(reason=reason, dt_until=dt_until)
+                avatar.state = state
+            avatar.update(reason=reason, dt_until=dt_until)
 
     @classmethod
     def check_create_conditions(cls, state, dt_execution,
@@ -612,8 +612,8 @@ class Operation:
         If no Operation is downstream, one can think of outcomes as the results
         of the current Operation.
 
-        This default implementation considers that the Goods the current
-        Operation is working on never are outcomes.
+        This default implementation considers that the :attr:`inputs`
+        of the current Operation never are outcomes.
 
         This is a Python property, because it might become a field at some
         point.
