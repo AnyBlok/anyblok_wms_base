@@ -37,6 +37,34 @@ actually inside each other. It's rather some kind of logical grouping,
 useful to aggregate stock levels, or to confine some Goods to a group
 of Locations once they are reserved.
 
+.. _improvement_stock_levels:
+
+Location hierarchical structure and stock levels
+------------------------------------------------
+Counting (or summing) the goods quantities is expensive within an
+arborescent structure, even if done with PostgreSQL recursive queries.
+
+And actually, it's often a bad idea to rely on the arborescence for
+that. Imagine a system with two warehouses: it's tempting to have a
+location for each warehouse, that would be the ancestor of all
+locations within the warehouse. Now do we really like to count all
+items in there, including locations for temporary storage of damaged
+goods before actually destroying them ?
+
+In fact, measuring stock levels is often done for a purpose (like
+deciding whether we can sell), and, assuming we want an exact count,
+it should not rely on the Location hierarchy, but rather on the
+Location's purpose (e.g., storage before shipping to customers) or not
+on Locations at all.
+
+Therefore we should introduce a simple tag system for stock levels
+grouping in Location, and we can keep the arborescent structure,
+claiming this time that it really expresses physical inclusion of
+Locations (can be useful for other purposes than stock levels, such as
+confinment of reserved Goods). We
+should rename the ``parent`` field as ``part_of`` or ``inside`` to
+insist on that.
+
 .. _improvement_operation_superseding:
 
 Superseding of planned operations
