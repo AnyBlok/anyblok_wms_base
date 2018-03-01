@@ -204,18 +204,18 @@ class Operation:
     For Operations in states ``planned`` and ``started``,
     this represents the time at which the execution is supposed to complete.
     This has consequences on the :attr:`dt_from
-    <anyblok_wms_base.bloks.wms_core.goods.Goods.dt_from>` and :attr:`dt_until
-    <anyblok_wms_base.bloks.wms_core.goods.Goods.dt_until>` fields of
-    the Goods affected by this Operation, to avoid summing up
-    several :ref:`Goods Avatars <goods_avatar>` of the same physical goods
-    while :meth:`peeking at quantities in the future
+    <anyblok_wms_base.bloks.wms_core.goods.Avatar.dt_from>` and :attr:`dt_until
+    <anyblok_wms_base.bloks.wms_core.goods.Avatar.dt_until>` fields of
+    the :ref:`Goods Avatars <goods_avatar>` affected by this Operation, to
+    avoid summing up several :ref:`Avatars <goods_avatar>` of the same
+    physical goods while :meth:`peeking at quantities in the future
     <anyblok_wms_base.bloks.wms_core.location.Location.quantity>`,
     but has no other strong meaning within
     ``wms-core``: if the end application does some serious time prediction,
     it can use it about freely. The actual execution can
-    occur later at any time, and :meth:`execute` will in particular
-    correct the value of this field, and its consequences on the affected
-    Goods.
+    occur later at any time, be it sooner or later, as :meth:`execute`
+    will in particular correct the value of this field, and its
+    consequences on the affected :ref:`Avatars <goods_avatar>`.
     """
 
     dt_start = DateTime(label="date and time of start")
@@ -654,7 +654,7 @@ class Operation:
         This method does not have to care about the Operation state, which
         the base class has already checked.
 
-        This method must correct the dates and times on the affected Goods or
+        This method must correct the dates and times on the affected Avatars or
         more broadly of any consequences of the theoretical execution date
         and time that has been set during planning.
         For that purpose, it can rely on the value of the :attr:`dt_execution`

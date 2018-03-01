@@ -418,17 +418,7 @@ class Properties:
 class Avatar:
     """Goods Avatar.
 
-    An Avatar represents the idea that some Goods are, should be or were
-    somewhere in a certain state at a certain time, and also point to the latest
-    :class:`Operation anyblok_wms_base.bloks.wms_core.operation.base.Operation`
-    that's responsible for that.
-
-    :class:`Operations
-    <anyblok_wms_base.bloks.wms_core.operation.base.Operation>` work
-    primarily on Avatars, but can also affect the underlying :class:`Goods`.
-
-    A contrario, a reservation system needs to reserve physical objects
-    (:class:`Goods` instances) instead  of Avatars whose instances are volatile.
+    See in :ref:`Core Concepts <goods_avatar>` for a functional description.
     """
 
     id = Integer(label="Identifier", primary_key=True)
@@ -437,7 +427,7 @@ class Avatar:
     goods = Many2One(model=Model.Wms.Goods,
                      index=True,
                      nullable=False)
-    """The Goods of which this is an avatar."""
+    """The Goods of which this is an Avatar."""
 
     state = Selection(label="State of existence",
                       selections=GOODS_STATES,
@@ -461,7 +451,7 @@ class Avatar:
 
     dt_from = DateTime(label="Exist (or will) from this date & time",
                        nullable=False)
-    """Date and time from which the Goods record is meaningful, inclusively.
+    """Date and time from which the Avatar is meaningful, inclusively.
 
     Functionally, even though the default in creating Operations will be
     to use the current date and time, this is not to be confused with the
@@ -483,14 +473,14 @@ class Avatar:
 
     In all cases, this doesn't mean that the very same Goods aren't present
     at an earlier time with the same state, location, etc. That earlier time
-    range would simply be another Goods record (use-case: moving back and
-    forth).
+    range would simply be another Avatar (use case: moving back and forth).
     """
 
     dt_until = DateTime(label="Exist (or will) until this date & time")
-    """Date and time until which the Avatar record is meaningful, inclusively.
+    """Date and time until which the Avatar record is meaningful, exclusively.
 
-    Like :attr:`dt_from`, the meaning vary according to the value of state:
+    Like :attr:`dt_from`, the meaning varies according to the value of
+    :attr:`state`:
 
     + In the ``past`` state, this is supposed to be a faithful
       representation of reality: apart from the special case of formal
@@ -503,8 +493,7 @@ class Avatar:
 
     In all cases, this doesn't mean that the very same goods aren't present
     at an later time with the same state, location, etc. That later time
-    range would simply be another Goods record (use-case: moving back and
-    forth).
+    range would simply be another Avatar (use case: moving back and forth).
     """
 
     reason = Many2One(label="The operation that is the direct cause "
@@ -514,19 +503,19 @@ class Avatar:
     """Entry point to operational history.
 
     This records the Operation that is responsible for the current
-    data of the Goods record, including its state. In practice, it is
+    Avatar, including its :attr:`state`. In practice, it is
     simply the latest :class:`Operation <.operation.base.Operation>` that
     affected these goods.
 
     It should renamed as ``outcome_of`` or ``latest_operation`` in some
     future.
 
-    .. note:: As an exception, planned Operations do change :attr:`dt_until`
-              on the Goods they work on without setting themselves as
+    .. note:: As a special case, planned Operations do change :attr:`dt_until`
+              on the Avatars they work on without setting themselves as
               :attr:`reason`.
 
               No setting themselves as :attr:`reason` helps to distinguish
-              their incoming Goods from their outcomes and is in line
+              their inputs from their outcomes and is in line
               with :attr:`dt_until` being theoretical in that case anyway.
     """
 

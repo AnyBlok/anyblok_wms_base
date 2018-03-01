@@ -14,8 +14,13 @@ Core concepts
 All of these are implemented as Anyblok Models and are provided by
 :ref:`blok_wms_core`.
 
-Goods, their Types and Properties
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+There are three classes of concepts in :ref:`blok_wms_core`:
+:ref:`Goods <goods>`, :ref:`operation` and :ref:`location`.
+
+.. _goods:
+
+Goods and related concepts
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Goods represent the physical objects the system is meant to manage.
 
@@ -23,20 +28,40 @@ Goods represent the physical objects the system is meant to manage.
 
 Goods
 -----
+.. versionchanged:: 0.6.0
 
 .. note:: This is an overview, see :class:`the code documentation
-          <anyblok_wms_base.bloks.wms_core.goods.Goods>` for more details.
+          <anyblok_wms_base.bloks.wms_core.goods.Goods>` for more
+          details, notably for the API of properties.
 
-Records of Goods have a certain :ref:`Type <goods_type>`, a
-:ref:`Location <location>`, and can be in three states: ``past``,
-``present`` and ``future``.
+Records of Goods represent the physicality of the goods, they have a
+certain :ref:`Type <goods_type>` and :ref:`flexible properties
+<goods_properties>`, whose purpose is to to represent the variability
+among Goods of a given Type (e.g, serial numbers, expiry dates).
 
-They have :ref:`flexible properties <goods_properties>`, which are meant
-to represent the variability among Goods of given Type (e.g, serial
-numbers, expiry dates). Downstream libraries and applications can
-implement their business logic on them safely, as their values have no
-meaning for ``wms-core``. How :ref:`operations <operation>` handle
-properties is configurable if needed.
+The journey of the Goods through the system is represented by their
+successive :ref:`Avatars <goods_avatar>`.
+
+Ideally, if the goods change enough in reality that they should be
+considered a different object, this should be represented by a new Goods record.
+From ``wms-core``'s perspective, there is no definitive answer
+whether an object "stays the same" for all the data changes that can
+occur about it, not even to speak of reality.
+This subjective question is partly left to end
+applications, and the Goods record itself serves as the encoding of that.
+
+.. seealso:: :ref:`the original thoughts on Avatars <improvement_avatars>`
+             for a discussion predating the current form of the Goods
+             record, with examples.
+
+Except for a few predefined cases, Properties form an open ground for
+downstream librairies and applications to base some business logic on, as their
+values have no meaning for ``wms-core``.
+While some :ref:`Operations <operation>` do manipulate
+properties, they don't care about their semantics, and do so in a
+configurable way, according to the :ref:`goods_type` behaviours.
+For a very simple example, see :ref:`op_arrival`, for a less trivial
+one, see :ref:`op_unpack`.
 
 For the time being, records of goods also have quantities that
 represent either a physical measure, or a number of physical items that are
@@ -121,6 +146,47 @@ of some properties (typically ending up as columns in the database),
 which can improve querying capabilities, and make for an easier and
 safer programming experience.
 
+.. _goods_avatar:
+
+Goods Avatar
+------------
+.. versionadded:: 0.6.0
+
+An Avatar represents the idea that some Goods are, should be or were
+somewhere in a certain state (``past``, ``present`` or ``future``) in
+a certain date and time range.
+
+.. note:: the state is actually totally independent from the times,
+          and has more to do with advancement of :ref:`Operations
+          <operation>` than the current clock time.
+
+They also bear a reference to the latest :ref:`operation` that
+affected them, which is the main entry point to operational history
+from the perspective of Goods.
+
+:ref:`Operations <operation>` take primarily Avatars as their inputs,
+and spawn new ones, but can also affect the underlying :ref:`Goods
+<goods_goods>`.
+
+Here's a concrete example: a planned :ref:`op_move` inputs an Avatar in the
+``present`` state, and produces a new one at the wished
+:ref:`location` in the ``future`` state. Upon execution, the input's
+state is changed to ``past``, while the outcome's state is changed to
+``present``. These two Avatars share the same :ref:`Goods
+<goods_goods>` record, to account for the fact that the physical goods
+haven't changed (in this case, ``wms-core`` can decide of this for itself).
+
+On the other hand, a reservation system needs to work on :ref:`Goods
+<goods_goods>`, rather than Avatars, whose instances are
+too volatile.
+
+.. seealso:: :ref:`the original thoughts on Avatars
+             <improvement_avatars>`, for more on the intended
+             purposes, especially with reservation systems in mind,
+             and :class:`the code documentation
+             <anyblok_wms_base.bloks.wms_core.goods.Avatar>` for a
+             detailed description of their fields, with full semantics.
+
 .. _location:
 
 Location
@@ -166,19 +232,28 @@ they inherit from the base :class:`Operation
 while they are persisted as two tables in the database: ``wms_operation``
 for the common data and a specific one, such as ``wms_operation_arrival``.
 
-Most Operations take Goods as inputs, but some don't (creation
-Operations). Conversely, most Operations have resulting Goods, which
-for the time being are called « outcomes » in the code.
+In general, Operations take :ref:`Goods Avatars <goods_avatar>` as inputs,
+but that can be an empty set for some (creation Operations, such as
+:ref:`op_arrival`), and many Operations work just on one :ref:`Avatar
+<goods_avatar>`.
+Conversely, most Operations have resulting :ref:`Avatars <goods_avatar>`, which
+for the time being are called their *outcomes*.
+
+.. note:: That Operations see :ref:`goods_goods` through their
+          :ref:`Avatars <goods_avatar>` doesn't imply they have no
+          effect on the underlying :ref:`goods_goods`.
+          In fact, all :ref:`goods_goods` handling should occur
+          through Operations.
 
 Operations are linked together in logical order, forming a `Directed
 Acyclic Graph (DAG)
 <https://en.wikipedia.org/wiki/Directed_acyclic_graph>`_ that,
-together with the links between Operations and Goods, record
+together with the links between Operations and Goods, records
 all operational history, even for planned operations (we may therefore
 jokingly speak of "history of the future").
 
 Thanks to this data structure, Operations can be cancelled, reverted
-and more (see :ref:`op_cancel_revert_obliviate`.
+and more (see :ref:`op_cancel_revert_obliviate`).
 
 .. _op_states:
 
@@ -209,6 +284,11 @@ and :meth:`execute()
        appropriate states so that the whole system view is consistent for the
        present time as well as future times.
 
+       For this reason, it is necessary to provide a value for the
+       :attr:`date and time of execution
+       <anyblok_wms_base.bloks.wms_core.operation.base.Operation.dt_execution>`,
+       even if it is a very wrong estimate.
+
        Planned Operations can be either :meth:`executed
        <anyblok_wms_base.bloks.wms_core.operation.base.Operation.execute>`
        or :ref:`cancelled <op_cancel_revert_obliviate>`.
@@ -236,8 +316,9 @@ and :meth:`execute()
          consider splitting them in two steps, e.g, moving to a location
          representing some kind of vehicle (even if it is a cart),
          then moving from the vehicle to the final location. This can be
-         more consistent and explicit than having thousands Goods, still
-         attached to their original locations, but hard lock to represent
+         more consistent and explicit than having thousands of Goods,
+         whose ``present`` Avatars are still
+         attached to their original locations, but hard locked to represent
          that they aren't there any more.
        + unpacking or manufacturing operations. Here also, you can reduce
          the usage by representing unpacking or manufacturing areas as
@@ -307,18 +388,19 @@ Arrival
           <anyblok_wms_base.bloks.wms_core.operation.arrival.Arrival>`
           for more details.
 
-Arrivals represent the physical arrival of Goods that were not
-previously tracked in the application in some :ref:`location`.
+Arrivals represent the physical arrival of goods that were not
+previously tracked in the application, in some :ref:`location`.
 
-This does not encompass all "creations" of Goods, but only those that
-come in real life from the outside. They would typically be grouped in
-a concept of Incoming Shipment, but that is left to applications.
+This does not encompass all "creations" of Goods records with Avatars,
+but only those that come in real life from the outside. They would
+typically be grouped in a concept of Incoming Shipment, but that is
+left to applications.
 
 Arrivals initialise the properties of their outcomes. Therefore, they
 carry detailed information about the expected goods, and this can be
 used in validation scenarios.
 
-Arrivals are irreversible.
+Arrivals are irreversible in the sense of :ref:`op_cancel_revert_obliviate`.
 
 .. _op_departure:
 
@@ -328,14 +410,14 @@ Departure
           <anyblok_wms_base.bloks.wms_core.operation.departure.Departure>`
           for more details.
 
-Departure represent Goods physically leaving the system.
+Departure represent goods physically leaving the system.
 
 Like Arrivals, don't mean to encompass all "removals" of Goods, but only
 that leave the facilities represented in the system. They would
 typically be grouped in a concept of Outgoing Shipment, but that is
 left to applications.
 
-Departures are irreversible.
+Departures are irreversible in the sense of :ref:`op_cancel_revert_obliviate`.
 
 .. _op_move:
 
@@ -345,8 +427,9 @@ Move
           <anyblok_wms_base.bloks.wms_core.operation.move.Move>`
           for more details.
 
-Moves represent Goods being carried over from one :ref:`location` to
-another, with no change of properties. They are always reversible.
+Moves represent goods being carried over from one :ref:`location` to
+another, with no change of properties. They are always reversible in
+the sense of :ref:`op_cancel_revert_obliviate`.
 
 .. _op_unpack:
 
@@ -356,22 +439,25 @@ Unpack
           <anyblok_wms_base.bloks.wms_core.operation.unpack.Unpack>`
           for more details.
 
-Unpacks replace some Goods (packs) with their contents. They are entirely
-specified as behaviours Type of the packs, and in their properties.
-The properties of the packs can be partially or fully carried over to
-the outcomes of the Unpack.
+Unpacks replace some Goods (packs) with their contents.
+The :ref:`Properties <goods_properties>` of the packs can be partially
+or fully carried over to the outcomes of the Unpack.
 
-The outcomes can be entirely fixed, entirely dependent on the specific
+The outcomes of an Unpack and its handling of properties are entirely
+specified by the ``unpack`` behaviour of the :ref:`Type <goods_type>`
+of the packs, and in the packs properties. They can be entirely fixed
+by the behaviour, be entirely dependent on the specific
 packs being considered or a bit of both. See the documentation of
 :meth:`this method
 <anyblok_wms_base.bloks.wms_core.operation.unpack.Unpack.get_outcome_specs>`
-for a full discussion.
+for a full discussion with concrete use cases.
 
-Since Unpacks are destructive operations, they are currently irreversible,
-but will be conditionally reversible once we have the converse Pack
-(or the more gener Assembly) Operation, maybe consuming some other
-Goods for packaging (cardboard, pallet wood). Again, this will be
-defined in behaviours.
+Since Unpacks are destructive operations in reality,
+they are currently irreversible in the sense of
+:ref:`op_cancel_revert_obliviate`, but will be conditionally
+reversible once we have the converse Pack (or the more general Assembly)
+Operation, maybe consuming some other Goods for packaging (cardboard,
+pallet wood). Again, this will be controled by behaviours.
 
 .. _op_split_aggregate:
 
@@ -391,7 +477,8 @@ According to behaviours on the Goods Type, they are *formal* (have no
 counterpart in reality) or *physical*. In the latter case, they can be
 reversible or not, again according to behaviours.
 
-Aggregates are the converse of Splits.
+Aggregates are the converse of Splits, and both are always reversible
+in the sense of :ref:`op_cancel_revert_obliviate`.
 
 .. note:: see :ref:`improvement_no_quantities`
 
