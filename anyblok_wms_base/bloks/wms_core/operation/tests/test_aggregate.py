@@ -34,13 +34,15 @@ class TestAggregate(WmsTestCase):
                                                 dt_execution=self.dt_test1,
                                                 quantity=17)
 
-        self.goods = [Wms.Goods.insert(quantity=qty,
-                                       type=self.goods_type,
-                                       location=self.loc,
-                                       dt_from=self.dt_test1,
-                                       state='future',
-                                       reason=self.arrival)
-                      for qty in (1, 2)]
+        Avatar = Wms.Goods.Avatar
+        self.goods = [
+            Avatar.insert(goods=Wms.Goods.insert(quantity=qty,
+                                                 type=self.goods_type),
+                          location=self.loc,
+                          dt_from=self.dt_test1,
+                          state='future',
+                          reason=self.arrival)
+            for qty in (1, 2)]
         self.Agg = Operation.Aggregate
         self.Goods = Wms.Goods
 
@@ -56,36 +58,36 @@ class TestAggregate(WmsTestCase):
 
     def test_create_done_same_props(self):
         props = self.Goods.Properties.insert(flexible=dict(foo='bar'))
-        for record in self.goods:
-            record.update(state='present', properties=props)
+        for avatar in self.goods:
+            avatar.state = 'present'
+            avatar.goods.properties = props
         agg = self.Agg.create(inputs=self.goods, state='done')
         self.assertEqual(agg.inputs, self.goods)
         for record in self.goods:
             self.assertEqual(record.state, 'past')
             self.assertEqual(record.reason, agg)
-        new_goods = self.Goods.query().filter(
-            self.Goods.reason == agg,
-            self.Goods.state == 'present').all()
-        self.assertEqual(len(new_goods), 1)
-        new_goods = new_goods[0]
-        self.assertEqual(new_goods.quantity, 3)
-        self.assertEqual(new_goods.location, self.loc)
+        new_avatar = self.assert_singleton(agg.outcomes)
+        self.assertEqual(new_avatar.location, self.loc)
+        new_goods = new_avatar.goods
         self.assertEqual(new_goods.properties, props)
+        self.assertEqual(new_goods.quantity, 3)
 
         for dt in (self.dt_test1, self.dt_test2, self.dt_test3):
-            self.assertQuantity(3, at_datetime=dt)
+            self.assertQuantity(3, at_datetime=dt,
+                                additional_states=('past', 'future'))
 
     def test_create_done_equal_props(self):
         """Test equality check for different records of properties."""
-        for record in self.goods:
+        for avatar in self.goods:
+            avatar.state = 'present'
             props = self.Goods.Properties.insert(flexible=dict(foo='bar'))
-            record.update(state='present', properties=props)
+            avatar.goods.properties = props
         agg = self.Agg.create(inputs=self.goods, state='done')
-        new_goods = self.Goods.query().filter(
-            self.Goods.reason == agg,
-            self.Goods.state == 'present').all()
-        self.assertEqual(len(new_goods), 1)
-        new_goods = new_goods[0]
+
+        new_avatar = self.assert_singleton(agg.outcomes)
+        self.assertEqual(new_avatar.location, self.loc)
+        new_goods = new_avatar.goods
+        self.assertIsNotNone(new_goods.properties)
         new_props = new_goods.properties.to_dict()
         new_props.pop('id')
         old_props = props.to_dict()
@@ -100,33 +102,34 @@ class TestAggregate(WmsTestCase):
                               dt_execution=self.dt_test3)
         for record in self.goods:
             self.assertEqual(record.dt_until, self.dt_test3)
-        outcome = self.single_result(
-            self.Goods.query().filter(self.Goods.reason == agg,
-                                      self.Goods.state == 'present'))
+        outcome = self.assert_singleton(agg.outcomes)
+        self.assertEqual(outcome.state, 'present')
         self.assertEqual(outcome.dt_from, self.dt_test3)
 
     def assertBackToBeginning(self, state='present', props=None):
-        new_goods = self.Goods.query().filter().all()
+        new_goods = self.Goods.query().all()
         self.assertEqual(len(new_goods), 2)
         if props is not None:
             old_props = props.to_dict()
             old_props.pop('id')
             for line in new_goods:
+                self.assertIsNotNone(line.properties)
                 new_props = line.properties.to_dict()
                 new_props.pop('id')
                 self.assertEqual(new_props, old_props)
+        self.assertEqual(set(g.quantity for g in new_goods), set((1, 2)))
 
-        for line in new_goods:
-            self.assertEqual(line.type, self.goods_type)
-            self.assertEqual(line.location, self.loc)
-            self.assertEqual(line.state, 'present')
-            self.assertEqual(line.reason, self.arrival)
-        self.assertEqual(set(line.quantity for line in new_goods), set((1, 2)))
+        for avatar in self.Goods.Avatar.query().all():
+            self.assertEqual(avatar.goods.type, self.goods_type)
+            self.assertEqual(avatar.location, self.loc)
+            self.assertEqual(avatar.state, 'present')
+            self.assertEqual(avatar.reason, self.arrival)
 
     def test_create_done_equal_props_obliviate(self):
-        for record in self.goods:
+        for avatar in self.goods:
+            avatar.state = 'present'
             props = self.Goods.Properties.insert(flexible=dict(foo='bar'))
-            record.update(state='present', properties=props)
+            avatar.goods.properties = props
         agg = self.Agg.create(inputs=self.goods, state='done')
         agg.obliviate()
         self.assertBackToBeginning(state='present', props=props)
@@ -152,25 +155,38 @@ class TestAggregate(WmsTestCase):
                               dt_execution=self.dt_test2)
         self.assertEqual(set(agg.follows), set((self.arrival, other_reason)))
         agg.obliviate()
-        new_goods = self.Goods.query().filter().all()
-        self.assertEqual(len(new_goods), 2)
-        for goods in new_goods:
-            exp_reason = other_reason if goods.quantity == 1 else self.arrival
-            self.assertEqual(goods.reason, exp_reason)
+        new_avatars = self.Goods.Avatar.query().all()
+        self.assertEqual(len(new_avatars), 2)
+        for avatar in new_avatars:
+            exp_reason = other_reason if avatar.quantity == 1 else self.arrival
+            self.assertEqual(avatar.reason, exp_reason)
 
         # CASCADE options did the necessary cleanups
         self.assertEqual(Operation.HistoryInput.query().count(), 0)
 
-    def test_forbid_differences(self):
+    def test_forbid_differences_avatars(self):
+        """Forbid differences among avatars own fields"""
         other_loc = self.registry.Wms.Location.insert(label="Other location")
         self.goods[1].location = other_loc
         with self.assertRaises(OperationInputsError) as arc:
             self.plan_aggregate()
         exc = arc.exception
-        self.assertEqual(exc.kwargs.get('field'), 'location')
-        self.assertSetEqual(set((exc.kwargs.get('first_field'),
-                                 exc.kwargs.get('second_field'))),
-                            set((other_loc, self.loc)))
+        diff = exc.kwargs.get('diff')
+        self.assertIsNotNone(diff)
+        self.assertEqual(set(diff.get('location')),
+                         set((other_loc, self.loc)))
+
+    def test_forbid_differences_goods(self):
+        """Forbid differences among avatars' Goods."""
+        self.goods[0].goods.code = 'AB'
+        self.goods[1].goods.code = 'CD'
+        with self.assertRaises(OperationInputsError) as arc:
+            self.plan_aggregate()
+        exc = arc.exception
+        diff = exc.kwargs.get('diff')
+        self.assertIsNotNone(diff)
+        self.assertEqual(set(diff.get('code')),
+                         set(('AB', 'CD')))
 
     def test_ensure_goods(self):
         with self.assertRaises(OperationMissingInputsError):
@@ -220,31 +236,36 @@ class TestAggregate(WmsTestCase):
         # a problem for all SingleGoods and MultipleGoods operations
         # (link to properties created or changed after the op creation)
         props = self.Goods.Properties.insert(flexible=dict(foo='bar'))
-        for record in self.goods:
-            record.update(state='present', properties=props)
+        for avatar in self.goods:
+            avatar.state = 'present'
+            avatar.goods.properties = props
 
         agg = self.plan_aggregate()
         self.assertEqual(agg.inputs, self.goods)
-
+        self.assertQuantity(3)
         for dt in (self.dt_test1, self.dt_test2, self.dt_test3):
-            self.assertQuantity(3, at_datetime=dt)
+            self.assertQuantity(3, at_datetime=dt,
+                                additional_states=('past', 'future'))
 
         agg.execute(dt_execution=self.dt_test3)
 
+        self.assertQuantity(3)
         for dt in (self.dt_test1, self.dt_test2, self.dt_test3):
-            self.assertQuantity(3, at_datetime=dt)
+            self.assertQuantity(3, at_datetime=dt,
+                                additional_states=('past', 'future'))
 
         for record in self.goods:
             self.assertEqual(record.state, 'past')
             self.assertEqual(record.reason, agg)
-        new_goods = self.Goods.query().filter(
-            self.Goods.reason == agg,
-            self.Goods.state == 'present').all()
-        self.assertEqual(len(new_goods), 1)
-        new_goods = new_goods[0]
-        self.assertEqual(new_goods.quantity, 3)
-        self.assertEqual(new_goods.location, self.loc)
-        self.assertEqual(new_goods.properties, props)
+
+        Avatar = self.Goods.Avatar
+        new_avatar = self.assert_singleton(
+            Avatar.query().filter(
+                Avatar.reason == agg,
+                Avatar.state == 'present').all())
+        self.assertEqual(new_avatar.goods.quantity, 3)
+        self.assertEqual(new_avatar.location, self.loc)
+        self.assertEqual(new_avatar.goods.properties, props)
 
     def test_execute_several_dt_from(self):
         self.goods[1].dt_from = self.dt_test2
@@ -254,8 +275,7 @@ class TestAggregate(WmsTestCase):
                               dt_execution=self.dt_test3)
         for record in self.goods:
             self.assertEqual(record.dt_until, self.dt_test3)
-        outcome = self.single_result(
-            self.Goods.query().filter(self.Goods.reason == agg))
+        outcome = self.assert_singleton(agg.outcomes)
         self.assertEqual(outcome.dt_from, self.dt_test3)
 
         for record in self.goods:
@@ -269,8 +289,9 @@ class TestAggregate(WmsTestCase):
 
     def test_execute_obliviate(self):
         props = self.Goods.Properties.insert(flexible=dict(foo='bar'))
-        for record in self.goods:
-            record.update(state='present', properties=props)
+        for avatar in self.goods:
+            avatar.state = 'present'
+            avatar.goods.properties = props
 
         agg = self.plan_aggregate()
         self.assertEqual(agg.inputs, self.goods)
@@ -285,9 +306,14 @@ class TestAggregate(WmsTestCase):
 
         agg.cancel()
         self.assertEqual(self.Agg.query().count(), 0)
+        Avatar = self.Goods.Avatar
+        all_avatars = Avatar.query().join(Avatar.goods).filter(
+            self.Goods.type == self.goods[0].goods.type).all()
+        self.assertEqual(set(all_avatars), set(self.goods))
+
         all_goods = self.Goods.query().filter(
-            self.Goods.type == self.goods[0].type).all()
-        self.assertEqual(set(all_goods), set(self.goods))
+            self.Goods.type == self.goods[0].goods.type).all()
+        self.assertEqual(set(all_goods), set(av.goods for av in self.goods))
 
     def test_reversibility(self):
         for record in self.goods:

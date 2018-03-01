@@ -30,25 +30,28 @@ class Location:
     parent = Many2One(label="Parent location",
                       model='Model.Wms.Location')
 
-    def __repr__(self):
-        return ("Wms.Location(id={self.id}, code={self.code!r}, "
+    def __str__(self):
+        return ("(id={self.id}, code={self.code!r}, "
                 "label={self.label!r})".format(self=self))
 
-    def quantity(self, goods_type, goods_state='present', at_datetime=None):
+    def __repr__(self):
+        return "Wms.Location" + str(self)
+
+    def quantity(self, goods_type, additional_states=None, at_datetime=None):
         """Return the full quantity in location for the given type.
 
-        :param goods_state:
-            if not 'present', then ``at_datetime`` is
-            mandatory, the query is filtered for this
-            date and time, and the query includes the Goods
-            with state == 'present' anyway.
+        :param additional_states:
+            Optionally, states of the Goods Avatar to take into account
+            in addition to the ``present`` state.
 
-            #TODO renaming as ``with_state`` or similar would be clearer.
-
-            Hence, for ``goods_state='past'``, we have the
-            Goods that were already there and still are,
+            Hence, for ``additional_states=['past']``, we have the
+            Goods Avatars that were already there and still are,
             as well as those that aren't there any more,
-            and similarly for the future.
+            and similarly for 'future'.
+        :param at_datetime: take only into account Goods Avatar whose date
+                            and time contains the specified value.
+
+                            Mandatory if ``additional_states`` is specified.
 
         TODO: make recursive (not fully decided about the forest structure
         of locations)
@@ -62,19 +65,27 @@ class Location:
         Let's get a DB with serious volume and datetimes first.
         """
         Goods = self.registry.Wms.Goods
-        query = Goods.query(func.sum(Goods.quantity)).filter(
-            Goods.type == goods_type, Goods.location == self)
-        if goods_state == 'present':
-            query = query.filter(Goods.state == goods_state)
+        Avatar = Goods.Avatar
+        query = Avatar.query(
+            func.sum(Goods.quantity)).join(
+                Avatar.goods).filter(
+                    Goods.type == goods_type, Avatar.location == self)
+
+        if additional_states is None:
+            query = query.filter(Avatar.state == 'present')
         else:
+            states = ('present',) + tuple(additional_states)
+            query = query.filter(Avatar.state.in_(states))
             if at_datetime is None:
                 # TODO precise exc or define infinites and apply them
                 raise ValueError(
-                    "Querying quantities in state {!r} requires "
-                    "to specify the 'at_datetime' kwarg".format(goods_state))
-            query = query.filter(Goods.state.in_((goods_state, 'present')),
-                                 Goods.dt_from <= at_datetime,
-                                 or_(Goods.dt_until.is_(None),
-                                     Goods.dt_until > at_datetime))
+                    "Querying quantities with additional states {!r} requires "
+                    "to specify the 'at_datetime' kwarg".format(
+                        additional_states))
+
+        if at_datetime is not None:
+            query = query.filter(Avatar.dt_from <= at_datetime,
+                                 or_(Avatar.dt_until.is_(None),
+                                     Avatar.dt_until > at_datetime))
         res = query.one()[0]
         return 0 if res is None else res

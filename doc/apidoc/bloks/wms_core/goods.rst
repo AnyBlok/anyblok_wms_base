@@ -13,12 +13,7 @@ Model.Wms.Goods
    .. autoattribute:: id
    .. autoattribute:: type
    .. autoattribute:: properties
-   .. autoattribute:: location
-   .. autoattribute:: state
-   .. autoattribute:: reason
    .. autoattribute:: quantity
-   .. autoattribute:: dt_from
-   .. autoattribute:: dt_until
 
    .. raw:: html
 
@@ -69,3 +64,18 @@ Model.Wms.Goods.Properties
    .. automethod:: duplicate
    .. automethod:: get
    .. automethod:: set
+
+Model.Wms.Goods.Avatar
+~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: anyblok_wms_base.bloks.wms_core.goods.Avatar
+
+   .. raw:: html
+
+      <h3>Fields and their semantics</h3>
+
+   .. autoattribute:: id
+   .. autoattribute:: location
+   .. autoattribute:: state
+   .. autoattribute:: reason
+   .. autoattribute:: dt_from
+   .. autoattribute:: dt_until

@@ -29,18 +29,13 @@ class TestSingleInputOperation(WmsTestCase):
         self.incoming_loc = Wms.Location.insert(label="Incoming location")
         self.stock = Wms.Location.insert(label="Stock")
 
-        self.arrival = Operation.Arrival.insert(goods_type=self.goods_type,
+        self.arrival = Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 state='planned',
                                                 dt_execution=self.dt_test1,
                                                 quantity=3)
 
-        self.goods = Wms.Goods.insert(quantity=3,
-                                      type=self.goods_type,
-                                      location=self.incoming_loc,
-                                      state='future',
-                                      dt_from=self.dt_test1,
-                                      reason=self.arrival)
+        self.goods = self.assert_singleton(self.arrival.outcomes)
         self.Move = Operation.Move
         self.Goods = Wms.Goods
         self.op_model_name = 'Model.Wms.Operation.Move'

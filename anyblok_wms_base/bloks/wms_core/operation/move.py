@@ -37,17 +37,14 @@ class Move(Splitter, Operation):
     def after_insert(self):
         state, to_move, dt_exec = self.state, self.input, self.dt_execution
 
-        self.registry.Wms.Goods.insert(
+        self.registry.Wms.Goods.Avatar.insert(
             location=self.destination,
             reason=self,
             state='present' if state == 'done' else 'future',
             dt_from=dt_exec,
             # copied fields:
             dt_until=to_move.dt_until,
-            quantity=to_move.quantity,
-            type=to_move.type,
-            code=to_move.code,
-            properties=to_move.properties)
+            goods=to_move.goods)
 
         to_move.dt_until = dt_exec
         if state == 'done':
@@ -56,8 +53,7 @@ class Move(Splitter, Operation):
     def execute_planned_after_split(self):
         dt_execution = self.dt_execution
 
-        Goods = self.registry.Wms.Goods
-        after_move = Goods.query().filter(Goods.reason == self).one()
+        after_move = self.outcomes[0]
         after_move.update(state='present', dt_from=dt_execution)
         self.registry.flush()
 

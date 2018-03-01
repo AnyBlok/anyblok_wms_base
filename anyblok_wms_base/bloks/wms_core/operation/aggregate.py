@@ -29,8 +29,9 @@ class Aggregate(Operation):
     that have to be considered internal details of wms_core, and are not
     guaranteed to exist in the future.
 
-    Aggregates replace some records of Goods at the same location,
-    sharing equal properties with a single one bearing the total quantity.
+    Aggregates replace some records of Goods
+    sharing equal properties and type, with Avatars at the same location with
+    a single one bearing the total quantity, and a new Avatar.
 
     While non trivial in the database, they may have no physical counterpart in
     the real world. We call them *formal* in that case.
@@ -48,7 +49,8 @@ class Aggregate(Operation):
     TODO implement :meth:`plan_revert_single`
     """
     TYPE = 'wms_aggregate'
-    UNIFORM_FIELDS = ('type', 'properties', 'code', 'location')
+    UNIFORM_GOODS_FIELDS = ('type', 'properties', 'code')
+    UNIFORM_AVATAR_FIELDS = ('location', )
 
     id = Integer(label="Identifier",
                  primary_key=True,
@@ -83,34 +85,51 @@ class Aggregate(Operation):
     @classmethod
     def check_create_conditions(cls, state, dt_execution, inputs=None,
                                 **kwargs):
-        """Check that the Goods to aggregate are indeed indistinguishable.
+        """Check that the inputs to aggregate are indeed indistinguishable.
 
         This performs the check from superclasses, and then compares all
-        fields from :attr:`UNIFORM_FIELDS` in the specified ``goods``.
+        fields from :attr:`UNIFROM_AVATAR_FIELDS` on the inputs (Avatars) and
+        :attr:`UNIFORM_GOODS_FIELDS` (on the underlying Goods).
         """
         super(Aggregate, cls).check_create_conditions(
             state, dt_execution, inputs=inputs, **kwargs)
         first = inputs[0]
-        for record in inputs:
-            for field in cls.UNIFORM_FIELDS:
-                if not cls.field_is_equal(field, first, record):
-                    raise OperationInputsError(
-                        cls,
-                        "Can't create Aggregate with inputs {inputs} "
-                        "because of discrepancy in field {field!r}: "
-                        "The record with id {first.id} has {first_field!r} "
-                        "The record with id {second.id} has {second_field!r} ",
-                        inputs=inputs, field=field,
-                        first=first, first_field=getattr(first, field),
-                        second=record, second_field=getattr(record, field))
+        first_goods = first.goods
+        for avatar in inputs:
+            goods = avatar.goods
+            diff = {}  # field name -> (first value, second value)
+            for field in cls.UNIFORM_GOODS_FIELDS:
+                if not cls.field_is_equal(field, first_goods, goods):
+                    diff[field] = (getattr(first_goods, field),
+                                   getattr(goods, field))
+            for field in cls.UNIFORM_AVATAR_FIELDS:
+                first_value = getattr(first, field)
+                second_value = getattr(avatar, field)
+                if first_value != second_value:
+                    diff[field] = (first_value, second_value)
+
+            if diff:
+                raise OperationInputsError(
+                    cls,
+                    "Can't create Aggregate with inputs {inputs} "
+                    "because of discrepancy in field {field!r}: "
+                    "Here's a mapping giving by field the differing "
+                    "values between the record with id {first.id} "
+                    "and the one with id {second.id}: {diff!r} ",
+                    inputs=inputs, field=field,
+                    first=first, second=avatar, diff=diff)
 
     def after_insert(self):
         """Business logic after the inert insertion
         """
+        # TODO find a way to pass the actual wished Goods up to here, then
+        # use it (to maintain Goods record in case of reverts)
         self.registry.flush()
         inputs = self.inputs
         dt_exec = self.dt_execution
         Goods = self.registry.Wms.Goods
+
+        outcome_dt_until = min_upper_bounds(g.dt_until for g in inputs)
 
         if self.state == 'done':
             update = dict(dt_until=dt_exec, state='past', reason=self)
@@ -119,21 +138,27 @@ class Aggregate(Operation):
         for record in inputs:
             record.update(**update)
 
-        uniform_fields = {field: getattr(inputs[0], field)
-                          for field in self.UNIFORM_FIELDS}
-        return Goods.insert(
+        tpl_avatar = inputs[0]
+        tpl_goods = tpl_avatar.goods
+        uniform_goods_fields = {field: getattr(tpl_goods, field)
+                                for field in self.UNIFORM_GOODS_FIELDS}
+        uniform_avatar_fields = {field: getattr(tpl_avatar, field)
+                                 for field in self.UNIFORM_AVATAR_FIELDS}
+        aggregated_goods = Goods.insert(
+            quantity=sum(a.goods.quantity for a in inputs),
+            **uniform_goods_fields)
+
+        return Goods.Avatar.insert(
+            goods=aggregated_goods,
             reason=self,
             dt_from=dt_exec,
             # dt_until in states 'present' and 'future' is theoretical anyway
-            dt_until=min_upper_bounds(g.dt_until for g in inputs),
+            dt_until=outcome_dt_until,
             state='present' if self.state == 'done' else 'future',
-            quantity=sum(g.quantity for g in inputs),
-            **uniform_fields)
+            **uniform_avatar_fields)
 
     def execute_planned(self):
-        Goods = self.registry.Wms.Goods
-        created = Goods.query().filter(Goods.reason == self).one()
-        created.update(state='present', dt_from=self.dt_execution)
+        self.outcomes[0].update(state='present', dt_from=self.dt_execution)
         for record in self.inputs:
             record.update(state='past', reason=self, dt_until=self.dt_execution)
 
@@ -144,4 +169,4 @@ class Aggregate(Operation):
         context.
         """
         # that all Good Types are equal is part of pre-creation checks
-        return self.inputs[0].type.is_aggregate_reversible()
+        return self.inputs[0].goods.type.is_aggregate_reversible()

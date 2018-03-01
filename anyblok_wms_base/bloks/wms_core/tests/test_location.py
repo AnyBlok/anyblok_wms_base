@@ -19,6 +19,7 @@ class TestLocation(WmsTestCase):
         Wms = self.registry.Wms
 
         self.Goods = Wms.Goods
+        self.Avatar = Wms.Goods.Avatar
         self.goods_type = self.Goods.Type.insert(label="My goods")
         self.stock = Wms.Location.insert(label="Stock", code='STK')
         self.arrival = Wms.Operation.Arrival.insert(
@@ -29,11 +30,12 @@ class TestLocation(WmsTestCase):
             quantity=5)
 
     def insert_goods(self, qty, state, dt_from, until=None):
-        self.Goods.insert(type=self.goods_type, quantity=qty,
-                          reason=self.arrival, location=self.stock,
-                          dt_from=dt_from,
-                          dt_until=until,
-                          state=state)
+        self.Avatar.insert(
+            goods=self.Goods.insert(type=self.goods_type, quantity=qty),
+            reason=self.arrival, location=self.stock,
+            dt_from=dt_from,
+            dt_until=until,
+            state=state)
 
     def test_str_repr(self):
         self.assertTrue('STK' in repr(self.stock))
@@ -51,17 +53,18 @@ class TestLocation(WmsTestCase):
         self.insert_goods(1, 'past', self.dt_test1, until=self.dt_test2)
 
         self.assertQuantity(D('1.5'))
-        self.assertQuantity(D('1.5'), goods_state='present')
-        self.assertQuantity(D('3.5'), goods_state='future',
+        self.assertQuantity(D('3.5'), additional_states=['future'],
                             at_datetime=self.dt_test3)
 
-        self.assertQuantity(D('1.5'), goods_state='future',
+        self.assertQuantity(D('1.5'), additional_states=['future'],
                             at_datetime=self.dt_test2)
         # the 'past' and 'present' ones were already there
-        self.assertQuantity(2, goods_state='past', at_datetime=self.dt_test1)
+        self.assertQuantity(2, additional_states=['past'],
+                            at_datetime=self.dt_test1)
         # the 'past' one was not there anymore,
         # but the two 'present' ones had already arrived
-        self.assertQuantity(1.5, goods_state='past', at_datetime=self.dt_test2)
+        self.assertQuantity(1.5, additional_states=['past'],
+                            at_datetime=self.dt_test2)
 
     def test_no_match(self):
         """Test that quantity is not None if no Goods match the criteria."""
@@ -69,6 +72,6 @@ class TestLocation(WmsTestCase):
 
     def test_at_datetime_required(self):
         with self.assertRaises(ValueError):
-            self.assertQuantity(0, goods_state='past')
+            self.assertQuantity(0, additional_states=['past'])
         with self.assertRaises(ValueError):
-            self.assertQuantity(0, goods_state='future')
+            self.assertQuantity(0, additional_states=['future'])

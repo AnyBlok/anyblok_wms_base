@@ -17,15 +17,20 @@ Splitter = Declarations.Mixin.WmsSplitterOperation
 
 @register(Operation)
 class Departure(Splitter, Operation):
-    """Operation to represent Goods physically leaving the system.
+    """Operation to represent goods physically leaving the system.
 
-    Departures can be partial, i.e., there's no need to match the exact
-    quantity held in the Goods record. An automatic Split will occur if needed.
+    As with all :class:`Splitter Operations
+    <anyblok_wms_base.bloks.wms_core.operation.splitter.WmsSplitterOperation>`,
+    Departures can be partial, i.e.,
+    there's no need to match the exact quantity held in the underlying Goods
+    record: an automatic Split will occur if needed.
 
-    In many scenarios, the departure would come after a Move that would bring
-    the Goods to ship to a shipping location, and maybe issue a Split, so that
-    actually the quantity for departure would be an exact match. Yet wms-core's
-    Departure operation has no limitation in that regard.
+    In many scenarios, the Departure would come after a
+    :class:`Move <.move.Move>` that would bring
+    the goods to a shipping location and maybe issue itself a
+    :class:`Split <.split.Split>`, so that
+    actually the quantity for departure would be an exact match, but Departure
+    does not rely on that.
 
     Downstream libraries and applications can enhance this model
     with additional information (e.g., a shipping address) if needed, although

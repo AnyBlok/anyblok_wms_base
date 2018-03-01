@@ -52,7 +52,7 @@ class HistoryInput:
                          foreign_key_options={'ondelete': 'cascade'})
     """The Operation we are interested in."""
 
-    goods = Many2One(model='Model.Wms.Goods',
+    goods = Many2One(model='Model.Wms.Goods.Avatar',
                      primary_key=True,
                      foreign_key_options={'ondelete': 'cascade'})
     """One of the inputs of the :attr:`operation`."""
@@ -89,9 +89,9 @@ class Operation:
     which themselves have dedicated models. This is implemented with the
     polymorphic features of SQLAlchemy and AnyBlok.
 
-    The main purpose of this separation is to simplify auditing purposes: the
-    Goods model can bear a ``reason`` column, operations can be linked whatever
-    their types are.
+    The main purpose of this separation is to simplify the representation of
+    operational history: Goods Avatars and Operations can be :class:`linked
+    together <HistoryInput>` in full generality.
 
     Downstream applications and libraries can add columns on the present model
     to satisfy their auditing needs (some notion of "user" or "operator" comes
@@ -204,18 +204,18 @@ class Operation:
     For Operations in states ``planned`` and ``started``,
     this represents the time at which the execution is supposed to complete.
     This has consequences on the :attr:`dt_from
-    <anyblok_wms_base.bloks.wms_core.goods.Goods.dt_from>` and :attr:`dt_until
-    <anyblok_wms_base.bloks.wms_core.goods.Goods.dt_until>` fields of
-    the Goods affected by this Operation, to avoid summing up
-    several :ref:`Goods Avatars <goods_avatar>` of the same physical goods
-    while :meth:`peeking at quantities in the future
+    <anyblok_wms_base.bloks.wms_core.goods.Avatar.dt_from>` and :attr:`dt_until
+    <anyblok_wms_base.bloks.wms_core.goods.Avatar.dt_until>` fields of
+    the :ref:`Goods Avatars <goods_avatar>` affected by this Operation, to
+    avoid summing up several :ref:`Avatars <goods_avatar>` of the same
+    physical goods while :meth:`peeking at quantities in the future
     <anyblok_wms_base.bloks.wms_core.location.Location.quantity>`,
     but has no other strong meaning within
     ``wms-core``: if the end application does some serious time prediction,
     it can use it about freely. The actual execution can
-    occur later at any time, and :meth:`execute` will in particular
-    correct the value of this field, and its consequences on the affected
-    Goods.
+    occur later at any time, be it sooner or later, as :meth:`execute`
+    will in particular correct the value of this field, and its
+    consequences on the affected :ref:`Avatars <goods_avatar>`.
     """
 
     dt_start = DateTime(label="date and time of start")
@@ -525,9 +525,9 @@ class Operation:
         for follower in followers:
             follower.obliviate()
         self.obliviate_single()
-        self.follows.clear()
 
         self.delete()
+        # TODO check that we have a test for cascading on HistoryInput
         logger.info("Obliviated operation %r", self)
 
     def iter_inputs_original_values(self):
@@ -606,7 +606,7 @@ class Operation:
     def outcomes(self):
         """Return the outcomes of the present operation.
 
-        Outcomes are the Goods (Avatars) that the current Operation produces,
+        Outcomes are the Goods Avatars that the current Operation produces,
         unless another Operation has been executed afterwards, becoming their
         reason.
         If no Operation is downstream, one can think of outcomes as the results
@@ -618,11 +618,11 @@ class Operation:
         This is a Python property, because it might become a field at some
         point.
         """
-        Goods = self.registry.Wms.Goods
-        # if already executed, might be the 'reason' for some Goods
-        # from self.goods to be in 'past' state.
-        return Goods.query().filter(Goods.reason == self,
-                                    Goods.state != 'past').all()
+        Avatar = self.registry.Wms.Goods.Avatar
+        # if already executed, might be the 'reason' for some Avatar
+        # from self.inputs to be in 'past' state.
+        return Avatar.query().filter(Avatar.reason == self,
+                                     Avatar.state != 'past').all()
 
     def after_insert(self):
         """Perform specific logic after insert during creation process
@@ -654,7 +654,7 @@ class Operation:
         This method does not have to care about the Operation state, which
         the base class has already checked.
 
-        This method must correct the dates and times on the affected Goods or
+        This method must correct the dates and times on the affected Avatars or
         more broadly of any consequences of the theoretical execution date
         and time that has been set during planning.
         For that purpose, it can rely on the value of the :attr:`dt_execution`
@@ -670,6 +670,27 @@ class Operation:
         """
         raise NotImplementedError  # pragma: no cover
 
+    def delete_outcomes(self):
+        """Delete outcomes of the current Operation and their Goods if needed
+
+        This is used in the default implementations of :meth:`cancel_single`
+        and :meth:`obliviate_single`.
+
+        The Goods that the outcome Avatars were attached too get removed if
+        they have no Avatar left. Typically that would be because they have been
+        created along with the Avatars.
+        """
+        all_goods = set()
+        for avatar in self.outcomes:
+            all_goods.add(avatar.goods)
+            avatar.delete()
+        self.registry.flush()
+        # TODO PERF probably more efficient in one query with GROUP BY + COUNT
+        Avatar = self.registry.Wms.Goods.Avatar
+        for goods in all_goods:
+            if not Avatar.query().filter(Avatar.goods == goods).count():
+                goods.delete()
+
     def cancel_single(self):
         """Cancel just the current operation.
 
@@ -678,7 +699,8 @@ class Operation:
         but dos not delete it.
 
         The default implementation calls :meth:`reset_inputs_original_values`,
-        then deletes all the outcomes (that should be in the `future` state).
+        then :meth:`delete_outcomes` (all outcomes should be in the `future`
+        state).
         Subclasses should override this if there's more to be done.
 
         Downstream applications and libraries are
@@ -687,10 +709,7 @@ class Operation:
         """
         self.reset_inputs_original_values()
         self.registry.flush()
-        Goods = self.registry.Wms.Goods
-        Goods.query().filter(Goods.reason == self).delete(
-            synchronize_session='fetch')
-        self.registry.flush()
+        self.delete_outcomes()
 
     def obliviate_single(self):
         """Oblivate just the current operation.
@@ -700,7 +719,8 @@ class Operation:
         but does not delete it.
 
         The default implementation calls :meth:`reset_inputs_original_values`,
-        and resets the state field on inputs, then deletes all the outcomes.
+        then :meth:`delete_outcomes`.
+
         Subclasses should override this if there's more to be done.
 
         Downstream applications and libraries are
@@ -711,9 +731,7 @@ class Operation:
         """
         self.reset_inputs_original_values(state='present')
         self.registry.flush()
-        Goods = self.registry.Wms.Goods
-        Goods.query().filter(Goods.reason == self).delete(
-            synchronize_session='fetch')
+        self.delete_outcomes()
 
     def plan_revert_single(self, dt_execution, follows=()):
         """Create a planned operation to revert the present one.

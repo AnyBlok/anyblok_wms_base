@@ -16,10 +16,13 @@ a different form in the future <improvement_improvements>`.
 The technical detail should not be the main focus in this page,
 although proposed solutions have to take them into account.
 
+Current ideas
+~~~~~~~~~~~~~
+
 .. _improvement_location_name:
 
 "Location" terminology is misleading
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------
 
 Our concept of :ref:`Location <location>` does not imply that it is
 actually a fixed place. Locations can actually be moving ones (a van,
@@ -34,73 +37,10 @@ actually inside each other. It's rather some kind of logical grouping,
 useful to aggregate stock levels, or to confine some Goods to a group
 of Locations once they are reserved.
 
-.. _goods_avatar:
-.. _improvement_avatars:
-
-Goods Avatars
-~~~~~~~~~~~~~
-Due to the planning and historical features we want, in our system,
-the physical goods will give rise to many different records of
-:ref:`goods_goods`,
-as non destructive operations, typically :ref:`Moves <op_move>`
-currently create new records, and obsolete the ones they got as input.
-
-This is a problem to design a reservation system, which should clearly
-not reserve some :ref:`goods_goods` in some precise state at some time in
-some place, but only be attached to the mostly immutable part of their
-data.
-
-For an example of the latter requirement, consider a T-shirt been
-reserved in advance for some end delivery, before it has even arrived
-in the warehouse. Imagine some planner has decided to put it in
-location AB/X/234 before packing it with other goods of the same
-delivery and shipping them to the final customer. Now, deciding at the
-last minute to put it in the adjacent AB/X/235 should not void the
-reservation. It should require at most :ref:`partial replanning
-<improvement_operation_superseding>`. Even if the end location is
-the planned one, but the :ref:`goods_goods` record isn't the same one,
-the system should not have to update its reservations to match it:
-that's an obvious source of conflicts, it's bad for performance, it
-contradicts many of our :ref:`design_goals` and, frankly speaking,
-it's absurd: everybody would agree it's « the same T-shirt ».
-
-Simply arranging for :ref:`op_move` to create a new record in the
-``past`` state, changing just location, times and state on the moved
-one  wouldn't be a solution, as it would require the even
-heavier update of all past history. And having :ref:`op_move` mutate all the
-:ref:`goods_goods` in place as we intended before realizing we could
-provide :ref:`op_cancel_revert_obliviate` is not doable because of planning…
-
-So, the proposal is to introduce a new Model, *Goods Avatar*, that would
-bear the (very) mutable part of the current :ref:`goods_goods`.
-This is what :ref:`Operations <operation>` would manipulate and reference.
-
-Now the :ref:`goods_goods` Model would express the otherwise not so
-much well-defined idea of a physical object that stays "the same".
-We should even provide transforming :ref:`Operations <operation>` to
-resolve the question whether some given change (like engraving a
-personalised message on a watch) means it becomes a different object
-or not, as it's after all only a matter of perception that we can't
-decide in WMS Base.
-
-The future :ref:`reservation system(s) <blok_wms_reservation>` would then
-lock and/or refer to this skimmed down in the :ref:`goods_goods`
-Model. In end applications, concrete
-schedulers/planners would also refer to them, and look for *Avatars* to
-create their planned :ref:`Operations <operation>`.
-
-This also probably means that the purposes of the separate
-:ref:`goods_properties` Model would boild down to deduplication (probably
-still very much useful).
-
-All of this is made utterly complicated by the :ref:`issue of
-quantities <improvement_no_quantities>`, that's why this proposal
-mostly doesn't speak of them, assuming that other problem is solved.
-
 .. _improvement_operation_superseding:
 
 Superseding of planned operations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------------
 We should provide the means to declare that a chain of operations
 actually replaces (and maybe completes) some given (chain of?) planned
 operations.
@@ -110,7 +50,7 @@ the future too precisely, because of the "stubbornness of reality" but
 it can lead to dilemmas.
 
 A concrete example
-------------------
+++++++++++++++++++
 
 Here's a concrete case, which I stumbled onto
 two days ago for one of the prime applications to be built on Anyblok
@@ -283,7 +223,7 @@ but that can be addressed separately by introducing a multi-unpack
 operation (details of that don't belong here).
 
 Back to the general discussion
-------------------------------
+++++++++++++++++++++++++++++++
 I'm pretty much convinced that the ability to refine a
 prediction with another one (possibly partly done, it doesn't matter)
 would be a great feature, and a strong step towards coping with the
@@ -308,7 +248,7 @@ single root with no incomes, that happens to be also root in the whole DAG.
 .. _improvement_no_quantities:
 
 Quantity will often be a useless complexity
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------------
 
 In the current state of the project, :ref:`goods_goods` records have a
 ``quantity`` field. There are several hints that this shouldn't be a part
@@ -361,7 +301,7 @@ applications, or become a needless development burden on these latter ones.
 .. _improvement_federation:
 
 Federation of Anyblok WMS instances
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------
 In a big system, especially with several sites for Goods handling
 (warehouses, retail stores),
 the detail of operations occurring at some given premises is usually
@@ -415,7 +355,7 @@ Communication with other systems also fall in this category.
 .. _improvement_improvements:
 
 Documentation is not a proper place for collective thought
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------------------------------------
 
 Well, yeah, this page should be superseded. How ?
 
@@ -425,3 +365,73 @@ Well, yeah, this page should be superseded. How ?
   cross-reference, like we did already in :ref:`goal_stubborn_reality`
 
 
+Implemented
+~~~~~~~~~~~
+
+.. _improvement_avatars:
+
+Goods Avatars
+-------------
+
+.. versionadded:: 0.6.0
+
+.. note:: at the time of this writing, :ref:`Goods <goods_goods>` bore
+          all the fields that are now in :ref:`Avatars <goods_avatar>`
+
+Due to the planning and historical features we want, in our system,
+the physical goods will give rise to many different records of
+:ref:`goods_goods`,
+as non destructive operations, typically :ref:`Moves <op_move>`
+currently create new records, and obsolete the ones they got as input.
+
+This is a problem to design a reservation system, which should clearly
+not reserve some :ref:`goods_goods` in some precise state at some time in
+some place, but only be attached to the mostly immutable part of their
+data.
+
+For an example of the latter requirement, consider a T-shirt been
+reserved in advance for some end delivery, before it has even arrived
+in the warehouse. Imagine some planner has decided to put it in
+location AB/X/234 before packing it with other goods of the same
+delivery and shipping them to the final customer. Now, deciding at the
+last minute to put it in the adjacent AB/X/235 should not void the
+reservation. It should require at most :ref:`partial replanning
+<improvement_operation_superseding>`. Even if the end location is
+the planned one, but the :ref:`goods_goods` record isn't the same one,
+the system should not have to update its reservations to match it:
+that's an obvious source of conflicts, it's bad for performance, it
+contradicts many of our :ref:`design_goals` and, frankly speaking,
+it's absurd: everybody would agree it's « the same T-shirt ».
+
+Simply arranging for :ref:`op_move` to create a new record in the
+``past`` state, changing just location, times and state on the moved
+one  wouldn't be a solution, as it would require the even
+heavier update of all past history. And having :ref:`op_move` mutate all the
+:ref:`goods_goods` in place as we intended before realizing we could
+provide :ref:`op_cancel_revert_obliviate` is not doable because of planning…
+
+So, the proposal is to introduce a new Model, *Goods Avatar*, that would
+bear the (very) mutable part of the current :ref:`goods_goods`.
+This is what :ref:`Operations <operation>` would manipulate and reference.
+
+Now the :ref:`goods_goods` Model would express the otherwise not so
+much well-defined idea of a physical object that stays "the same".
+We should even provide transforming :ref:`Operations <operation>` to
+resolve the question whether some given change (like engraving a
+personalised message on a watch) means it becomes a different object
+or not, as it's after all only a matter of perception that we can't
+decide in WMS Base.
+
+The future :ref:`reservation system(s) <blok_wms_reservation>` would then
+lock and/or refer to this skimmed down in the :ref:`goods_goods`
+Model. In end applications, concrete
+schedulers/planners would also refer to them, and look for *Avatars* to
+create their planned :ref:`Operations <operation>`.
+
+This also probably means that the purposes of the separate
+:ref:`goods_properties` Model would boild down to deduplication (probably
+still very much useful).
+
+All of this is made utterly complicated by the :ref:`issue of
+quantities <improvement_no_quantities>`, that's why this proposal
+mostly doesn't speak of them, assuming that other problem is solved.

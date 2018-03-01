@@ -32,11 +32,13 @@ class TestOperationError(BlokTestCase):
                                            quantity=3)
 
         self.goods = Wms.Goods.insert(quantity=3,
-                                      type=goods_type,
-                                      location=self.incoming_loc,
-                                      state='future',
-                                      dt_from=self.dt_test1,
-                                      reason=self.arrival)
+                                      type=goods_type)
+        self.avatar = Wms.Goods.Avatar.insert(
+            goods=self.goods,
+            location=self.incoming_loc,
+            state='future',
+            dt_from=self.dt_test1,
+            reason=self.arrival)
 
     def test_op_err_instance(self):
         op_err = OperationError(self.arrival, "quantity is {qty}", qty=7)
@@ -63,15 +65,15 @@ class TestOperationError(BlokTestCase):
             OperationInputsError(self.Arrival, "bogus")
 
     def test_op_wrong_state_instance_default_msg(self):
-        self.goods.state = 'present'
-        departure = self.Operation.Departure.create(input=self.goods,
+        self.avatar.state = 'present'
+        departure = self.Operation.Departure.create(input=self.avatar,
                                                     quantity=3,
                                                     state='done')
-        err = OperationInputWrongState(departure, self.goods, 'future')
+        err = OperationInputWrongState(departure, self.avatar, 'future')
         # Don't want to check the exact wording of the full fmt
         self.assertTrue(err.fmt.startswith, "Error for {operation}")
         kwargs = err.kwargs
-        self.assertEqual(kwargs.get('record'), self.goods)
+        self.assertEqual(kwargs.get('record'), self.avatar)
         self.assertEqual(kwargs.get('expected_state'), 'future')
 
         repr(err)

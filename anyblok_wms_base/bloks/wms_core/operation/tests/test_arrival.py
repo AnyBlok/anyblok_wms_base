@@ -19,6 +19,7 @@ class TestArrival(WmsTestCase):
         self.stock = Wms.Location.insert(label="Stock")
         self.Arrival = Wms.Operation.Arrival
         self.Goods = Wms.Goods
+        self.Avatar = self.Goods.Avatar
 
     def test_create_planned_execute(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
@@ -30,9 +31,7 @@ class TestArrival(WmsTestCase):
                                                             bar='monty'),
                                       goods_type=self.goods_type)
         self.assertEqual(arrival.follows, [])
-        arrived = self.Goods.query().filter(self.Goods.reason == arrival).all()
-        self.assertEqual(len(arrived), 1)
-        goods = arrived[0]
+        goods = self.assert_singleton(arrival.outcomes)
         self.assertEqual(goods.state, 'future')
         self.assertEqual(goods.location, self.incoming_loc)
         self.assertEqual(goods.quantity, 3)
@@ -61,9 +60,7 @@ class TestArrival(WmsTestCase):
                                                             monty='python'),
                                       goods_type=self.goods_type)
         self.assertEqual(arrival.follows, [])
-        arrived = self.Goods.query().filter(self.Goods.reason == arrival).all()
-        self.assertEqual(len(arrived), 1)
-        goods = arrived[0]
+        goods = self.assert_singleton(arrival.outcomes)
         self.assertEqual(goods.state, 'present')
         self.assertEqual(goods.location, self.incoming_loc)
         self.assertEqual(goods.quantity, 3)
@@ -81,6 +78,7 @@ class TestArrival(WmsTestCase):
                                                             monty='python'),
                                       goods_type=self.goods_type)
         arrival.obliviate()
+        self.assertEqual(self.Avatar.query().count(), 0)
         self.assertEqual(self.Goods.query().count(), 0)
 
     def test_arrival_planned_execute_obliviate(self):
@@ -94,6 +92,7 @@ class TestArrival(WmsTestCase):
                                       goods_type=self.goods_type)
         arrival.execute()
         arrival.obliviate()
+        self.assertEqual(self.Avatar.query().count(), 0)
         self.assertEqual(self.Goods.query().count(), 0)
 
     def test_repr(self):

@@ -22,6 +22,7 @@ class TestGoods(WmsTestCase):
         Wms = self.registry.Wms
 
         self.Goods = Wms.Goods
+        self.Avatar = Wms.Goods.Avatar
         self.goods_type = self.Goods.Type.insert(label="My goods", code="MG")
         self.stock = Wms.Location.insert(label="Stock")
         self.arrival = Wms.Operation.Arrival.insert(
@@ -32,11 +33,7 @@ class TestGoods(WmsTestCase):
             quantity=1)
 
     def test_prop_api(self):
-        goods = self.Goods.insert(type=self.goods_type, quantity=1,
-                                  dt_from=self.dt_test1,
-                                  state='future',
-                                  reason=self.arrival, location=self.stock)
-
+        goods = self.Goods.insert(type=self.goods_type, quantity=1)
         self.assertIsNone(goods.get_property('foo'))
         self.assertEqual(goods.get_property('foo', default=-1), -1)
 
@@ -45,50 +42,58 @@ class TestGoods(WmsTestCase):
 
     def test_str(self):
         gt = self.goods_type
-        goods = self.Goods.insert(type=gt, quantity=1,
-                                  dt_from=self.dt_test1,
-                                  state='future',
-                                  reason=self.arrival, location=self.stock)
+        goods = self.Goods.insert(type=gt, quantity=1)
+        avatar = self.Avatar.insert(goods=goods,
+                                    dt_from=self.dt_test1,
+                                    state='future',
+                                    reason=self.arrival, location=self.stock)
         self.assertEqual(repr(goods),
-                         "Wms.Goods(id=%d, state='future', type="
+                         "Wms.Goods(id=%d, type="
                          "Wms.Goods.Type(id=%d, code='MG'))" % (
                              goods.id, gt.id))
         self.assertEqual(str(goods),
-                         "(id=%d, state='future', type="
+                         "(id=%d, type="
                          "(id=%d, code='MG'))" % (goods.id, gt.id))
+        self.maxDiff = None
+        self.assertEqual(
+            repr(avatar),
+            "Wms.Goods.Avatar(id=%d, "
+            "goods=Wms.Goods(id=%d, type=Wms.Goods.Type(id=%d, code='MG')), "
+            "state='future', "
+            "location=Wms.Location(id=%d, code=None, label='Stock'), "
+            "dt_range=[datetime.datetime(2018, 1, 1, 0, 0, "
+            "tzinfo=psycopg2.tz.FixedOffsetTimezone(offset=0, name=None)), "
+            "None)" % (
+                avatar.id, goods.id, gt.id, self.stock.id))
+
+        self.assertEqual(
+            str(avatar),
+            "(id=%d, "
+            "goods=(id=%d, type=(id=%d, code='MG')), "
+            "state='future', "
+            "location=(id=%d, code=None, label='Stock'), "
+            "dt_range=[2018-01-01 00:00:00+00:00, None)" % (
+                avatar.id, goods.id, gt.id, self.stock.id))
 
     def test_prop_api_column(self):
-        goods = self.Goods.insert(type=self.goods_type, quantity=1,
-                                  dt_from=self.dt_test1,
-                                  state='future',
-                                  reason=self.arrival, location=self.stock)
-
+        goods = self.Goods.insert(type=self.goods_type, quantity=1)
         goods.set_property('batch', '12345')
         self.assertEqual(goods.get_property('batch'), '12345')
 
     def test_prop_api_duplication(self):
-        goods = self.Goods.insert(type=self.goods_type, quantity=1,
-                                  state='future',
-                                  dt_from=self.dt_test1,
-                                  reason=self.arrival, location=self.stock)
+        goods = self.Goods.insert(type=self.goods_type, quantity=1)
 
         goods.set_property('batch', '12345')
         self.assertEqual(goods.get_property('batch'), '12345')
 
         goods2 = self.Goods.insert(type=self.goods_type, quantity=3,
-                                   state='future',
-                                   dt_from=self.dt_test2,
-                                   reason=self.arrival, location=self.stock,
                                    properties=goods.properties)
         goods2.set_property('batch', '6789')
         self.assertEqual(goods.get_property('batch'), '12345')
         self.assertEqual(goods2.get_property('batch'), '6789')
 
     def test_prop_api_reserved_property_names(self):
-        goods = self.Goods.insert(type=self.goods_type, quantity=1,
-                                  state='future',
-                                  dt_from=self.dt_test1,
-                                  reason=self.arrival, location=self.stock)
+        goods = self.Goods.insert(type=self.goods_type, quantity=1)
 
         with self.assertRaises(ValueError):
             goods.set_property('id', 1)
@@ -101,11 +106,7 @@ class TestGoods(WmsTestCase):
         Separated to ease maintenance of tests in case it changes in
         the future.
         """
-        goods = self.Goods.insert(type=self.goods_type, quantity=1,
-                                  state='future',
-                                  dt_from=self.dt_test1,
-                                  reason=self.arrival, location=self.stock)
-
+        goods = self.Goods.insert(type=self.goods_type, quantity=1)
         goods.set_property('foo', 2)
         self.assertEqual(goods.properties.flexible, dict(foo=2))
 
@@ -115,10 +116,7 @@ class TestGoods(WmsTestCase):
         Separated to ease maintenance of tests in case it changes in
         the future.
         """
-        goods = self.Goods.insert(type=self.goods_type, quantity=1,
-                                  state='future',
-                                  dt_from=self.dt_test1,
-                                  reason=self.arrival, location=self.stock)
+        goods = self.Goods.insert(type=self.goods_type, quantity=1)
 
         goods.set_property('batch', '2')
         self.assertEqual(goods.properties.flexible, {})

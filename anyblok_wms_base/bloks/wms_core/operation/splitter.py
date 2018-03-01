@@ -22,13 +22,18 @@ Mixin = Declarations.Mixin
 
 @Declarations.register(Mixin)
 class WmsSplitterOperation(Mixin.WmsSingleInputOperation):
-    """Mixin for operations on a single record of Goods that can split.
+    """Mixin for operations on a single input that can split.
 
-    In case the value of :attr:`quantity` is less than in the Goods record,
-    a :class:`Split <.split.Split>` will be inserted properly in history.
+    It defines the :attr:`quantity` field to express that the Operation only
+    works on some of the quantity held by the Goods of the single input.
 
-    Subclasses can use :attr:`partial` if they need to know if that happened,
-    but this should be useful only in very special cases.
+    In case the Operation's :attr:`quantity` is less than in the Goods record,
+    a :class:`Split <.split.Split>` will be inserted properly in history, and
+    the Operation implementation can ignore quantities completely, as it will
+    always, in truth, work on the whole of the input it will see.
+
+    Subclasses can use the :attr:`partial` field if they need to know
+    if that happened, but this should be useful only in special cases.
     """
     quantity = Decimal()
     """The quantity this Operation will work on.
@@ -65,7 +70,7 @@ class WmsSplitterOperation(Mixin.WmsSingleInputOperation):
             state, dt_execution,
             inputs=inputs, quantity=quantity, **kwargs)
 
-        goods = inputs[0]
+        goods = inputs[0].goods
         if quantity is None:
             raise OperationMissingQuantityError(
                 cls,
@@ -75,8 +80,8 @@ class WmsSplitterOperation(Mixin.WmsSingleInputOperation):
             raise OperationQuantityError(
                 cls,
                 "Can't split a greater quantity ({op_quantity}) than held in "
-                "{input} (which have quantity={input.quantity})",
-                op_quantity=quantity, input=goods)
+                "{input} (which have quantity={input.goods.quantity})",
+                op_quantity=quantity, input=inputs[0])
 
     def check_execute_conditions(self):
         """Check that the quantity (after possible Split) is as on the input.
@@ -87,7 +92,7 @@ class WmsSplitterOperation(Mixin.WmsSingleInputOperation):
         that it's in state ``future``: the Split will be executed during
         ``self.execute()``, which comes once the present method has agreed.
         """
-        goods = self.input
+        goods = self.input.goods
         if self.quantity != goods.quantity:
             raise OperationQuantityError(
                 self,
@@ -113,13 +118,13 @@ class WmsSplitterOperation(Mixin.WmsSingleInputOperation):
         subclasses can implement :meth:`after_insert` as if the quantities were
         matching from the beginning.
         """
-        goods = inputs[0]
-        partial = quantity < goods.quantity
+        avatar = inputs[0]
+        partial = quantity < avatar.goods.quantity
         if not partial:
             return inputs, None
 
         Split = cls.registry.Wms.Operation.Split
-        split = Split.create(input=goods, quantity=quantity, state=state,
+        split = Split.create(input=avatar, quantity=quantity, state=state,
                              dt_execution=dt_execution)
         return [split.wished_outcome], dict(partial=partial)
 

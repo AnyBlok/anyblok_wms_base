@@ -29,10 +29,3 @@ class TestCore(BlokTestCase):
         self.assertEqual(op.state, 'done')
         self.assertEqual(op.location, loc)
         self.assertEqual(op.quantity, 3)
-        goods = Wms.Goods.insert(quantity=3,
-                                 type=goods_type,
-                                 location=loc,
-                                 dt_from=datetime.now(),
-                                 state='present',
-                                 reason=arrival)
-        self.assertEqual(goods.reason, op)

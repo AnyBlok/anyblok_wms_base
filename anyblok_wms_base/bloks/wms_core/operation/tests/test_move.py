@@ -19,24 +19,21 @@ class TestMove(WmsTestCase):
         self.incoming_loc = Wms.Location.insert(label="Incoming location")
         self.stock = Wms.Location.insert(label="Stock")
 
-        self.arrival = Operation.Arrival.insert(goods_type=goods_type,
+        self.arrival = Operation.Arrival.create(goods_type=goods_type,
                                                 location=self.incoming_loc,
                                                 state='planned',
                                                 dt_execution=self.dt_test1,
                                                 quantity=3)
 
-        self.goods = Wms.Goods.insert(quantity=3,
-                                      type=goods_type,
-                                      location=self.incoming_loc,
-                                      dt_from=self.dt_test1,
-                                      dt_until=self.dt_test3,
-                                      state='future',
-                                      reason=self.arrival)
+        # avatars, actually
+        self.goods = self.arrival.outcomes[0]
+        self.goods.dt_until = self.dt_test3
         self.Move = Operation.Move
         self.Goods = Wms.Goods
+        self.Avatar = Wms.Goods.Avatar
 
     def assertBackToBeginning(self):
-        new_goods = self.single_result(self.Goods.query())
+        new_goods = self.single_result(self.Avatar.query())
         self.assertEqual(new_goods.quantity, 3)
         self.assertEqual(new_goods.location, self.incoming_loc)
         self.assertEqual(new_goods.state, 'present')
@@ -59,15 +56,13 @@ class TestMove(WmsTestCase):
         self.assertEqual(move.state, 'done')
         self.assertEqual(self.goods.reason, move)
 
-        moved = self.single_result(
-            self.Goods.query().filter(self.Goods.reason == move,
-                                      self.Goods.state != 'past'))
+        moved = self.assert_singleton(move.outcomes)
         self.assertEqual(moved.state, 'present')
         self.assertEqual(moved.reason, move)
         self.assertEqual(moved.location, self.stock)
-        self.assertEqual(self.Goods.query().filter(
-            self.Goods.location == self.incoming_loc,
-            self.Goods.state != 'past').count(), 0)
+        self.assertEqual(self.Avatar.query().filter(
+            self.Avatar.location == self.incoming_loc,
+            self.Avatar.state != 'past').count(), 0)
 
     def test_whole_done(self):
         self.goods.update(state='present')
