@@ -58,11 +58,18 @@ Location's purpose (e.g., storage before shipping to customers) or not
 on Locations at all.
 
 Therefore we should introduce a simple tag system for stock levels
-grouping in Location, and we can keep the arborescent structure,
+grouping in Location. Getting back to the crucial example of counting
+sellable goods, it should also take any notion of reservation into
+account anyway (it's truer than counting short term previsions).
+
+We can keep the arborescent structure,
 claiming this time that it really expresses physical inclusion of
 Locations (can be useful for other purposes than stock levels, such as
-confinment of reserved Goods). We
-should rename the ``parent`` field as ``part_of`` or ``inside`` to
+confinement of reserved Goods). It could be acceptable that *by
+default*, these tags are copied to the sub-Locations upon creation, but
+nothing more.
+
+We should rename the ``parent`` field as ``part_of`` or ``inside`` to
 insist on that.
 
 .. _improvement_operation_superseding:

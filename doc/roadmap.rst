@@ -17,8 +17,8 @@ updated along the way.
 * First release pushed on PyPI and advertised a bit
 * Detangling of the :ref:`issues with quantities
   <improvement_no_quantities>` (new blok, new Python distribution or not)
-* Decision about Location and stock levels, including
-  :ref:`improvement_location_name`
+* Decisions about Location and stock levels:
+  :ref:`improvement_location_name` and :ref:`improvement_stock_levels`
 * new Operations: Pack / Assembly (decision whether it's the same
   thing or not)
 * work begins on :ref:`blok_wms_bus` and/or :ref:`blok_wms_rest_api`
