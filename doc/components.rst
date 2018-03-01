@@ -33,6 +33,8 @@ wms-aggregated-goods
 This is the outcome of a possible refactor, see
 :ref:`improvement_no_quantities`.
 
+.. _blok_wms_rest_api:
+
 wms-rest-api
 ------------
 .. warning:: development not even started

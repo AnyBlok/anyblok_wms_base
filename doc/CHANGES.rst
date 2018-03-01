@@ -9,4 +9,9 @@
 Release history
 ===============
 
-No version has ever been released
+0.5
+~~~
+* First tag, not released to PyPI.
+* Operations behave consistently; in particular stock levels at a
+  given Location are consistent for all Goods states at any date and time.
+* Initial Operations: Arrival, Departure, Move, Unpack, Split, Aggregate

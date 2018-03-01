@@ -35,6 +35,7 @@ get a grasp of what it intends to do.
    design_goals
    core_concepts
    components
+   roadmap
    CHANGES
    improvements
    apidoc/index
