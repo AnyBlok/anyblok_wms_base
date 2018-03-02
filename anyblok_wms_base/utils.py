@@ -37,6 +37,19 @@ class NonZero:
 
     >>> str(NonZero())
     'NONZERO'
+    >>> bool(NonZero())
+    True
+    >>> NonZero() == 2
+    True
+    >>> NonZero() == 0
+    False
+    >>> NonZero() != 0
+    True
+    >>> NonZero() != 2
+    False
+    >>> try: NonZero() == 'abc'
+    ... except ValueError: print('ok')
+    ok
 
     We don't implement __repr__ because with reloads and the like, one
     can have subtle bugs with constants, and in that case, the default
@@ -49,3 +62,13 @@ class NonZero:
 
     def __str__(self):
         return "NONZERO"
+
+    def __bool__(self):
+        return True
+
+    def __eq__(self, other):
+        if other == 0:
+            return False
+        if not isinstance(other, NonZero) and not isinstance(other, int):
+            raise ValueError("Can't compare NonZero() to %r" % other)
+        return True

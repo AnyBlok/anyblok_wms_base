@@ -86,21 +86,6 @@ class Arrival(Operation):
                 "location={self.location!r}, "
                 "quantity={self.quantity}").format(self=self)
 
-    @classmethod
-    def check_create_conditions(cls, state, dt_execution, **kwargs):
-        """An Arrival does not have preconditions.
-
-        This is nicer to the database than to issue queries to find out
-        we have no Goods. TODO add a check for inputs_number in default impl
-        """
-
-    def check_execute_conditions(self):
-        """An Arrival does not have preconditions.
-
-        This is nicer to the database than to issue queries to find out
-        we have no Goods. TODO add a check for inputs_number in default impl
-        """
-
     def after_insert(self):
         Goods = self.registry.Wms.Goods
         self_props = self.goods_properties

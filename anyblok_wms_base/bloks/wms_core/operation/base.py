@@ -580,20 +580,20 @@ class Operation:
         call it back, using ``super``.
         """
         expected = cls.inputs_number
-        if not inputs and (isinstance(expected, NonZero) or expected):
-            raise OperationMissingInputsError(
-                cls,
-                "The 'inputs' keyword argument must be passed to the "
-                "create() method, and must not be empty "
-                "got {inputs})", inputs=inputs)
-
-        if not isinstance(expected, NonZero) and len(inputs) != expected:
+        if not inputs:  # to include None
+            if expected:
+                raise OperationMissingInputsError(
+                    cls,
+                    "The 'inputs' keyword argument must be passed to the "
+                    "create() method, and must not be empty "
+                    "got {inputs})", inputs=inputs)
+        elif len(inputs) != expected:
             raise OperationInputsError(
                 cls,
                 "Expecting exactly {exp} inputs, got {nb} of them: "
                 "{inputs}", exp=expected, nb=len(inputs), inputs=inputs)
 
-        if state == 'done':
+        if state == 'done' and inputs:
             for record in inputs:
                 if record.state != 'present':
                     raise OperationInputWrongState(
@@ -640,6 +640,10 @@ class Operation:
         Subclasses are welcome to override this, and will probably want to
         call it back, using ``super``.
         """
+        if not self.inputs_number:
+            # avoid a query with 0 results
+            return
+
         for record in self.inputs:
             if record.state != 'present':
                 raise OperationInputWrongState(

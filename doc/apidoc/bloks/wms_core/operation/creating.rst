@@ -28,11 +28,3 @@ Model.Wms.Operation.Arrival
 
    .. automethod:: after_insert
    .. automethod:: execute_planned
-
-   .. raw:: html
-
-      <h3>Optional methods of Operation subclasses</h3>
-
-   .. automethod:: check_create_conditions
-   .. automethod:: check_execute_conditions
-
