@@ -1,0 +1,44 @@
+# -*- coding: utf-8 -*-
+# This file is a part of the AnyBlok / WMS Base project
+#
+#    Copyright (C) 2018 Georges Racinet <gracinet@anybox.fr>
+#
+# This Source Code Form is subject to the terms of the Mozilla Public License,
+# v. 2.0. If a copy of the MPL was not distributed with this file,You can
+# obtain one at http://mozilla.org/MPL/2.0/.
+from anyblok import Declarations
+from anyblok_wms_base.exceptions import OperationGoodsReserved
+
+register = Declarations.register
+Wms = Declarations.Model.Wms
+
+
+@register(Wms)
+class Operation:
+
+    @classmethod
+    def check_create_conditions(cls, state, dt_execution,
+                                inputs=None, **kwargs):
+        """Refuse to work on reserved Goods unless reservation agrees.
+        """
+        super(Operation, cls).check_create_conditions(
+            state, dt_execution, inputs=inputs, **kwargs)
+        if not inputs:
+            return
+
+        Reservation = cls.registry.Wms.Reservation
+        Avatar = cls.registry.Wms.Goods.Avatar
+        # TODO report that we can't join() on m2o directly, have to
+        # use (guess) their primary keys
+        for resa in Reservation.query().join(
+                Avatar, Avatar.goods_id == Reservation.goods_id).filter(
+                    Avatar.id.in_(av.id for av in inputs)).all():
+            if not resa.is_transaction_allowed(
+                    cls, state, dt_execution,
+                    inputs=inputs, **kwargs):
+                raise OperationGoodsReserved(
+                    cls,
+                    "Cannot create for {goods} because their Goods are "
+                    "reserved {reservation!r}, which does not not agree.",
+                    goods=resa.goods,
+                    reservation=resa)
