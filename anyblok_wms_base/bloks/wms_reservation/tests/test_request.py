@@ -14,7 +14,8 @@ class RequestTestCase(ConcurrencyBlokTestCase):
     @classmethod
     def setUpCommonData(cls):
         cls.Reservation = cls.registry.Wms.Reservation
-        inserted = cls.Reservation.Request.insert(purpose='why not?')
+        inserted = cls.Reservation.Request.insert(purpose='why not?',
+                                                  reserved=True)
         cls.request_id = inserted.id
 
     @classmethod

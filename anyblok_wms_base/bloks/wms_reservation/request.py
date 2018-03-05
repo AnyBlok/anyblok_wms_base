@@ -102,7 +102,7 @@ class Request:
         to set the txn id in some service column (but that would
         require inconditional cleanup, a complication)
         """
-        query = cls.query('id')
+        query = cls.query('id').filter(cls.reserved.is_(True))
         if request_id is not None:
             query = query.filter(cls.id == request_id)
 

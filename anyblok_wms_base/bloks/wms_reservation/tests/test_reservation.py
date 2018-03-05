@@ -31,7 +31,7 @@ class ReservationTestCase(WmsTestCase):
         self.goods = self.avatar.goods
 
     def test_authorized(self):
-        request = self.Reservation.Request.insert()
+        request = self.Reservation.Request.insert(reserved=True)
         req_item = self.Reservation.RequestItem.insert(
             request=request,
             goods_type=self.goods_type,
