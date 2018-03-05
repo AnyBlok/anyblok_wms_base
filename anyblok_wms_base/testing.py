@@ -129,7 +129,7 @@ class ConcurrencyBlokTestCase(BlokTestCase):
     def tearDown(self):
         try:
             self.registry2.System.Cache.invalidate_all()
-        except sqlalchemy.exc.InvalidRequestError:
+        except sqlalchemy.exc.InvalidRequestError:  # pragma: no cover
             pass  # pragma: no cover
         finally:
             self.registry2.rollback()
