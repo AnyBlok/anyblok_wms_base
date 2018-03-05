@@ -130,7 +130,7 @@ class ConcurrencyBlokTestCase(BlokTestCase):
         try:
             self.registry2.System.Cache.invalidate_all()
         except sqlalchemy.exc.InvalidRequestError:
-            pass
+            pass  # pragma: no cover
         finally:
             self.registry2.rollback()
             self.registry2.session.close()
