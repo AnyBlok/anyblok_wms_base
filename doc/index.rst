@@ -35,6 +35,7 @@ get a grasp of what it intends to do.
    design_goals
    core_concepts
    components
+   for_downstream
    roadmap
    CHANGES
    improvements
@@ -44,6 +45,7 @@ get a grasp of what it intends to do.
    :hidden:
 
    LICENSE
+   reservation
 
 Indices and tables
 ==================

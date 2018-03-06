@@ -51,7 +51,7 @@ class Request:
     """
 
     reserved = Boolean(nullable=False, default=False)
-    """Indicates that all reservations are done.
+    """Indicates that all reservations are taken.
 
     TODO: find a way to represent if the Request is partially done ?
     Some use-cases would require planning partial deliveries and the
@@ -71,9 +71,15 @@ class Request:
     @classmethod
     @contextmanager
     def claim_reservations(cls, request_id=None):
-        """Context manager to claim ownership over Request's reservations.
+        """Context manager to claim ownership over this Request's reservations.
 
-        This is meant for planners.
+        This is meant for planners and works on fully reserved Requests.
+        Example::
+
+           Request = registry.Wms.Reservation.Request
+           with Request.claim_reservations() as req_id:
+               request = Request.query().get(req_id)
+               (...) read request.purpose, plan Operations (...)
 
         By calling this, the current transaction becomes responsible
         for all Request's reservations, meaning that it has the
@@ -137,10 +143,10 @@ class Request:
     def reserve(self):
         """Try and perform reservation for all RequestItems.
 
-        Should not fail if reservations are already done.
-
-        :return: ``True`` if all reservations are taken
+        :return: ``True`` if all reservations are now taken
         :rtype: bool
+
+        Should not fail if reservations are already done.
         """
         Item = self.registry.Wms.Reservation.RequestItem
         # could use map() and all(), but it's not recommended style
@@ -155,7 +161,7 @@ class Request:
     def lock_unreserved(cls, batch_size, query_filter=None, offset=0):
         """Take exclusivity over not yet reserved Requests
 
-        This is used by :ref:`reservers <arch_reserver>`.
+        This is used in :ref:`Reservers <arch_reserver>` implementations.
 
         :param int batch: maximum of reservations to lock at once.
 
@@ -165,7 +171,7 @@ class Request:
 
         This conflicts in particular locks taken with
         :meth`claim_reservations`, but in principle,
-        only :ref:`reservers arch_reserver should take locks
+        only :ref:`reservers <arch_reserver>` should take locks
         over reservation Requests that are not reserved yet, and these should
         not run in concurrency (or in a very controlled way, using
         ``query_filter``).
