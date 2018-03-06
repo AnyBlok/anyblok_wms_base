@@ -14,4 +14,5 @@ package names for readability in page titles.
    exceptions
    utils
    bloks/wms_core/index
+   bloks/wms_reservation/index
 

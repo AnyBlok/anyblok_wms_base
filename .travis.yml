@@ -34,8 +34,10 @@ env:
 
 script:
   - flake8 anyblok_wms_base
-  - anyblok_createdb --install-all-bloks
-  - nosetests anyblok_wms_base --with-doctest --with-anyblok-bloks -v -s --with-coverage --cover-package=anyblok_wms_base
+  - anyblok_createdb --install-bloks wms-core test-wms-goods-batch-ref
+  - nosetests anyblok_wms_base/utils.py anyblok_wms_base/bloks/wms_core --with-doctest --with-anyblok-bloks -v -s --with-coverage --cover-package=anyblok_wms_base
+  - anyblok_updatedb --install-bloks wms-reservation
+  - nosetests anyblok_wms_base/bloks/wms_reservation --with-doctest --with-anyblok-bloks -v -s --with-coverage --cover-package=anyblok_wms_base
 
 after_success:
   coveralls

@@ -101,3 +101,8 @@ class OperationIrreversibleError(OperationError):
         OperationError.__init__(
             self, op, "this can depend on the Operation class or "
             "on the present instance: {op}", op=op)
+
+
+class OperationGoodsReserved(OperationError):
+    """Used if an Operation tries and work on some reserved Goods in a
+    txn that doesn't own the reservation."""
