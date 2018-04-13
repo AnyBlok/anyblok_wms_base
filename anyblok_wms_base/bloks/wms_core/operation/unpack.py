@@ -14,11 +14,10 @@ from anyblok_wms_base.exceptions import OperationInputsError
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
-Splitter = Declarations.Mixin.WmsSplitterOperation
 
 
 @register(Operation)
-class Unpack(Splitter, Operation):
+class Unpack(Operation):
     """Unpacking some goods, creating new Goods and Avatar records.
 
     This is a destructive Operation, in the usual mild sense: once it's done,
@@ -61,7 +60,7 @@ class Unpack(Splitter, Operation):
                 "because their type {type} doesn't have the 'unpack' "
                 "behaviour", inputs=inputs, type=goods_type)
 
-    def execute_planned_after_split(self):
+    def execute_planned(self):
         packs = self.input
         # TODO PERF direct update query would probably be faster
         for outcome in self.outcomes:

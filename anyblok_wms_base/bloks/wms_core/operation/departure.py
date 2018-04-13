@@ -12,25 +12,11 @@ from anyblok.column import Integer
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
-Splitter = Declarations.Mixin.WmsSplitterOperation
 
 
 @register(Operation)
-class Departure(Splitter, Operation):
+class Departure(Operation):
     """Operation to represent goods physically leaving the system.
-
-    As with all :class:`Splitter Operations
-    <anyblok_wms_base.bloks.wms_core.operation.splitter.WmsSplitterOperation>`,
-    Departures can be partial, i.e.,
-    there's no need to match the exact quantity held in the underlying Goods
-    record: an automatic Split will occur if needed.
-
-    In many scenarios, the Departure would come after a
-    :class:`Move <.move.Move>` that would bring
-    the goods to a shipping location and maybe issue itself a
-    :class:`Split <.split.Split>`, so that
-    actually the quantity for departure would be an exact match, but Departure
-    does not rely on that.
 
     Downstream libraries and applications can enhance this model
     with additional information (e.g., a shipping address) if needed, although
@@ -57,7 +43,7 @@ class Departure(Splitter, Operation):
         else:
             self.input.dt_until = self.dt_execution
 
-    def execute_planned_after_split(self):
+    def execute_planned(self):
         self.registry.flush()
         self.depart()
 

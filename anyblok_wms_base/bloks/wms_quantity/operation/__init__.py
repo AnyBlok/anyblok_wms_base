@@ -8,10 +8,12 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 
-from . import ns
-from . import base
-from . import single_input
-from . import arrival
-from . import departure
-from . import move
-from . import unpack
+from . import split
+from . import aggregate
+from . import splitter
+
+# TODO do the same for wms_core
+def reload_declarations(reload):
+    reload(split)
+    reload(aggregate)
+    reload(splitter)

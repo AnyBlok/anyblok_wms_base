@@ -14,11 +14,10 @@ from anyblok.relationship import Many2One
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
-Splitter = Declarations.Mixin.WmsSplitterOperation
 
 
 @register(Operation)
-class Move(Splitter, Operation):
+class Move(Operation):
     """A stock move
     """
     TYPE = 'wms_move'
@@ -50,7 +49,7 @@ class Move(Splitter, Operation):
         if state == 'done':
             to_move.state = 'past'
 
-    def execute_planned_after_split(self):
+    def execute_planned(self):
         dt_execution = self.dt_execution
 
         after_move = self.outcomes[0]

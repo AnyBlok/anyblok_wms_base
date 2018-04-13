@@ -18,9 +18,10 @@ from anyblok_wms_base.exceptions import (
 )
 
 Mixin = Declarations.Mixin
+register = Declarations.register
 
 
-@Declarations.register(Mixin)
+@register(Mixin)
 class WmsSplitterOperation(Mixin.WmsSingleInputOperation):
     """Mixin for operations on a single input that can split.
 
@@ -133,17 +134,40 @@ class WmsSplitterOperation(Mixin.WmsSingleInputOperation):
         if self.partial:
             split_op = self.follows[0]
             split_op.execute(dt_execution=self.dt_execution)
-        self.execute_planned_after_split()
+        super(WmsSplitterOperation, self).execute_planned()
         self.registry.flush()
 
-    def execute_planned_after_split(self):
-        """Part of the execution that occurs maybe after a Split.
 
-        Subclasses can implement this method exactly as if they were
-        implementing :meth:`execute_planned <.base.Operation.execute_planned>`.
+Operation = Declarations.Model.Wms.Operation
+Splitter = Declarations.Mixin.WmsSplitterOperation
 
-        If a :class:`Split <.split.Split>` has been inserted in the history,
-        it is already executed.
-        """
-        raise NotImplementedError(
-            "for %s" % self.__registry_name__)  # pragma: no cover
+
+@register(Operation)
+class Move(Splitter):
+    """Override making Move a splitter operation.
+    """
+
+
+@register(Operation)
+class Departure(Splitter):
+    """Override making Departure a splitter operation.
+
+    As with all :class:`Splitter Operations
+    <anyblok_wms_base.bloks.wms_quantity.operation.splitter.WmsSplitterOperation>`,
+    Departures can be partial, i.e.,
+    there's no need to match the exact quantity held in the underlying Goods
+    record: an automatic Split will occur if needed.
+
+    In many scenarios, the Departure would come after a
+    :class:`Move <.move.Move>` that would bring
+    the goods to a shipping location and maybe issue itself a
+    :class:`Split <.split.Split>`, so that
+    actually the quantity for departure would be an exact match, but Departure
+    does not rely on that.
+    """
+
+
+@register(Operation)
+class Unpack(Splitter):
+    """Override making Unpack a splitter operation.
+    """
