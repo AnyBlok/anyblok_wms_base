@@ -9,6 +9,17 @@
 Release history
 ===============
 
+0.6.0
+~~~~~
+* Published on PyPY
+* Implemented Avatars
+* Uniformisation of the relationship between Operations and Goods
+  (Avatars)
+* wms_reservation: initial implementation (with architectural notes in
+  doc)
+* some factorisation of concrete Operation methods into the base
+  class, leading to much simpler implementations.
+
 0.5
 ~~~
 * First tag, not released to PyPI.
