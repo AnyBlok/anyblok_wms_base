@@ -9,7 +9,7 @@
 from setuptools import setup, find_packages
 import os
 
-version = '0.6.0.dev0'
+version = '0.6.0'
 
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -61,7 +61,7 @@ setup(
     zip_safe=False,
     keywords='stock logistics wms',
     classifiers=[
-        'Development Status :: 1 - Planning',
+        'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
