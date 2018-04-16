@@ -6,7 +6,6 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from sqlalchemy import func
 from sqlalchemy import or_
 from anyblok import Declarations
 from anyblok.column import String
@@ -66,10 +65,8 @@ class Location:
         """
         Goods = self.registry.Wms.Goods
         Avatar = Goods.Avatar
-        query = Avatar.query(
-            func.sum(Goods.quantity)).join(
-                Avatar.goods).filter(
-                    Goods.type == goods_type, Avatar.location == self)
+        query, use_count = self.base_quantity_query()
+        query = query.filter(Goods.type == goods_type, Avatar.location == self)
 
         if additional_states is None:
             query = query.filter(Avatar.state == 'present')
@@ -87,5 +84,19 @@ class Location:
             query = query.filter(Avatar.dt_from <= at_datetime,
                                  or_(Avatar.dt_until.is_(None),
                                      Avatar.dt_until > at_datetime))
+        if use_count:
+            return query.count()
+
         res = query.one()[0]
         return 0 if res is None else res
+
+    @classmethod
+    def base_quantity_query(cls):
+        """Return base join query, without any filtering, and eval indication.
+
+        :return: query, ``True`` if ``count()`` is to be used. Otherwise,
+                 the query is assumed to produce exactly one row, with the
+                 wished quantity result (possibly ``None`` for 0)
+        """
+        Avatar = cls.registry.Wms.Goods.Avatar
+        return Avatar.query().join(Avatar.goods), True

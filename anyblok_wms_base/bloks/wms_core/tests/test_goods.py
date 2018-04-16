@@ -33,7 +33,7 @@ class TestGoods(WmsTestCase):
             quantity=1)
 
     def test_prop_api(self):
-        goods = self.Goods.insert(type=self.goods_type, quantity=1)
+        goods = self.Goods.insert(type=self.goods_type)
         self.assertIsNone(goods.get_property('foo'))
         self.assertEqual(goods.get_property('foo', default=-1), -1)
 
@@ -42,7 +42,7 @@ class TestGoods(WmsTestCase):
 
     def test_str(self):
         gt = self.goods_type
-        goods = self.Goods.insert(type=gt, quantity=1)
+        goods = self.Goods.insert(type=gt)
         avatar = self.Avatar.insert(goods=goods,
                                     dt_from=self.dt_test1,
                                     state='future',
@@ -76,24 +76,24 @@ class TestGoods(WmsTestCase):
                 avatar.id, goods.id, gt.id, self.stock.id))
 
     def test_prop_api_column(self):
-        goods = self.Goods.insert(type=self.goods_type, quantity=1)
+        goods = self.Goods.insert(type=self.goods_type)
         goods.set_property('batch', '12345')
         self.assertEqual(goods.get_property('batch'), '12345')
 
     def test_prop_api_duplication(self):
-        goods = self.Goods.insert(type=self.goods_type, quantity=1)
+        goods = self.Goods.insert(type=self.goods_type)
 
         goods.set_property('batch', '12345')
         self.assertEqual(goods.get_property('batch'), '12345')
 
-        goods2 = self.Goods.insert(type=self.goods_type, quantity=3,
+        goods2 = self.Goods.insert(type=self.goods_type,
                                    properties=goods.properties)
         goods2.set_property('batch', '6789')
         self.assertEqual(goods.get_property('batch'), '12345')
         self.assertEqual(goods2.get_property('batch'), '6789')
 
     def test_prop_api_reserved_property_names(self):
-        goods = self.Goods.insert(type=self.goods_type, quantity=1)
+        goods = self.Goods.insert(type=self.goods_type)
 
         with self.assertRaises(ValueError):
             goods.set_property('id', 1)
@@ -106,7 +106,7 @@ class TestGoods(WmsTestCase):
         Separated to ease maintenance of tests in case it changes in
         the future.
         """
-        goods = self.Goods.insert(type=self.goods_type, quantity=1)
+        goods = self.Goods.insert(type=self.goods_type)
         goods.set_property('foo', 2)
         self.assertEqual(goods.properties.flexible, dict(foo=2))
 
@@ -116,7 +116,7 @@ class TestGoods(WmsTestCase):
         Separated to ease maintenance of tests in case it changes in
         the future.
         """
-        goods = self.Goods.insert(type=self.goods_type, quantity=1)
+        goods = self.Goods.insert(type=self.goods_type)
 
         goods.set_property('batch', '2')
         self.assertEqual(goods.properties.flexible, {})

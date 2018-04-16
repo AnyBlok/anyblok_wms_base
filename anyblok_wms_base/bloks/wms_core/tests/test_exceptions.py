@@ -31,8 +31,7 @@ class TestOperationError(BlokTestCase):
                                            dt_execution=self.dt_test1,
                                            quantity=3)
 
-        self.goods = Wms.Goods.insert(quantity=3,
-                                      type=goods_type)
+        self.goods = Wms.Goods.insert(type=goods_type)
         self.avatar = Wms.Goods.Avatar.insert(
             goods=self.goods,
             location=self.incoming_loc,
@@ -67,7 +66,6 @@ class TestOperationError(BlokTestCase):
     def test_op_wrong_state_instance_default_msg(self):
         self.avatar.state = 'present'
         departure = self.Operation.Departure.create(input=self.avatar,
-                                                    quantity=3,
                                                     state='done')
         err = OperationInputWrongState(departure, self.avatar, 'future')
         # Don't want to check the exact wording of the full fmt

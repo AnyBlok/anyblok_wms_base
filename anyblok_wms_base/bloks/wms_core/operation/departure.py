@@ -11,11 +11,12 @@ from anyblok import Declarations
 from anyblok.column import Integer
 
 register = Declarations.register
+Mixin = Declarations.Mixin
 Operation = Declarations.Model.Wms.Operation
 
 
 @register(Operation)
-class Departure(Operation):
+class Departure(Mixin.WmsSingleInputOperation, Operation):
     """Operation to represent goods physically leaving the system.
 
     Downstream libraries and applications can enhance this model
