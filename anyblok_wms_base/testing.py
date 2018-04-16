@@ -55,6 +55,45 @@ class WmsTestCase(BlokTestCase):
             return elt
 
 
+class WmsTestCaseWithGoods(WmsTestCase):
+    """Same as WmsTestCase with a prebaked Goods and Avatar.
+
+    Creating an Avatar requires a reason, a location, so we have actually
+    quite a few attributes:
+
+    * ``avatar``: it is in the ``future`` state
+    * ``goods``:
+       actually, for now, equal to ``avatar``, but will be corrected or
+       removed in a subsequent refactor (this is a leftover of the refactor
+       that introduced avatars).
+    * ``goods_type``
+    * ``arrival``: the reason for :attr:`avatar`
+    * ``incoming_loc``: where that initial Avatar dwells
+    """
+
+    arrival_kwargs = {}
+
+    def setUp(self):
+        super(WmsTestCaseWithGoods, self).setUp()
+
+        Wms = self.registry.Wms
+        Operation = Wms.Operation
+        self.goods_type = Wms.Goods.Type.insert(label="My good type")
+        self.incoming_loc = Wms.Location.insert(label="Incoming location")
+        self.stock = Wms.Location.insert(label="Stock")
+
+        self.arrival = Operation.Arrival.create(goods_type=self.goods_type,
+                                                location=self.incoming_loc,
+                                                state='planned',
+                                                dt_execution=self.dt_test1,
+                                                **self.arrival_kwargs)
+
+        self.avatar = self.assert_singleton(self.arrival.outcomes)
+        self.goods = self.avatar
+        self.Goods = Wms.Goods
+        self.Avatar = Wms.Goods.Avatar
+
+
 class ConcurrencyBlokTestCase(BlokTestCase):
     """A base TestCase setting up two registries for concurrency  tests.
 

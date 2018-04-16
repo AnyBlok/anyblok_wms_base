@@ -31,11 +31,9 @@ class TestOperation(WmsTestCase):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 dt_execution=self.dt_test1,
                                                 location=self.incoming_loc,
-                                                state='planned',
-                                                quantity=3)
+                                                state='planned')
         avatar = self.assert_singleton(arrival.outcomes)
         move = self.Operation.Move.create(destination=self.stock,
-                                          quantity=3,
                                           dt_execution=self.dt_test2,
                                           state='planned',
                                           input=avatar)
@@ -46,16 +44,14 @@ class TestOperation(WmsTestCase):
         arrival = self.Operation.Arrival.insert(goods_type=self.goods_type,
                                                 dt_execution=self.dt_test1,
                                                 location=self.incoming_loc,
-                                                state='planned',
-                                                quantity=3)
+                                                state='planned')
         Avatar = self.Goods.Avatar
-        goods = [Avatar.insert(goods=self.Goods.insert(quantity=qty,
-                                                       type=self.goods_type),
+        goods = [Avatar.insert(goods=self.Goods.insert(type=self.goods_type),
                                location=self.incoming_loc,
                                dt_from=self.dt_test1,
                                state='future',
                                reason=arrival)
-                 for qty in (1, 2)]
+                 for _ in (1, 2)]
 
         with self.assertRaises(OperationInputsError) as arc:
             self.Operation.Departure.create(inputs=goods,
@@ -67,11 +63,9 @@ class TestOperation(WmsTestCase):
         arrival = self.Operation.Arrival.insert(goods_type=self.goods_type,
                                                 dt_execution=self.dt_test1,
                                                 location=self.incoming_loc,
-                                                state='planned',
-                                                quantity=3)
+                                                state='planned')
         Avatar = self.Goods.Avatar
-        avatars = [Avatar.insert(goods=self.Goods.insert(quantity=1,
-                                                         type=self.goods_type),
+        avatars = [Avatar.insert(goods=self.Goods.insert(type=self.goods_type),
                                  location=self.incoming_loc,
                                  dt_from=self.dt_test1,
                                  dt_until=dt,
@@ -109,8 +103,7 @@ class TestOperation(WmsTestCase):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
-                                                state='planned',
-                                                quantity=2)
+                                                state='planned')
         Avatar = self.Goods.Avatar
         future_query = Avatar.query().filter(Avatar.state == 'future')
         self.assertEqual(future_query.count(), 1)
@@ -124,8 +117,7 @@ class TestOperation(WmsTestCase):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
-                                                state='done',
-                                                quantity=2)
+                                                state='done')
         with self.assertRaises(OperationError):
             arrival.cancel()
 
@@ -133,24 +125,20 @@ class TestOperation(WmsTestCase):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
-                                                state='planned',
-                                                quantity=3)
+                                                state='planned')
         goods = self.assert_singleton(arrival.outcomes)
         Move = self.Operation.Move
         Move.create(input=goods,
-                    quantity=1,
                     dt_execution=self.dt_test2,
                     destination=self.stock,
                     state='planned')
         move2 = Move.create(input=goods,
-                            quantity=2,
                             dt_execution=self.dt_test2,
                             destination=self.stock,
                             state='planned')
         self.registry.flush()
         avatar2 = self.assert_singleton(move2.outcomes)
         self.Operation.Departure.create(input=avatar2,
-                                        quantity=2,
                                         dt_execution=self.dt_test3,
                                         state='planned')
         self.registry.flush()
@@ -165,20 +153,18 @@ class TestOperation(WmsTestCase):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
-                                                state='done',
-                                                quantity=3)
+                                                state='done')
 
         goods = self.assert_singleton(arrival.outcomes)  # an Avatar, really
         Move = self.Operation.Move
 
         # full moves don't generate splits, that's why the history is linear
+        # (Splits are in wms-quantity only, now, anyway)
         move1 = Move.create(input=goods,
-                            quantity=3,
                             dt_execution=self.dt_test2,
                             destination=self.stock,
                             state='done')
         move2 = Move.create(input=self.assert_singleton(move1.outcomes),
-                            quantity=3,
                             dt_execution=self.dt_test3,
                             destination=workshop,
                             state='done')
@@ -201,7 +187,6 @@ class TestOperation(WmsTestCase):
         Avatar = self.Goods.Avatar
         avatar = self.single_result(
             Avatar.query().filter(Avatar.state != 'past'))
-        self.assertEqual(avatar.goods.quantity, 3)
         self.assertEqual(avatar.dt_from, rev_dt2)
         self.assertIsNone(avatar.dt_until)
         self.assertEqual(avatar.location, self.incoming_loc)
@@ -210,12 +195,10 @@ class TestOperation(WmsTestCase):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
-                                                state='done',
-                                                quantity=3)
+                                                state='done')
 
         goods = self.assert_singleton(arrival.outcomes)
         move = self.Operation.Move.create(input=goods,
-                                          quantity=3,
                                           dt_execution=self.dt_test2,
                                           destination=self.stock,
                                           state='planned')
@@ -226,20 +209,17 @@ class TestOperation(WmsTestCase):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 state='done',
-                                                dt_execution=self.dt_test1,
-                                                quantity=3)
+                                                dt_execution=self.dt_test1)
 
         goods = self.assert_singleton(arrival.outcomes)  # an avatar, really
 
         move = self.Operation.Move.create(input=goods,
-                                          quantity=2,
                                           destination=self.stock,
                                           dt_execution=self.dt_test2,
                                           state='done')
 
         outgoing = self.assert_singleton(move.outcomes)
         departure = self.Operation.Departure.create(input=outgoing,
-                                                    quantity=2,
                                                     dt_execution=self.dt_test3,
                                                     state='done')
         with self.assertRaises(OperationIrreversibleError) as arc:
@@ -252,8 +232,7 @@ class TestOperation(WmsTestCase):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
-                                                state='planned',
-                                                quantity=3)
+                                                state='planned')
         # No need to go in detail, we'll probably want to fallback to cancel()
         # actually in that case
         with self.assertRaises(OperationError):
@@ -264,20 +243,17 @@ class TestOperation(WmsTestCase):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
-                                                state='done',
-                                                quantity=3)
+                                                state='done')
 
         goods = self.assert_singleton(arrival.outcomes)  # an avatar, really
         Move = self.Operation.Move
 
         # full moves don't generate splits, that's why the history is linear
         move1 = Move.create(input=goods,
-                            quantity=3,
                             dt_execution=self.dt_test2,
                             destination=self.stock,
                             state='done')
         Move.create(input=self.assert_singleton(move1.outcomes),
-                    quantity=3,
                     dt_execution=self.dt_test3,
                     destination=workshop,
                     state='done')
@@ -286,7 +262,6 @@ class TestOperation(WmsTestCase):
         Avatar = self.Goods.Avatar
         avatar = self.single_result(
             Avatar.query().filter(Avatar.state != 'past'))
-        self.assertEqual(avatar.goods.quantity, 3)
         self.assertEqual(avatar.location, self.incoming_loc)
         self.assertEqual(avatar.dt_from, self.dt_test1)
         self.assertEqual(avatar.dt_until, None)
@@ -297,7 +272,6 @@ class TestOperation(WmsTestCase):
         with self.assertRaises(OperationError) as arc:
             self.Operation.Arrival.create(goods_type=self.goods_type,
                                           location=self.incoming_loc,
-                                          state='planned',
-                                          quantity=3)
+                                          state='planned')
         exc = arc.exception
         self.assertEqual(exc.kwargs.get('state'), 'planned')

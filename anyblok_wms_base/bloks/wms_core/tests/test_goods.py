@@ -29,8 +29,7 @@ class TestGoods(WmsTestCase):
             goods_type=self.goods_type,
             location=self.stock,
             dt_execution=self.dt_test1,
-            state='done',
-            quantity=1)
+            state='done')
 
     def test_prop_api(self):
         goods = self.Goods.insert(type=self.goods_type)

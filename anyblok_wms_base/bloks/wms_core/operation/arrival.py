@@ -6,10 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from sqlalchemy import CheckConstraint
-
 from anyblok import Declarations
-from anyblok.column import Decimal
 from anyblok.column import Integer
 from anyblok.column import String
 from anyblok_postgres.column import Jsonb
@@ -23,8 +20,8 @@ Operation = Declarations.Model.Wms.Operation
 class Arrival(Operation):
     """Operation to describe physical arrival of goods in some location.
 
-    Arrivals store data about the expected or arrived Goods: properties, code,
-    quantity… These are copied over to the corresponding Goods records in all
+    Arrivals store data about the expected or arrived Goods: properties, code…
+    These are copied over to the corresponding Goods records in all
     cases and stay inert after the fact.
 
     In case the Arrival state is ``planned``,
@@ -70,21 +67,13 @@ class Arrival(Operation):
     """
     location = Many2One(model='Model.Wms.Location')
     """Will be the location of the initial Avatar."""
-    quantity = Decimal(label="Quantity")
 
     inputs_number = 0
     """This Operation is a purely creative one."""
 
-    @classmethod
-    def define_table_args(cls):
-        return super(Arrival, cls).define_table_args() + (
-            CheckConstraint('quantity > 0',
-                            name='positive_qty'),)
-
     def specific_repr(self):
         return ("goods_type={self.goods_type!r}, "
-                "location={self.location!r}, "
-                "quantity={self.quantity}").format(self=self)
+                "location={self.location!r}").format(self=self)
 
     def after_insert(self):
         Goods = self.registry.Wms.Goods
@@ -93,9 +82,9 @@ class Arrival(Operation):
             props = None
         else:
             props = Goods.Properties.create(**self_props)
+
         goods = Goods.insert(type=self.goods_type,
                              properties=props,
-                             quantity=self.quantity,
                              code=self.goods_code)
         Goods.Avatar.insert(
             goods=goods,

@@ -22,8 +22,11 @@ register = Declarations.register
 
 
 @register(Mixin)
-class WmsSplitterOperation(Mixin.WmsSingleInputOperation):
+class WmsSplitterOperation:
     """Mixin for operations on a single input that can split.
+
+    This is to be applied after ``Mixin.WmsSingleInputOperation``.
+    Use ``WmsSplitterSingleInputOperation`` to have both at once.
 
     It defines the :attr:`quantity` field to express that the Operation only
     works on some of the quantity held by the Goods of the single input.
@@ -140,6 +143,11 @@ class WmsSplitterOperation(Mixin.WmsSingleInputOperation):
 
 Operation = Declarations.Model.Wms.Operation
 Splitter = Declarations.Mixin.WmsSplitterOperation
+
+
+@register(Mixin)
+class WmsSplitterSingleInputOperation(Splitter):
+    pass
 
 
 @register(Operation)

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# flake8: noqa
 # This file is a part of the AnyBlok / WMS Base project
 #
 #    Copyright (C) 2018 Georges Racinet <gracinet@anybox.fr>
@@ -8,16 +7,16 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 
-from . import split
-from . import aggregate
-from . import splitter
-from . import arrival
-from . import move
+from anyblok import Declarations
 
-# TODO do the same for wms_core
-def reload_declarations(reload):
-    reload(split)
-    reload(aggregate)
-    reload(splitter)
-    reload(arrival)
-    reload(move)
+register = Declarations.register
+Operation = Declarations.Model.Wms.Operation
+Splitter = Declarations.Mixin.WmsSplitterOperation
+
+
+@register(Operation)
+class Move:
+    """Override to use quantity where needed."""
+
+    def revert_extra_fields(self):
+        return dict(quantity=self.quantity)

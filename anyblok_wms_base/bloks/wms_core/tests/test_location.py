@@ -25,8 +25,7 @@ class TestLocation(WmsTestCase):
             goods_type=self.goods_type,
             location=self.stock,
             dt_execution=self.dt_test1,
-            state='done',
-            quantity=5)
+            state='done')
 
     def insert_goods(self, qty, state, dt_from, until=None):
         for _ in range(qty):
