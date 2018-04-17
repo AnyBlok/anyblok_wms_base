@@ -13,11 +13,12 @@ from anyblok.column import Integer
 from anyblok_wms_base.exceptions import OperationInputsError
 
 register = Declarations.register
+Mixin = Declarations.Mixin
 Operation = Declarations.Model.Wms.Operation
 
 
 @register(Operation)
-class Unpack(Operation):
+class Unpack(Mixin.WmsSingleInputOperation, Operation):
     """Unpacking some goods, creating new Goods and Avatar records.
 
     This is a destructive Operation, in the usual mild sense: once it's done,
