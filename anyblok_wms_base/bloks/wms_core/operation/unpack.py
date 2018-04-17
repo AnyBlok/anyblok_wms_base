@@ -68,6 +68,27 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
             outcome.state = 'present'
         packs.update(state='past', reason=self)
 
+    def create_unpacked_goods(self, fields, spec):
+        """Create Goods record according to given specification.
+
+        This singled out method is meant for easy subclassing (see, e.g,
+        in ``wms-quantity`` Blok).
+
+        :param fields: pre-baked fields, prepared by the base class. In the
+                       current implementation, they are fully derived from
+                       ``spec``, hence one may think of them as redundant,
+                       but the point is that they are outside the
+                       responsibility of this method.
+        :param spec: specification for these Goods, should be used minimally
+                     in subclasses, typically for quantity related adjustments
+        :return: the list of created Goods records. In ``wms-core``, there
+                 will be as many as the wished quantity, but in
+                 ``wms-quantity``, this maybe a single record bearing the
+                 total quantity.
+        """
+        Goods = self.registry.Wms.Goods
+        return [Goods.insert(**fields) for _ in range(spec['quantity'])]
+
     def after_insert(self):
         Goods = self.registry.Wms.Goods
         GoodsType = Goods.Type
@@ -84,21 +105,19 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         for outcome_spec in spec:
             # TODO what would be *really* neat would be to be able
             # to recognize the goods after a chain of pack/unpack
-            goods_fields = dict(
-                quantity=outcome_spec['quantity'] * self.quantity,
-                type=outcome_types[outcome_spec['type']])
+            goods_fields = dict(type=outcome_types[outcome_spec['type']])
             clone = outcome_spec.get('forward_properties') == 'clone'
             if clone:
                 goods_fields['properties'] = packs.goods.properties
-            outcome = Goods.insert(**goods_fields)
-            Goods.Avatar.insert(goods=outcome,
-                                location=packs.location,
-                                reason=self,
-                                dt_from=dt_execution,
-                                dt_until=packs.dt_until,
-                                state=outcome_state)
-            if not clone:
-                self.forward_props(outcome_spec, outcome)
+            for goods in self.create_unpacked_goods(goods_fields, outcome_spec):
+                Goods.Avatar.insert(goods=goods,
+                                    location=packs.location,
+                                    reason=self,
+                                    dt_from=dt_execution,
+                                    dt_until=packs.dt_until,
+                                    state=outcome_state)
+                if not clone:
+                    self.forward_props(outcome_spec, goods)
         packs.dt_until = dt_execution
 
     def forward_props(self, spec, outcome):

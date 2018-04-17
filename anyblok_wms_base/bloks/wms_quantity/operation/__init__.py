@@ -13,6 +13,7 @@ from . import aggregate
 from . import splitter
 from . import arrival
 from . import move
+from . import unpack
 
 # TODO do the same for wms_core
 def reload_declarations(reload):
@@ -21,3 +22,4 @@ def reload_declarations(reload):
     reload(splitter)
     reload(arrival)
     reload(move)
+    reload(unpack)

@@ -11,7 +11,6 @@ from anyblok import Declarations
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
-Splitter = Declarations.Mixin.WmsSplitterOperation
 
 
 @register(Operation)
