@@ -23,16 +23,6 @@ class TestMove(WmsTestCaseWithGoods):
         self.goods.dt_until = self.dt_test3
         self.Move = Operation.Move
 
-    def assertBackToBeginning(self):
-        new_goods = self.single_result(self.Avatar.query())
-        self.assertEqual(new_goods.quantity, 3)
-        self.assertEqual(new_goods.location, self.incoming_loc)
-        self.assertEqual(new_goods.state, 'present')
-        self.assertEqual(new_goods.dt_from, self.dt_test1)
-        self.assertEqual(new_goods.dt_until, self.dt_test3)
-        self.assertEqual(new_goods.reason, self.arrival)
-        # TODO also check that id did not change once we can make it True
-
     def test_partial_done(self):
         self.goods.update(state='present')
         move = self.Move.create(destination=self.stock,
