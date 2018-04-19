@@ -459,26 +459,4 @@ reversible once we have the converse Pack (or the more general Assembly)
 Operation, maybe consuming some other Goods for packaging (cardboard,
 pallet wood). Again, this will be controled by behaviours.
 
-.. _op_split_aggregate:
-
-Split and Aggregate
--------------------
-.. note:: This is an overview, see the code documentation for
-          :class:`Split
-          <anyblok_wms_base.bloks.wms_core.operation.split.Split>` and
-          :class:`Aggregate
-          <anyblok_wms_base.bloks.wms_core.operation.aggregate.Aggregate>`
-          for more details.
-
-A Split replaces one record of Goods with two identical ones, keeping
-the overall total quantity.
-
-According to behaviours on the Goods Type, they are *formal* (have no
-counterpart in reality) or *physical*. In the latter case, they can be
-reversible or not, again according to behaviours.
-
-Aggregates are the converse of Splits, and both are always reversible
-in the sense of :ref:`op_cancel_revert_obliviate`.
-
-.. note:: see :ref:`improvement_no_quantities`
 
