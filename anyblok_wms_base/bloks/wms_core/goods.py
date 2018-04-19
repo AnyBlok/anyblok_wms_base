@@ -30,10 +30,7 @@ Model = Declarations.Model
 class Goods:
     """Main data type to represent physical objects managed by the system.
 
-    This represents a certain amount (:attr:`quantity`) of indistinguishable
-    goods, for all the intents and purposes the WMS is used for.
-
-    Forgetting quantities for a while, the instances of this model are also
+    The instances of this model are also
     the ultimate representation of the Goods "staying the same" or "becoming
     different" under the Operations, which is, ultimately, a subjective
     decision that has to be left to downstream libraires and applications, or
