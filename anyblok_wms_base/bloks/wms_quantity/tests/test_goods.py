@@ -9,6 +9,10 @@
 from decimal import Decimal as D
 
 from anyblok_wms_base.testing import WmsTestCase
+from anyblok.tests.testcase import BlokTestCase
+from anyblok_wms_base.constants import (
+    SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR
+)
 
 
 class TestGoods(WmsTestCase):
@@ -41,3 +45,29 @@ class TestGoods(WmsTestCase):
                          "(id=%d, code='MG'), quantity=2.5)" % (
                              goods.id,
                              gt.id))
+
+
+class TestGoodsTypes(BlokTestCase):
+
+    def setUp(self):
+        self.GoodsType = self.registry.Wms.Goods.Type
+
+    def test_split_reversible(self):
+        gt = self.GoodsType(code='MG')
+        self.assertTrue(gt.is_split_reversible())
+
+        gt.behaviours = {SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR: True}
+        self.assertFalse(gt.is_split_reversible())
+
+        gt.behaviours['split'] = dict(reversible=True)
+        self.assertTrue(gt.is_split_reversible())
+
+    def test_aggregate_reversible(self):
+        gt = self.GoodsType(code='MG')
+        self.assertTrue(gt.is_aggregate_reversible())
+
+        gt.behaviours = {SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR: True}
+        self.assertFalse(gt.is_aggregate_reversible())
+
+        gt.behaviours['aggregate'] = dict(reversible=True)
+        self.assertTrue(gt.is_aggregate_reversible())

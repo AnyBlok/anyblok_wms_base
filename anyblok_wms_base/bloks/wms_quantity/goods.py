@@ -11,6 +11,10 @@ from sqlalchemy import CheckConstraint
 from anyblok import Declarations
 from anyblok.column import Decimal
 
+from anyblok_wms_base.constants import (
+    SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR
+)
+
 register = Declarations.register
 Model = Declarations.Model
 
@@ -75,3 +79,97 @@ class Goods:
     def __repr__(self):
         return ("Wms.Goods(id={self.id}, type={self.type!r}, "
                 "quantity={self.quantity!r})".format(self=self))
+
+
+@register(Model.Wms.Goods)
+class Type:
+    """Override to have behavorial tests for Split/Aggregate.
+
+    As a special case, the behaviours specify whether
+    :class:`Split <.operation.split.Split>` and
+    :class:`Aggregate <.operation.aggregate.Aggregate>` Operations are physical
+    (represent something happening in reality), and if that's the case if they
+    are reversible, using``{"reversible": true}``, defaulting to ``false``,
+    in the ``split`` and ``aggregate`` behaviours, respectively.
+
+    We don't want to impose reversibility to be equal for both directions,
+    as we don't feel confident it would be true in all use cases (it is indeed
+    in the ones presented below).
+
+    Reality of Split and Aggregate and their reversibilitues can be queried
+    using :meth:`are_split_aggregate_physical`,
+    :meth:`is_split_reversible` and :meth:`is_aggregate_reversible`
+
+    Use cases:
+
+    * if the represented goods come as individual pieces in reality, then all
+      quantities are integers, and there's no difference in reality
+      between N>1 records of a given Goods Type with quantity=1 having
+      identical properties and locations on one hand, and a
+      record with quantity=N at the same location with the same properties, on
+      the other hand.
+
+      .. note:: This use case is so frequent that we are considering moving
+                all notions of quantities together with Split and Aggregate
+                Operations out of ``wms-core`` in a separate Blok.
+
+                See :ref:`improvement_no_quantities` for more on this.
+
+    * if the represented goods are meters of wiring, then Splits are physical,
+      they mean cutting the wires, but Aggregates probably can't happen
+      in reality, and therefore Splits are irreversible.
+    * if the represented goods are kilograms of sand, kept in bulk,
+      then Splits mean in reality shoveling some out of, while Aggregates mean
+      shoveling some in (associated with Move operations, obviously).
+      Both operations are certainly reversible in reality.
+    """
+
+    def are_split_aggregate_physical(self):
+        """Tell if Split and Aggregate operations are physical.
+
+        By default, these operations are considered to be purely formal,
+        but a behaviour can be set to specify otherwise. This has impact
+        at least on reversibility.
+
+        Downstream libraries and applications should use
+        :const:`SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR` as this behaviour name.
+
+        :returns bool: the answer.
+        """
+        return self.get_behaviour(SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR, False)
+
+    def _is_op_reversible(self, op_beh):
+        """Common impl for question about reversibility of some operations.
+
+        :param op_beh: name of the behaviour for the given operation
+        """
+        if not self.are_split_aggregate_physical():
+            return True
+        split = self.get_behaviour(op_beh)
+        if split is None:
+            return False
+        return split.get('reversible', False)
+
+    def is_split_reversible(self):
+        """Tell whether :class:`Split <.operation.split.Split>` can be reverted
+        for this Goods Type.
+
+        By default, the Split Operation is considered to be formal,
+        hence the result is ``True``. Otherwise, that depends on the
+        ``reversible`` flag in the ``split`` behaviour.
+
+        :returns bool: the answer.
+        """
+        return self._is_op_reversible('split')
+
+    def is_aggregate_reversible(self):
+        """Tell whether :class:`Aggregate <.operation.aggregate.Aggregate>`
+        can be reverted for this Goods Type.
+
+        By default, Aggregate is considered to be formal, hence the result is
+        ``True``. Otherwise, that depends on the ``reversible`` flag in the
+        ``aggregate`` behaviour.
+
+        :returns bool: the answer.
+        """
+        return self._is_op_reversible('aggregate')
