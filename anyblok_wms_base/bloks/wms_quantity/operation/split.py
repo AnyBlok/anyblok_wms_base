@@ -45,7 +45,8 @@ class Split(SingleInput, Operation):
     but only some physical Splits can be reverted, depending on
     the Goods Type.
 
-    .. seealso:: :class:`Model.Wms.Goods.Type <..goods.Type>`
+    .. seealso:: :class:`Model.Wms.Goods.Type
+                 <anyblok_wms_base.bloks.wms_quantity.goods.Type>`
                  for a full discussion including use-cases of formal and
                  physical splits and reversal of the latter.
 

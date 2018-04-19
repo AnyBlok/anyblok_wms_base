@@ -318,7 +318,7 @@ class RequestItem:
         """Perform the wished reservations.
 
         :return bool: if the RequestItem is completely reserved.
-        # TODO shall we store it directly in DB ?
+                      TODO: shall we store it directly in DB ?
         """
         Reservation = self.registry.Wms.Reservation
         already = Reservation.query(func.sum(Reservation.quantity)).filter(

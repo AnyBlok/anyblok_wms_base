@@ -25,8 +25,9 @@ register = Declarations.register
 class WmsSplitterOperation:
     """Mixin for operations on a single input that can split.
 
-    This is to be applied after ``Mixin.WmsSingleInputOperation``.
-    Use ``WmsSplitterSingleInputOperation`` to have both at once.
+    This is to be applied after :class:`Mixin.WmsSingleInputOperation
+    <anyblok_wms_base.bloks.wms_core.operation.single_input.WmsSingleInputOperation>`.
+    Use :class:`WmsSplitterSingleInputOperation` to get both at once.
 
     It defines the :attr:`quantity` field to express that the Operation only
     works on some of the quantity held by the Goods of the single input.
@@ -147,7 +148,7 @@ Splitter = Declarations.Mixin.WmsSplitterOperation
 
 @register(Mixin)
 class WmsSplitterSingleInputOperation(Splitter):
-    pass
+    """Use this mixin to get both ``SingleInput`` and ``Splitter`` at once."""
 
 
 @register(Operation)

@@ -35,13 +35,10 @@ class Goods:
     There is no corresponding idea of a unit of measure for bulk Goods,
     as we believe it to be enough to represent it in the Goods Type already
     (which would be, e.g, respectively a meter of wire, a ton of wheat). Note
-    that bulk Goods can be the result of some :class:`Unpack
-    <.operation.Unpack>`, with the packaged version
+    that bulk Goods can be the result of some :ref:`op_unpack`, with the
+    packaged version
     being itself handled as an individual piece (imagine spindles of 100m for
     the wire example) and further packable (pallets, containers…)
-
-    .. note:: the ``quantity`` field may vanish from ``wms-core`` in the
-              future, see :ref:`improvement_no_quantities`
 
     This field has been defined as Decimal to cover a broad scope of
     applications. However, for performance reasons, applications are
@@ -89,7 +86,7 @@ class Type:
     :class:`Split <.operation.split.Split>` and
     :class:`Aggregate <.operation.aggregate.Aggregate>` Operations are physical
     (represent something happening in reality), and if that's the case if they
-    are reversible, using``{"reversible": true}``, defaulting to ``false``,
+    are reversible, using ``{"reversible": true}``, defaulting to ``false``,
     in the ``split`` and ``aggregate`` behaviours, respectively.
 
     We don't want to impose reversibility to be equal for both directions,
@@ -108,12 +105,6 @@ class Type:
       identical properties and locations on one hand, and a
       record with quantity=N at the same location with the same properties, on
       the other hand.
-
-      .. note:: This use case is so frequent that we are considering moving
-                all notions of quantities together with Split and Aggregate
-                Operations out of ``wms-core`` in a separate Blok.
-
-                See :ref:`improvement_no_quantities` for more on this.
 
     * if the represented goods are meters of wiring, then Splits are physical,
       they mean cutting the wires, but Aggregates probably can't happen

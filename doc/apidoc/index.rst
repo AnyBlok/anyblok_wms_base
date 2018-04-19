@@ -15,4 +15,4 @@ package names for readability in page titles.
    utils
    bloks/wms_core/index
    bloks/wms_reservation/index
-
+   bloks/wms_quantity/index

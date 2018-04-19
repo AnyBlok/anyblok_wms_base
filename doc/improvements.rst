@@ -359,7 +359,7 @@ Quantity will often be a useless complexity
 
 .. note:: at the time of this writing, :ref:`goods_goods` had the
           ``quantity`` field that is now carried by
-          :ref:`wms-quantity <goods_quantity>`_.
+          :ref:`wms-quantity <goods_quantity>`.
 
 In the current state of the project, :ref:`goods_goods` records have a
 ``quantity`` field. There are several hints that this shouldn't be a part
