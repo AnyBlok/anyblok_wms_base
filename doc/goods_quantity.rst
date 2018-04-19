@@ -75,9 +75,9 @@ Split and Aggregate
 -------------------
 .. note:: This is an overview, see the code documentation for
           :class:`Split
-          <anyblok_wms_base.bloks.wms_core.operation.split.Split>` and
+          <anyblok_wms_base.bloks.wms_quantity.operation.split.Split>` and
           :class:`Aggregate
-          <anyblok_wms_base.bloks.wms_core.operation.aggregate.Aggregate>`
+          <anyblok_wms_base.bloks.wms_quantity.operation.aggregate.Aggregate>`
           for more details.
 
 A Split replaces one record of Goods with two identical ones, keeping

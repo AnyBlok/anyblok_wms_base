@@ -25,8 +25,10 @@ SingleInput = Declarations.Mixin.WmsSingleInputOperation
 class Split(SingleInput, Operation):
     """A split of Goods record in two.
 
-    Splits replace their input's :class:`Goods <.goods.Goods>` record with
-    two of them, along with Avatars at the same location,
+    Splits replace their input's :class:`Goods
+    <anyblok_wms_base.bloks.wms_quantity.goods.Goods>` record with
+    two of them, one having the wished :attr:`quantity`, along with
+    Avatars at the same location, while
     keeping the same properties and the same total quantity.
 
     This is therefore destructive for the input's Goods, which is not
@@ -62,13 +64,9 @@ class Split(SingleInput, Operation):
     even with a zero second lifespan, but even those could be simplified only
     for executed Splits.
 
-    Splits are typically created and executed from :class:`splitter Operations
+    Splits are typically created and executed from :class:`Splitter Operations
     <.splitter.WmsSplitterOperation>`, and that explains the
     above-mentioned zero lifespans.
-
-    For Splits, the :attr:`quantity
-    <.on_goods.WmsSingleGoodsOperation.quantity>` field is the one the issuer
-    wants to extract.
     """
     TYPE = 'wms_split'
     """Polymorphic key"""
@@ -121,7 +119,8 @@ class Split(SingleInput, Operation):
         This is only one of :attr:`outcomes
         <anyblok_wms_base.bloks.wms_core.operation.base.Operation.outcomes>`
 
-        :rtype: Goods
+        :rtype: :class:`Wms.Goods
+                <anyblok_wms_base.bloks.wms_core.goods.Goods>`
         """
         Goods = self.registry.Wms.Goods
         Avatar = Goods.Avatar

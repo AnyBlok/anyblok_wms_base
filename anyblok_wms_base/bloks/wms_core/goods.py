@@ -150,10 +150,12 @@ class Type:
     behaviours = Jsonb(label="Behaviours in operations")
     """
     Goods Types specify with this flexible field how various :class:`Operations
-    <.operation.base.Operation>` will treat the represented Goods.
+    <anyblok_wms_base.bloks.wms_core.operation.base.Operation>` will treat
+    the represented Goods.
 
-    .. seealso:: :class:`Unpack <.operation.unpack.Unpack>` for a complex
-                 example.
+    .. seealso:: :class:`Unpack
+                 <anyblok_wms_base.bloks.wms_core.operation.unpack.Unpack>`
+                 for a complex example.
 
     The value is a key/value mapping.
 
@@ -306,8 +308,8 @@ class Avatar:
                         index=True)
     """Where the Goods are/will be/were.
 
-    See :class:`.location.Location` for a discussion of what this should
-    actually mean.
+    See :class:`Location <anyblok_wms_base.bloks.wms_core.location.Location>`
+    for a discussion of what this should actually mean.
     """
 
     dt_from = DateTime(label="Exist (or will) from this date & time",

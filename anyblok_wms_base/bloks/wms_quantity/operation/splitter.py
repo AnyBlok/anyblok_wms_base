@@ -159,7 +159,7 @@ class Move(Splitter):
 
 @register(Operation)
 class Departure(Splitter):
-    """Override making Departure a splitter operation.
+    """Override making Departure a Splitter Operation.
 
     As with all :class:`Splitter Operations
     <anyblok_wms_base.bloks.wms_quantity.operation.splitter.WmsSplitterOperation>`,
@@ -168,9 +168,9 @@ class Departure(Splitter):
     record: an automatic Split will occur if needed.
 
     In many scenarios, the Departure would come after a
-    :class:`Move <.move.Move>` that would bring
+    :ref:`Move <op_move>` that would bring
     the goods to a shipping location and maybe issue itself a
-    :class:`Split <.split.Split>`, so that
+    :ref:`Split <op_split_aggregate>`, so that
     actually the quantity for departure would be an exact match, but Departure
     does not rely on that.
     """
