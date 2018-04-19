@@ -39,7 +39,7 @@ class WmsSplitterOperation:
     Subclasses can use the :attr:`partial` field if they need to know
     if that happened, but this should be useful only in special cases.
     """
-    quantity = Decimal()
+    quantity = Decimal(default=1)
     """The quantity this Operation will work on.
 
     Can be less than the quantity of our single input.
