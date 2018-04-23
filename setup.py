@@ -46,6 +46,8 @@ setup(
             'wms-core=anyblok_wms_base.bloks.wms_core:WmsCore',
             'wms-reservation='
             'anyblok_wms_base.bloks.wms_reservation:WmsReservation',
+            'wms-quantity='
+            'anyblok_wms_base.bloks.wms_quantity:WmsQuantity',
             # Too simple for use outside of tests, yet we don't want to
             # use DBTestCase which means droping and creating all the time
             'test-wms-goods-batch-ref=anyblok_wms_base.test_bloks:GoodsBatchRef'

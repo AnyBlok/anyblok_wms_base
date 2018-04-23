@@ -280,59 +280,6 @@ special cases like the example above, in which the subgraph has a
 single root with no incomes, that happens to be also root in the whole DAG.
 
 
-.. _improvement_no_quantities:
-
-Quantity will often be a useless complexity
--------------------------------------------
-
-In the current state of the project, :ref:`goods_goods` records have a
-``quantity`` field. There are several hints that this shouldn't be a part
-of the core, but should be moved to a distinct blok. Let's call it
-``wms-aggregated-goods`` for the time being.
-
-1. we settled on ``Decimal`` (Python) / ``numeric`` (PostgreSQL) to
-   account for use cases resorting to physical measurements (lengths of
-   wire, tons of sand). Of course that's overridable, but it's an
-   example of the core taking decisions it should not
-2. this creates a non trivial complexity for most operations, that
-   have to maybe split Goods records.
-3. in most logistics applications, only packaged Goods are actually
-   been handled anyway, therefore they are merely equivalent to
-   *units* (reels of 100m of wiring, bags of 50kg sand, etc.).
-
-   The obvious and only benefits of this ``quantity`` field in these use cases
-   are that we can represent many identical such units with a single
-   line in the database.
-
-   But these benefits are severely impaired by the need to perform and
-   record many Splits, unless it's so much common to handle several of
-   them together *and not as some kinds of bigger packs*, such as
-   pallets or containers that it counterbalances the overhead of all
-   those Splits.
-
-   Thery are also impaired by traceability requirements, for instance
-   if the related properties have consequent variability. In the extreme
-   case, if we track serial numbers for all goods, then we'll end up
-   with each Goods record having ``quantity=1``.
-
-   In many use cases, including the most prominent one at the inception of WMS
-   Base, several identical goods almost never get shipped to final
-   customers, so it's guaranteed that the overwhelming majority of
-   these lines of Goods with quantities greater that 1 would be
-   split down to quantity 1, and even if we'd defined the Unpacks
-   outcomes to have single Goods lines with quantity equal to 1, it
-   would still not be the worth carrying around the code that decides
-   whether to split or not.
-
-On the other hand, putting aside the current code for
-quantities and :ref:`the related operations <op_split_aggregate>`
-would probably create a rift in the implementations.
-
-Namely, ``wms-aggregated-goods`` would have to override much of
-``wms-core`` and I fear that it'd become under-used, which would
-either impair its compatibility with downstream libraries and
-applications, or become a needless development burden on these latter ones.
-
 .. _improvement_federation:
 
 Federation of Anyblok WMS instances
@@ -402,6 +349,66 @@ Well, yeah, this page should be superseded. How ?
 
 Implemented
 ~~~~~~~~~~~
+
+.. _improvement_no_quantities:
+
+Quantity will often be a useless complexity
+-------------------------------------------
+
+.. versionadded:: 0.7.0
+
+.. note:: at the time of this writing, :ref:`goods_goods` had the
+          ``quantity`` field that is now carried by
+          :ref:`wms-quantity <goods_quantity>`.
+
+In the current state of the project, :ref:`goods_goods` records have a
+``quantity`` field. There are several hints that this shouldn't be a part
+of the core, but should be moved to a distinct blok. Let's call it
+``wms-aggregated-goods`` for the time being.
+
+1. we settled on ``Decimal`` (Python) / ``numeric`` (PostgreSQL) to
+   account for use cases resorting to physical measurements (lengths of
+   wire, tons of sand). Of course that's overridable, but it's an
+   example of the core taking decisions it should not
+2. this creates a non trivial complexity for most operations, that
+   have to maybe split Goods records.
+3. in most logistics applications, only packaged Goods are actually
+   been handled anyway, therefore they are merely equivalent to
+   *units* (reels of 100m of wiring, bags of 50kg sand, etc.).
+
+   The obvious and only benefits of this ``quantity`` field in these use cases
+   are that we can represent many identical such units with a single
+   line in the database.
+
+   But these benefits are severely impaired by the need to perform and
+   record many Splits, unless it's so much common to handle several of
+   them together *and not as some kinds of bigger packs*, such as
+   pallets or containers that it counterbalances the overhead of all
+   those Splits.
+
+   Thery are also impaired by traceability requirements, for instance
+   if the related properties have consequent variability. In the extreme
+   case, if we track serial numbers for all goods, then we'll end up
+   with each Goods record having ``quantity=1``.
+
+   In many use cases, including the most prominent one at the inception of WMS
+   Base, several identical goods almost never get shipped to final
+   customers, so it's guaranteed that the overwhelming majority of
+   these lines of Goods with quantities greater that 1 would be
+   split down to quantity 1, and even if we'd defined the Unpacks
+   outcomes to have single Goods lines with quantity equal to 1, it
+   would still not be the worth carrying around the code that decides
+   whether to split or not.
+
+On the other hand, putting aside the current code for
+quantities and :ref:`the related operations <op_split_aggregate>`
+would probably create a rift in the implementations.
+
+Namely, ``wms-aggregated-goods`` would have to override much of
+``wms-core`` and I fear that it'd become under-used, which would
+either impair its compatibility with downstream libraries and
+applications, or become a needless development burden on these latter ones.
+
 
 .. _improvement_avatars:
 

@@ -25,7 +25,6 @@ class ReservationTestCase(WmsTestCase):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 state='planned',
-                                                quantity=3,
                                                 dt_execution=self.dt_test1)
         self.avatar = arrival.outcomes[0]
         self.goods = self.avatar.goods
@@ -42,7 +41,6 @@ class ReservationTestCase(WmsTestCase):
         # being creator.
         with self.assertRaises(OperationGoodsReserved) as arc:
             self.Operation.Departure.create(input=self.avatar,
-                                            quantity=3,
                                             dt_execution=self.dt_test2)
         exc_kw = arc.exception.kwargs
         self.assertEqual(exc_kw.get('goods'), self.goods)
@@ -52,7 +50,6 @@ class ReservationTestCase(WmsTestCase):
         with request.claim_reservations(request_id=request.id):
             self.assertTrue(resa.is_transaction_owner())
             dep = self.Operation.Departure.create(input=self.avatar,
-                                                  quantity=3,
                                                   dt_execution=self.dt_test2)
 
         # reminder, at the end of the context manager, the current txn

@@ -34,11 +34,14 @@ typically gets fulfilled through a *chain* of operations.
              code documentation  <anyblok_wms_base.bloks.wms_reservation>`.
 
 
-wms-aggregated-goods
---------------------
+wms-quantity
+------------
 
-This is the outcome of a possible refactor, see
-:ref:`improvement_no_quantities`.
+This Blok adds a ``quantity`` field on the :ref:`Wms.Goods
+<goods_goods>` model, to represent goods handled in bulk or several
+identical items in one record.
+
+.. seealso:: :doc:`goods_quantity`
 
 .. _blok_wms_rest_api:
 

@@ -21,11 +21,9 @@ class TestCore(BlokTestCase):
         arrival = Wms.Operation.Arrival.insert(goods_type=goods_type,
                                                location=loc,
                                                dt_execution=datetime.now(),
-                                               state='done',
-                                               quantity=3)
+                                               state='done')
         # basic test of polymorphism
         op = Wms.Operation.query().get(arrival.id)
         self.assertEqual(op, arrival)
         self.assertEqual(op.state, 'done')
         self.assertEqual(op.location, loc)
-        self.assertEqual(op.quantity, 3)

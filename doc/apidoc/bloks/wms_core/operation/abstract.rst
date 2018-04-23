@@ -118,39 +118,3 @@ Mixin.WmsSingleInputOperation: working on a single Goods record
    .. automethod:: create
 
 
-Mixin.WmsSplitterOperation: splitting, then working on a single Goods Record
-----------------------------------------------------------------------------
-
-.. note:: will maybe be moved to another Blok or even Python project
-          (see also :ref:`improvement_no_quantities`)
-
-This one inherits from :class:`WmsSingleInputOperation <anyblok_wmss_base.bloks.wms_core.operation.single_input.WmsSingleInputOperation>`
-
-.. autoclass:: anyblok_wms_base.bloks.wms_core.operation.splitter.WmsSplitterOperation
-
-   .. raw:: html
-
-      <h4 class="section" style="font-size: 160%">
-            Fields and their semantics</h4>
-
-   .. autoattribute:: partial
-   .. autoattribute:: quantity
-
-   .. raw:: html
-
-      <h4 class="section" style="font-size: 160%">
-            Mandatory API for inheritors</h4>
-
-   .. automethod:: execute_planned_after_split
-
-   .. raw:: html
-
-      <h4 class="section" style="font-size: 160%">
-            Implemented subset of the operation subclass API</h4>
-
-   (we list only those methods that override the base classes).
-
-   .. automethod:: before_insert
-   .. automethod:: check_execute_conditions
-   .. automethod:: execute_planned
-

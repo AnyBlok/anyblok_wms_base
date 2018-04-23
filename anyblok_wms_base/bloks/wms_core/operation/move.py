@@ -13,12 +13,12 @@ from anyblok.relationship import Many2One
 
 
 register = Declarations.register
+Mixin = Declarations.Mixin
 Operation = Declarations.Model.Wms.Operation
-Splitter = Declarations.Mixin.WmsSplitterOperation
 
 
 @register(Operation)
-class Move(Splitter, Operation):
+class Move(Mixin.WmsSingleInputOperation, Operation):
     """A stock move
     """
     TYPE = 'wms_move'
@@ -50,7 +50,7 @@ class Move(Splitter, Operation):
         if state == 'done':
             to_move.state = 'past'
 
-    def execute_planned_after_split(self):
+    def execute_planned(self):
         dt_execution = self.dt_execution
 
         after_move = self.outcomes[0]
@@ -77,7 +77,14 @@ class Move(Splitter, Operation):
             # outcome is one Goods record
             after = follows[0]
         return self.create(input=after.outcomes[0],
-                           quantity=self.quantity,
                            destination=self.input.location,
                            dt_execution=dt_execution,
-                           state='planned')
+                           state='planned',
+                           **self.revert_extra_fields())
+
+    def revert_extra_fields(self):
+        """Extra fields to take into account in :meth:`plan_revert_single`.
+
+        Singled out for easy subclassing.
+        """
+        return {}

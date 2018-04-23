@@ -13,7 +13,6 @@ Model.Wms.Goods
    .. autoattribute:: id
    .. autoattribute:: type
    .. autoattribute:: properties
-   .. autoattribute:: quantity
 
    .. raw:: html
 
@@ -40,9 +39,6 @@ Model.Wms.Goods.Type
       <h3>Methods</h3>
 
    .. automethod:: get_behaviour
-   .. automethod:: are_split_aggregate_physical
-   .. automethod:: is_split_reversible
-   .. automethod:: is_aggregate_reversible
 
 
 Model.Wms.Goods.Properties

@@ -6,7 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from .testcase import WmsTestCase
+from anyblok_wms_base.testing import WmsTestCase
 
 
 class TestArrival(WmsTestCase):
@@ -23,6 +23,7 @@ class TestArrival(WmsTestCase):
 
     def test_create_planned_execute(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
+                                      quantity=3,
                                       state='planned',
                                       dt_execution=self.dt_test1,
                                       goods_code='765',
@@ -33,6 +34,7 @@ class TestArrival(WmsTestCase):
         goods = self.assert_singleton(arrival.outcomes)
         self.assertEqual(goods.state, 'future')
         self.assertEqual(goods.location, self.incoming_loc)
+        self.assertEqual(goods.quantity, 3)
         self.assertEqual(goods.type, self.goods_type)
         self.assertEqual(goods.code, '765')
         self.assertEqual(goods.get_property('foo'), 5)
@@ -51,6 +53,7 @@ class TestArrival(WmsTestCase):
 
     def test_create_done(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
+                                      quantity=3,
                                       state='done',
                                       goods_code='x34/7',
                                       goods_properties=dict(foo=2,
@@ -60,6 +63,7 @@ class TestArrival(WmsTestCase):
         goods = self.assert_singleton(arrival.outcomes)
         self.assertEqual(goods.state, 'present')
         self.assertEqual(goods.location, self.incoming_loc)
+        self.assertEqual(goods.quantity, 3)
         self.assertEqual(goods.type, self.goods_type)
         self.assertEqual(goods.code, 'x34/7')
         self.assertEqual(goods.get_property('foo'), 2)
@@ -67,6 +71,7 @@ class TestArrival(WmsTestCase):
 
     def test_arrival_done_obliviate(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
+                                      quantity=3,
                                       state='done',
                                       goods_code='x34/7',
                                       goods_properties=dict(foo=2,
@@ -78,6 +83,7 @@ class TestArrival(WmsTestCase):
 
     def test_arrival_planned_execute_obliviate(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
+                                      quantity=3,
                                       state='planned',
                                       dt_execution=self.dt_test1,
                                       goods_code='x34/7',
@@ -91,6 +97,7 @@ class TestArrival(WmsTestCase):
 
     def test_repr(self):
         arrival = self.Arrival(location=self.incoming_loc,
+                               quantity=3,
                                state='done',
                                goods_code='x34/7',
                                goods_properties=dict(foo=2,
@@ -118,6 +125,7 @@ class TestOperationBase(WmsTestCase):
 
     def test_execute_idempotency(self):
         op = self.Arrival.create(location=self.incoming_loc,
+                                 quantity=3,
                                  state='planned',
                                  dt_execution=self.dt_test2,
                                  goods_type=self.goods_type)

@@ -46,6 +46,7 @@ get a grasp of what it intends to do.
 
    LICENSE
    reservation
+   goods_quantity
 
 Indices and tables
 ==================

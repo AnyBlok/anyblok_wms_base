@@ -10,8 +10,6 @@ is being set to ``past`` during execution.
 
 Model.Wms.Operation.Departure
 -----------------------------
-This Operation Model inherits from :class:`WmsSplitterOperation
-<anyblok_wms_base.bloks.wms_core.operation.splitter.WmsSplitterOperation>`
 
 .. show-inheritance is useles, as it displays the assembled class
    (within the anyblok.mixin virtual namespace), that can't be linked

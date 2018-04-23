@@ -58,3 +58,6 @@ class WmsSingleInputOperation:
             inputs = (input, )
         return super(WmsSingleInputOperation, cls).create(
             inputs=inputs, **kwargs)
+
+    def specific_repr(self):
+        return "input={self.input!r}".format(self=self)

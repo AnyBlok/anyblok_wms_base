@@ -442,7 +442,7 @@ class Operation:
            the time at which to plan the reversal operations.
            If not supplied, the current date and time will be used.
 
-        :rtype: (Operation, list(Operation))
+        :rtype: (``Operation``, list(``Operation``))
         :return: the operation reverting the present one, and
                  the list of initial operations to be executed to actually
                  start reversing the whole.
@@ -748,9 +748,10 @@ class Operation:
         :param follows:
            the Operations that the reversal will have to follow. In other
            words, these are the reversals of ``self.followers`` (can be empty).
-        :type follows: list(Operation)
+        :type follows: list(:class:`Operation
+                            <anyblok_wms_base.bloks.wms_core.base.Operation>`)
         :return: the planned reversal
-        :rtype: Operation
+        :rtype: ``Operation``
 
         Downstream applications and libraries are
         not supposed to call this method: they should use :meth:`plan_revert`,

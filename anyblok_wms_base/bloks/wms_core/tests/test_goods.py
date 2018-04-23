@@ -8,9 +8,6 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok_wms_base.testing import WmsTestCase
 from anyblok.tests.testcase import BlokTestCase
-from anyblok_wms_base.constants import (
-    SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR
-)
 
 
 class TestGoods(WmsTestCase):
@@ -29,11 +26,10 @@ class TestGoods(WmsTestCase):
             goods_type=self.goods_type,
             location=self.stock,
             dt_execution=self.dt_test1,
-            state='done',
-            quantity=1)
+            state='done')
 
     def test_prop_api(self):
-        goods = self.Goods.insert(type=self.goods_type, quantity=1)
+        goods = self.Goods.insert(type=self.goods_type)
         self.assertIsNone(goods.get_property('foo'))
         self.assertEqual(goods.get_property('foo', default=-1), -1)
 
@@ -42,7 +38,7 @@ class TestGoods(WmsTestCase):
 
     def test_str(self):
         gt = self.goods_type
-        goods = self.Goods.insert(type=gt, quantity=1)
+        goods = self.Goods.insert(type=gt)
         avatar = self.Avatar.insert(goods=goods,
                                     dt_from=self.dt_test1,
                                     state='future',
@@ -76,24 +72,24 @@ class TestGoods(WmsTestCase):
                 avatar.id, goods.id, gt.id, self.stock.id))
 
     def test_prop_api_column(self):
-        goods = self.Goods.insert(type=self.goods_type, quantity=1)
+        goods = self.Goods.insert(type=self.goods_type)
         goods.set_property('batch', '12345')
         self.assertEqual(goods.get_property('batch'), '12345')
 
     def test_prop_api_duplication(self):
-        goods = self.Goods.insert(type=self.goods_type, quantity=1)
+        goods = self.Goods.insert(type=self.goods_type)
 
         goods.set_property('batch', '12345')
         self.assertEqual(goods.get_property('batch'), '12345')
 
-        goods2 = self.Goods.insert(type=self.goods_type, quantity=3,
+        goods2 = self.Goods.insert(type=self.goods_type,
                                    properties=goods.properties)
         goods2.set_property('batch', '6789')
         self.assertEqual(goods.get_property('batch'), '12345')
         self.assertEqual(goods2.get_property('batch'), '6789')
 
     def test_prop_api_reserved_property_names(self):
-        goods = self.Goods.insert(type=self.goods_type, quantity=1)
+        goods = self.Goods.insert(type=self.goods_type)
 
         with self.assertRaises(ValueError):
             goods.set_property('id', 1)
@@ -106,7 +102,7 @@ class TestGoods(WmsTestCase):
         Separated to ease maintenance of tests in case it changes in
         the future.
         """
-        goods = self.Goods.insert(type=self.goods_type, quantity=1)
+        goods = self.Goods.insert(type=self.goods_type)
         goods.set_property('foo', 2)
         self.assertEqual(goods.properties.flexible, dict(foo=2))
 
@@ -116,7 +112,7 @@ class TestGoods(WmsTestCase):
         Separated to ease maintenance of tests in case it changes in
         the future.
         """
-        goods = self.Goods.insert(type=self.goods_type, quantity=1)
+        goods = self.Goods.insert(type=self.goods_type)
 
         goods.set_property('batch', '2')
         self.assertEqual(goods.properties.flexible, {})
@@ -139,29 +135,3 @@ class TestGoodsProperties(BlokTestCase):
     def test_reserved(self):
         with self.assertRaises(ValueError):
             self.Props.create(batch='abcd', flexible=True)
-
-
-class TestGoodsTypes(BlokTestCase):
-
-    def setUp(self):
-        self.GoodsType = self.registry.Wms.Goods.Type
-
-    def test_split_reversible(self):
-        gt = self.GoodsType(code='MG')
-        self.assertTrue(gt.is_split_reversible())
-
-        gt.behaviours = {SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR: True}
-        self.assertFalse(gt.is_split_reversible())
-
-        gt.behaviours['split'] = dict(reversible=True)
-        self.assertTrue(gt.is_split_reversible())
-
-    def test_aggregate_reversible(self):
-        gt = self.GoodsType(code='MG')
-        self.assertTrue(gt.is_aggregate_reversible())
-
-        gt.behaviours = {SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR: True}
-        self.assertFalse(gt.is_aggregate_reversible())
-
-        gt.behaviours['aggregate'] = dict(reversible=True)
-        self.assertTrue(gt.is_aggregate_reversible())
