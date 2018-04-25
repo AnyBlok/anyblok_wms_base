@@ -304,8 +304,8 @@ class RequestItem:
                 Reservation.goods_id.is_(None),
                 Goods.type == self.goods_type,
                 Avatar.state.in_(('present', 'future')))
-        props = self.properties.copy()
-        if props:
+        if self.properties:
+            props = self.properties.copy()
             query = query.join(Goods.properties)
             pfields = Props.fields_description()
             for p in set(props).intersection(pfields):

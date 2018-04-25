@@ -61,6 +61,12 @@ class RequestItemTestCase(WmsTestCase):
                                 quantity=20)
         self.assertEqual(item.lookup(10), [(1, self.goods[self.props2][0])])
 
+    def test_lookup_no_props(self):
+        item = self.RequestItem(goods_type=self.goods_type1,
+                                quantity=20)
+        for found in item.lookup(2):
+            self.assertEqual(found[1].type, self.goods_type1)
+
     def test_item_reserve(self):
         # requesting 3 Goods records, but only 2 will match
         item = self.RequestItem(goods_type=self.goods_type1,
