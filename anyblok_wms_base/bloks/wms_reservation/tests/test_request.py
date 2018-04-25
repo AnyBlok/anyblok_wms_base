@@ -196,7 +196,7 @@ class RequestClaimTestCase(ConcurrencyBlokTestCase):
     @classmethod
     def setUpCommonData(cls):
         cls.Reservation = cls.registry.Wms.Reservation
-        inserted = cls.Reservation.Request.insert(purpose='why not?',
+        inserted = cls.Reservation.Request.insert(purpose=dict(why='not?'),
                                                   reserved=True)
         cls.request_id = inserted.id
 
@@ -216,7 +216,17 @@ class RequestClaimTestCase(ConcurrencyBlokTestCase):
         # cleanup on exit of context manager does its job
         self.assertEqual(len(owned), 0)
 
-        with Request.claim_reservations() as req_id:
+        with Request.claim_reservations(planned=False) as req_id:
+            self.assertEqual(req_id, request.id)
+
+        request.planned = True
+        with Request.claim_reservations(planned=False) as req_id:
+            self.assertIsNone(req_id)
+
+        # now with a provided base query
+        query = Request.query(Request.id).filter(
+            Request.purpose.contains(dict(why='not?')))
+        with Request.claim_reservations(query=query) as req_id:
             self.assertEqual(req_id, request.id)
 
     def test_claim_concurrency(self):
@@ -229,7 +239,7 @@ class RequestClaimTestCase(ConcurrencyBlokTestCase):
             claim_from_2 = Request2.claim_reservations
             with claim_from_2() as other_txn_claimed:
                 self.assertIsNone(other_txn_claimed)
-            with claim_from_2(request_id=req_id) as other_txn_claimed:
+            with claim_from_2(id=req_id) as other_txn_claimed:
                 self.assertIsNone(other_txn_claimed)
 
 

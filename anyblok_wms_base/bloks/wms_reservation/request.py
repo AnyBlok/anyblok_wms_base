@@ -70,7 +70,7 @@ class Request:
 
     @classmethod
     @contextmanager
-    def claim_reservations(cls, request_id=None):
+    def claim_reservations(cls, query=None, **filter_by):
         """Context manager to claim ownership over this Request's reservations.
 
         This is meant for planners and works on fully reserved Requests.
@@ -86,11 +86,14 @@ class Request:
         liberty to issue any Operation affecting its Goods or their Avatars.
 
         :return: id of claimed Request
-        :param int request_id:
-           if not specified, the oldest not already claimed Request is
-           claimed,  otherwise the one with the given id is. This is a
-           numeric id so that the caller doesn't necessarily need to
-           fetch all fields.
+        :param dict filter_by: direct filtering criteria to add to the
+                               query, e.g, a planner looking for planning to
+                               be done would pass ``planned=False``.
+        :param query: if specified, is used to form the final SQL query,
+                      instead of creating a new one.
+                      The passed query must have the present model class in
+                      its ``FROM`` clause and return only the ``id`` column
+                      of the present model.
 
         This is safe with respect to concurrency: no other transaction
         can claim the same Request (guaranteed by a PostgreSQL lock).
@@ -111,16 +114,17 @@ class Request:
         to set the txn id in some service column (but that would
         require inconditional cleanup, a complication)
         """
-        query = cls.query('id').filter(cls.reserved.is_(True))
-        if request_id is not None:
-            query = query.filter(cls.id == request_id)
+        if query is None:
+            query = cls.query('id')
+        if filter_by is not None:
+            query = query.filter_by(reserved=True, **filter_by)
 
         # issues a SELECT FOR UPDATE SKIP LOCKED (search
         #   'with_for_update' within
         #   http://docs.sqlalchemy.org/en/latest/core/selectable.html
         # also, noteworthy, SKIP LOCKED appeared within PostgreSQL 9.5
         #   (https://www.postgresql.org/docs/current/static/release-9-5.html)
-        cols = query.with_for_update(skip_locked=True).order_by(
+        cols = query.with_for_update(skip_locked=True, of=cls).order_by(
             cls.id).first()
         request_id = None if cols is None else cols[0]
 

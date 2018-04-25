@@ -47,7 +47,7 @@ class ReservationTestCase(WmsTestCase):
         self.assertEqual(exc_kw.get('reservation'), resa)
 
         # all right, now let's gain some authority
-        with request.claim_reservations(request_id=request.id):
+        with request.claim_reservations(id=request.id):
             self.assertTrue(resa.is_transaction_owner())
             dep = self.Operation.Departure.create(input=self.avatar,
                                                   dt_execution=self.dt_test2)
