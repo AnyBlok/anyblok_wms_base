@@ -15,6 +15,8 @@ class WmsReservation(Blok):
     version = '0.0.1'
     author = "Georges Racinet"
 
+    required = ['wms-core']
+
     @classmethod
     def import_declaration_module(cls):
         from . import ns  # noqa
