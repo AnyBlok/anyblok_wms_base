@@ -81,7 +81,6 @@ class Location:
             states = ('present',) + tuple(additional_states)
             query = query.filter(Avatar.state.in_(states))
             if at_datetime is None:
-                # TODO precise exc or define infinites and apply them
                 raise ValueError(
                     "Querying quantities with additional states {!r} requires "
                     "to specify the 'at_datetime' kwarg".format(
