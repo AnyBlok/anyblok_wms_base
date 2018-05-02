@@ -74,3 +74,11 @@ they are prefixed with ``wms_``.
 """
 
 SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR = 'split_aggregate_physical'
+
+DATE_TIME_INFINITY = object()
+"""A marker used to represent +infinity date/time.
+
+For instance, if a method is used to query Avatars for a given date, using
+this marker in the interface is more explicit than using None (which could
+also mean one does not care about dates).
+"""

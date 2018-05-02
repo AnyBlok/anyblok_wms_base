@@ -12,6 +12,8 @@ from anyblok.column import String
 from anyblok.column import Integer
 from anyblok.relationship import Many2One
 
+from anyblok_wms_base.constants import DATE_TIME_INFINITY
+
 register = Declarations.register
 Model = Declarations.Model
 
@@ -47,10 +49,15 @@ class Location:
             Goods Avatars that were already there and still are,
             as well as those that aren't there any more,
             and similarly for 'future'.
-        :param at_datetime: take only into account Goods Avatar whose date
-                            and time contains the specified value.
+        :param at_datetime:
+            take only into account Goods Avatar whose date-time range
+            contains the specified value.
 
-                            Mandatory if ``additional_states`` is specified.
+            ``anyblok_wms_base.constants.DATE_TIME_INFINITY``
+            can in particular be used to consider only those
+            Avatars whose ``dt_until`` is ``None``.
+
+            This parameter is mandatory if ``additional_states`` is specified.
 
         TODO: make recursive (not fully decided about the forest structure
         of locations)
@@ -80,7 +87,9 @@ class Location:
                     "to specify the 'at_datetime' kwarg".format(
                         additional_states))
 
-        if at_datetime is not None:
+        if at_datetime is DATE_TIME_INFINITY:
+            query = query.filter(Avatar.dt_until.is_(None))
+        elif at_datetime is not None:
             query = query.filter(Avatar.dt_from <= at_datetime,
                                  or_(Avatar.dt_until.is_(None),
                                      Avatar.dt_until > at_datetime))

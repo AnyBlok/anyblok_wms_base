@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from anyblok_wms_base.constants import DATE_TIME_INFINITY
 from anyblok_wms_base.testing import WmsTestCase
 
 
@@ -64,6 +65,17 @@ class TestLocation(WmsTestCase):
         # but the two 'present' ones had already arrived
         self.assertQuantity(3, additional_states=['past'],
                             at_datetime=self.dt_test2)
+
+    def test_quantity_at_infinity(self):
+        self.insert_goods(2, 'present', self.dt_test1, until=self.dt_test2)
+        self.insert_goods(1, 'present', self.dt_test2)
+        self.insert_goods(3, 'future', self.dt_test2, until=self.dt_test3)
+        self.insert_goods(4, 'future', self.dt_test3)
+        self.insert_goods(2, 'past', self.dt_test1, until=self.dt_test2)
+
+        self.assertQuantity(1, at_datetime=DATE_TIME_INFINITY)
+        self.assertQuantity(5, additional_states=['future'],
+                            at_datetime=DATE_TIME_INFINITY)
 
     def test_no_match(self):
         """Test that quantity is not None if no Goods match the criteria."""
