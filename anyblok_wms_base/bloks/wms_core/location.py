@@ -76,7 +76,7 @@ class Location:
             return self.tag
         if self.parent is None:
             return None
-        return self.parent.tag
+        return self.parent.resolve_tag()
 
     def quantity(self, goods_type,
                  additional_states=None,

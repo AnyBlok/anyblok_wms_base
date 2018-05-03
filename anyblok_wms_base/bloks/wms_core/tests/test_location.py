@@ -128,6 +128,16 @@ class TestLocation(WmsTestCase):
         self.assertEqual(joined.filter(cte.c.tag.is_(None)).one(),
                          (notag, None))
 
+    def test_resolve_tag(self):
+        sub = self.Location.insert(code='sub', parent=self.stock)
+        sub2 = self.Location.insert(code='sub2', parent=sub)
+        self.assertIsNone(self.stock.resolve_tag())
+        self.assertIsNone(sub.resolve_tag())
+
+        self.stock.tag = 'top'
+        self.assertEqual(sub.resolve_tag(), 'top')
+        self.assertEqual(sub2.resolve_tag(), 'top')
+
     def test_quantity_recursive(self):
         other = self.Location.insert(code='other')
         self.insert_goods(2, 'present', self.dt_test1)
