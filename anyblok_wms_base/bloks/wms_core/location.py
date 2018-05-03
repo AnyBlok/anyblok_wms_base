@@ -9,9 +9,11 @@
 from sqlalchemy import orm
 from sqlalchemy import func
 from sqlalchemy import or_
+from sqlalchemy import literal
 
 from anyblok import Declarations
 from anyblok.column import String
+from anyblok.column import Text
 from anyblok.column import Integer
 from anyblok.relationship import Many2One
 
@@ -19,6 +21,11 @@ from anyblok_wms_base.constants import DATE_TIME_INFINITY
 
 register = Declarations.register
 Model = Declarations.Model
+
+
+_missing = object()
+"""Marker to know that a kwarg is not passed if ``None`` means something else.
+"""
 
 
 @register(Model.Wms)
@@ -33,7 +40,7 @@ class Location:
     label = String(label="Label")
     parent = Many2One(label="Parent location",
                       model='Model.Wms.Location')
-    tag = String()
+    tag = Text()
     """Tag for Quantity grouping.
 
     This field is a kind of tag that can be used to filter in quantity
@@ -62,9 +69,30 @@ class Location:
     def __repr__(self):
         return "Wms.Location" + str(self)
 
-    def quantity(self, goods_type, additional_states=None, at_datetime=None):
+    def resolve_tag(self):
+        """Return self.tag, or by default ancestor's."""
+        # TODO make a recursive query for this also
+        if self.tag is not None:
+            return self.tag
+        if self.parent is None:
+            return None
+        return self.parent.tag
+
+    def quantity(self, goods_type,
+                 additional_states=None,
+                 at_datetime=None,
+                 location_tag=_missing,
+                 recursive=True):
         """Return the full quantity in location for the given type.
 
+        :param bool recursive:
+            If ``True``, the Goods Avatars from sublocations will be taken
+            into account.
+        :param str location_tag:
+            If passed, only the Goods Avatars sitting in a Location having
+            or inheriting this tag will be taken into account (may seem only
+            useful if ``recursive`` is ``True``, yet the non-recursive case
+            behaves consistently).
         :param additional_states:
             Optionally, states of the Goods Avatar to take into account
             in addition to the ``present`` state.
@@ -83,9 +111,6 @@ class Location:
 
             This parameter is mandatory if ``additional_states`` is specified.
 
-        TODO: make recursive (not fully decided about the forest structure
-        of locations)
-
         TODO: provide filtering according to Goods properties (should become
         special PostgreSQL JSON clauses)
 
@@ -97,7 +122,19 @@ class Location:
         Goods = self.registry.Wms.Goods
         Avatar = Goods.Avatar
         query, use_count = self.base_quantity_query()
-        query = query.filter(Goods.type == goods_type, Avatar.location == self)
+        query = query.filter(Goods.type == goods_type)
+
+        # location_tag needs the recursive CTE even if the
+        # quantity request is not recursive (so that tag is the correct one).
+        if recursive or location_tag is not _missing:
+            cte = self.tag_cte(top=self)
+            query = query.join(cte, cte.c.id == Avatar.location_id)
+
+        if not recursive:
+            query = query.filter(Avatar.location == self)
+
+        if location_tag is not _missing:
+            query = query.filter(cte.c.tag == location_tag)
 
         if additional_states is None:
             query = query.filter(Avatar.state == 'present')
@@ -134,18 +171,46 @@ class Location:
         return Avatar.query().join(Avatar.goods), True
 
     @classmethod
-    def tag_cte(cls, top=None):
-        """Return an SQL CTE that flattens the hierarchy with defaulting tag.
+    def tag_cte(cls, top=None, resolve_top_tag=True):
+        """Return an SQL CTE that recurses in the hierarchy, defaulting tags.
 
-        The defaulting tag policy is that a Location whose tag is None
+        The defaulting tag policy is that a Location whose tag is ``None``
         inherits its parent's.
 
         The CTE cannot be used directly, but see unit tests for nice examples
         with or without joins.
+
+        For some applications with a large and complicated Location hierarchy,
+        joining on this CTE can become a performance problem. Quoting
+        `PostgreSQL documentation on CTEs
+        <https://www.postgresql.org/docs/10/static/queries-with.html>`_:
+
+          However, the other side of this coin is that the optimizer is less
+          able to push restrictions from the parent query down into a WITH
+          query than an ordinary subquery.
+          The WITH query will generally be evaluated as written,
+          without suppression of rows that the parent query might
+          discard afterwards.
+
+        If that becomes a problem, it is still possible to override the
+        present method: any subquery whose results have the ``id`` and
+        ``tag`` columns can be used by callers instead of the recursive CTE.
+
+        Examples:
+
+        1. one might design a flat Location hierarchy using prefixing on
+           :attr:`code` to express inclusion instead of the provided
+           :attr:`parent`
+        2. one might make a materialized view out of this very CTE,
+           refreshing as soon as needed.
         """
         query = cls.registry.session.query
 
-        cte = cls.query(cls.id, cls.tag)
+        if top is not None and top.tag is None:
+            init_tag = top.resolve_tag()
+            cte = cls.query(cls.id, literal(init_tag).label('tag'))
+        else:
+            cte = cls.query(cls.id, cls.tag)
         if top is None:
             cte = cte.filter(cls.parent == top)  # doesn't work with is_()
         else:

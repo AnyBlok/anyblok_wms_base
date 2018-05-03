@@ -30,11 +30,12 @@ class TestLocation(WmsTestCase):
             dt_execution=self.dt_test1,
             state='done')
 
-    def insert_goods(self, qty, state, dt_from, until=None):
+    def insert_goods(self, qty, state, dt_from, until=None, location=None):
         for _ in range(qty):
             self.Avatar.insert(
                 goods=self.Goods.insert(type=self.goods_type),
-                reason=self.arrival, location=self.stock,
+                reason=self.arrival,
+                location=self.stock if location is None else location,
                 dt_from=dt_from,
                 dt_until=until,
                 state=state)
@@ -126,3 +127,59 @@ class TestLocation(WmsTestCase):
         # to do with the recursive CTE itself:
         self.assertEqual(joined.filter(cte.c.tag.is_(None)).one(),
                          (notag, None))
+
+    def test_quantity_recursive(self):
+        other = self.Location.insert(code='other')
+        self.insert_goods(2, 'present', self.dt_test1)
+        self.insert_goods(1, 'present', self.dt_test1, location=other)
+
+        sub = self.Location.insert(code='sub', parent=self.stock, tag='foo')
+        self.insert_goods(3, 'present', self.dt_test1, location=sub)
+
+        self.assertQuantity(5)
+
+        # this excludes sub, which has a tag
+        self.assertQuantity(2, location_tag=None)
+
+        self.assertQuantity(3, location_tag='foo')
+
+        self.stock.tag = 'foo'
+        self.assertQuantity(5, location_tag='foo')
+
+    def test_quantity_recursive_top_tag_none(self):
+        """Tag filtering works even if topmost location has no direct tag.
+        """
+        self.stock.tag = 'sell'
+        sub = self.Location.insert(code='sub', parent=self.stock)
+        sub2 = self.Location.insert(code='sub2', parent=sub)
+
+        self.insert_goods(3, 'present', self.dt_test1)
+        self.insert_goods(1, 'present', self.dt_test1, location=sub)
+        self.insert_goods(2, 'present', self.dt_test1, location=sub2)
+        # in a previous version, the recursion would have started with sub's
+        # tag being None and propagate that to sub2. Now it doesn't
+        self.assertEqual(sub.quantity(self.goods_type, location_tag='sell'),
+                         3)
+        self.assertQuantity(6)
+
+    def test_quantity_tag_non_recursive(self):
+        # normally it'd be redundant to ask for tag quantity for
+        # non recursive queries, but for consistence it should work
+        # (can happen as a result of some refactor, for instance, or
+        # if upstream inputs are dynamic enough)
+
+        self.insert_goods(2, 'present', self.dt_test1)
+        self.assertQuantity(2, location_tag=None, recursive=False)
+        self.assertQuantity(0, location_tag='foo', recursive=False)
+        self.stock.tag = 'foo'
+        self.assertQuantity(2, location_tag='foo', recursive=False)
+
+    def test_quantity_tag_non_recursive_inherited(self):
+        # still works if the tag is actually inherited
+        sub = self.Location.insert(code='sub', parent=self.stock)
+        self.stock.tag = 'foo'
+        self.insert_goods(2, 'present', self.dt_test1, location=sub)
+        self.assertEqual(sub.quantity(self.goods_type,
+                                      recursive=False,
+                                      location_tag='foo'),
+                         2)
