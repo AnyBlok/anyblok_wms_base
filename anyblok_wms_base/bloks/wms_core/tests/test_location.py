@@ -21,6 +21,8 @@ class TestLocation(WmsTestCase):
         self.Goods = Wms.Goods
         self.Avatar = Wms.Goods.Avatar
         self.goods_type = self.Goods.Type.insert(label="My goods")
+
+        self.Location = Wms.Location
         self.stock = Wms.Location.insert(label="Stock", code='STK')
         self.arrival = Wms.Operation.Arrival.insert(
             goods_type=self.goods_type,
@@ -86,3 +88,41 @@ class TestLocation(WmsTestCase):
             self.assertQuantity(0, additional_states=['past'])
         with self.assertRaises(ValueError):
             self.assertQuantity(0, additional_states=['future'])
+
+    def test_tag_recursion(self):
+        Location = self.Location
+        self.stock.tag = 'sellable'
+        stock_q = Location.insert(code='STK/Q', parent=self.stock, tag='qa')
+        stock_2 = Location.insert(code='STK/2', parent=self.stock)
+
+        stock_q1 = Location.insert(code='STK/Q1', parent=stock_q)
+        stock_qok = Location.insert(code='STK/QOK', parent=stock_q,
+                                    tag='sellable')
+
+        cte = Location.tag_cte(top=self.stock)
+        self.assertEqual(
+            set(self.registry.session.query(cte.c.id, cte.c.tag).all()),
+            {(self.stock.id, 'sellable'),
+             (stock_q.id, 'qa'),
+             (stock_2.id, 'sellable'),
+             (stock_q1.id, 'qa'),
+             (stock_qok.id, 'sellable'),
+             })
+
+        # example with no 'top', also demonstrating how to join (in this
+        # case against on Location, to get full instances
+        other = Location.insert(code='foo', tag='bar')
+        notag = Location.insert(code='notag')
+        cte = Location.tag_cte()
+        joined = Location.query(
+            Location, cte.c.tag).join(cte, cte.c.id == Location.id)
+        notsellable = set(joined.filter(cte.c.tag != 'sellable').all())
+        self.assertEqual(notsellable,
+                         {(stock_q, 'qa'),
+                          (stock_q1, 'qa'),
+                          (other, 'bar'),
+                          })
+        # notag wasn't there because of NULL semantics, and this has nothing
+        # to do with the recursive CTE itself:
+        self.assertEqual(joined.filter(cte.c.tag.is_(None)).one(),
+                         (notag, None))
