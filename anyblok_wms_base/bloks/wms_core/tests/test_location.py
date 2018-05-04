@@ -138,9 +138,8 @@ class TestLocation(WmsTestCase):
             """This is an example of flattening by code prefixing.
 
             Tag defaulting is disabled: only the direct tag is returned.
+            Not specifying ``top`` is not supported
             """
-            if top is None:
-                raise NotImplementedError
             prefix = top.code + '/'
             query = Location.query(Location.id, Location.tag).filter(or_(
                 Location.code.like(prefix + '%'),
