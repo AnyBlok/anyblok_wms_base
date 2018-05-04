@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from sqlalchemy import or_
 from anyblok_wms_base.constants import DATE_TIME_INFINITY
 from anyblok_wms_base.testing import WmsTestCase
 
@@ -100,7 +101,7 @@ class TestLocation(WmsTestCase):
         stock_qok = Location.insert(code='STK/QOK', parent=stock_q,
                                     tag='sellable')
 
-        cte = Location.tag_cte(top=self.stock)
+        cte = Location.flatten_subquery_with_tags(top=self.stock)
         self.assertEqual(
             set(self.registry.session.query(cte.c.id, cte.c.tag).all()),
             {(self.stock.id, 'sellable'),
@@ -114,7 +115,7 @@ class TestLocation(WmsTestCase):
         # case against on Location, to get full instances
         other = Location.insert(code='foo', tag='bar')
         notag = Location.insert(code='notag')
-        cte = Location.tag_cte()
+        cte = Location.flatten_subquery_with_tags()
         joined = Location.query(
             Location, cte.c.tag).join(cte, cte.c.id == Location.id)
         notsellable = set(joined.filter(cte.c.tag != 'sellable').all())
@@ -127,6 +128,38 @@ class TestLocation(WmsTestCase):
         # to do with the recursive CTE itself:
         self.assertEqual(joined.filter(cte.c.tag.is_(None)).one(),
                          (notag, None))
+
+    def test_override_tag_recursion(self):
+        Location = self.Location
+        orig_meth = Location.flatten_subquery_with_tags
+
+        @classmethod
+        def flatten_subquery_with_tags(cls, top=None, resolve_top_tag=True):
+            """This is an example of flattening by code prefixing.
+
+            Tag defaulting is disabled: only the direct tag is returned.
+            """
+            if top is None:
+                raise NotImplementedError
+            prefix = top.code + '/'
+            query = Location.query(Location.id, Location.tag).filter(or_(
+                Location.code.like(prefix + '%'),
+                Location.code == top.code))
+            return query.subquery()
+
+        other = self.Location.insert(code='other')
+        self.insert_goods(2, 'present', self.dt_test1)
+        self.insert_goods(1, 'present', self.dt_test1, location=other)
+
+        sub = self.Location.insert(code='STK/sub', tag='foo')
+        self.insert_goods(3, 'present', self.dt_test1, location=sub)
+
+        try:
+            Location.flatten_subquery_with_tags = flatten_subquery_with_tags
+            self.assertQuantity(5)
+            self.assertQuantity(3, location_tag='foo')
+        finally:
+            Location.flatten_subquery_with_tags = orig_meth
 
     def test_resolve_tag(self):
         sub = self.Location.insert(code='sub', parent=self.stock)

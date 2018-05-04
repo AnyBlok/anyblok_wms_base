@@ -85,14 +85,21 @@ class Location:
                                           **kwargs)
 
     @classmethod
-    def tag_cte(cls, top=None, resolve_top_tag=True):
-        """Return an SQL CTE that recurses in the hierarchy, defaulting tags.
+    def flatten_subquery_with_tags(cls, top=None, resolve_top_tag=True):
+        """Return an SQL subquery flattening the hierarchy, resolving tags.
 
-        The defaulting tag policy is that a Location whose tag is ``None``
+        The resolving tag policy is that a Location whose tag is ``None``
         inherits its parent's.
 
-        The CTE cannot be used directly, but see unit tests for nice examples
-        with or without joins.
+        This subquery cannot be used directly: it is meant to be used as part
+        of a wider query; see unit tests (``test_location``) for nice examples
+        with or without joins. It has two columns: ``id`` and ``tag``.
+
+        :param top:
+           if specified, the query starts at this Location (inclusive)
+
+        This default implementation issues a recursive CTE (``WITH RECURSIVE``)
+        that climbs down along the :attr:`parent` field.
 
         For some applications with a large and complicated Location hierarchy,
         joining on this CTE can become a performance problem. Quoting
@@ -107,15 +114,17 @@ class Location:
           discard afterwards.
 
         If that becomes a problem, it is still possible to override the
-        present method: any subquery whose results have the ``id`` and
-        ``tag`` columns can be used by callers instead of the recursive CTE.
+        present method: any subquery whose results have the same columbs
+        can be used by callers instead of the recursive CTE.
 
         Examples:
 
         1. one might design a flat Location hierarchy using prefixing on
            :attr:`code` to express inclusion instead of the provided
-           :attr:`parent`
-        2. one might make a materialized view out of this very CTE,
+           :attr:`parent`. See :meth:`anyblok_wms_base.bloks.wms_core.tests
+           .test_location.test_override_tag_recursion` for a proof of concept
+           of this.
+        2. one might make a materialized view out of the present recursive CTE,
            refreshing as soon as needed.
         """
         query = cls.registry.session.query
