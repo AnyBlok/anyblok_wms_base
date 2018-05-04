@@ -23,16 +23,16 @@ class WmsQuantity(Blok):
 
     @classmethod
     def import_declaration_module(cls):
+        from . import wms  # noqa
         from . import goods  # noqa
-        from . import location  # noqa
         from . import operation  # noqa
 
     @classmethod
     def reload_declaration_module(cls, reload):
+        from . import wms
+        reload(wms)
         from . import goods
         reload(goods)
-        from . import location
-        reload(location)
         from . import operation
         reload(operation)
         operation.reload_declarations(reload)
