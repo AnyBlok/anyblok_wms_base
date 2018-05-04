@@ -9,13 +9,10 @@
 from sqlalchemy import func
 from anyblok import Declarations
 
-register = Declarations.register
-Model = Declarations.Model
 
-
-@register(Model.Wms)
-class Location:
-    """Override to replace counting by summation"""
+@Declarations.register(Declarations.Model)
+class Wms:
+    """Override to replace quantity counting by summation"""
 
     @classmethod
     def base_quantity_query(cls):

@@ -9,6 +9,18 @@
 Release history
 ===============
 
+0.7.0 (unreleased)
+~~~~~~~~~~~~~~~~~~
+* Moved the quantity field of Goods from wms-core to the new
+  optional wms-quantity Blok.
+
+  Applications that need this field (mostly for
+  goods kept in bulk) will have to install
+  wms-quantity. wms-reservation still ignores the quantity field
+  completely, i.e, no partial reservation is possible.
+* Location tags and recursive stock computations (now a transversal
+  method on the Wms model).
+
 0.6.0
 ~~~~~
 * Published on PyPY

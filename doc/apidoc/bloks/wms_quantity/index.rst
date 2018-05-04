@@ -6,6 +6,6 @@ wms_quantity
 .. toctree::
 
    goods
-   location
+   wms
    operation
 

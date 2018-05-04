@@ -5,6 +5,7 @@ wms_core
 
 .. toctree::
 
+   wms
    goods
    operation/index
    location
