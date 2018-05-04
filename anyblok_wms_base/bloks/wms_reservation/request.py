@@ -93,7 +93,8 @@ class Request:
                       instead of creating a new one.
                       The passed query must have the present model class in
                       its ``FROM`` clause and return only the ``id`` column
-                      of the present model.
+                      of the present model. The criteria of
+                      ``filter_by`` are still applied if also provided.
 
         This is safe with respect to concurrency: no other transaction
         can claim the same Request (guaranteed by a PostgreSQL lock).

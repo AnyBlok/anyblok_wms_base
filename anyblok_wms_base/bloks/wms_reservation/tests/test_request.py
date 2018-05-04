@@ -229,6 +229,11 @@ class RequestClaimTestCase(ConcurrencyBlokTestCase):
         with Request.claim_reservations(query=query) as req_id:
             self.assertEqual(req_id, request.id)
 
+        query = Request.query(Request.id).filter(
+            Request.purpose.contains(dict(why='because')))
+        with Request.claim_reservations(query=query) as req_id:
+            self.assertIsNone(req_id)
+
     def test_claim_concurrency(self):
         Request = self.Reservation.Request
         Request2 = self.registry2.Wms.Reservation.Request
