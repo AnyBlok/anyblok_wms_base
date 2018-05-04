@@ -24,6 +24,20 @@ Model = Declarations.Model
 class Location:
     """A stock location.
 
+    Locations are perhaps ill-named (see :ref:`improvement_location_name`), but
+    ultimately they represent the idea of "where" the Goods are. There's no
+    reason a priori to consider that Locations themselves are not moving.
+
+    Locations form a tree-like structure (a forest), which is encoded through
+    the :attr:`parent` field, and have :attr:`tags <tag>` which can be used to
+    express functional meaning, especially for
+    :meth:`quantity computations
+    <anyblok_wms_base.bloks.wms_core.wms.Wms.quantity>`.
+
+    Downstream libraries and applications which don't want to use this hierarchy
+    and the defaulting of tags that comes along can do so by overriding
+    :meth:`flatten_hierarchy_with_tags` and :meth:`resolve_tag`
+
     TODO add location types to encode behavioral properties (internal, EDI,
     stuff like size ?)
     """
