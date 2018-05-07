@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from copy import deepcopy
 from sqlalchemy.orm.attributes import flag_modified
 
 from anyblok import Declarations
@@ -227,14 +228,34 @@ class Properties:
               constants in a module
     """
 
+    @classmethod
+    def _field_property_names(cls):
+        """Iterable over the names of properties that are fields."""
+        return (f for f in cls._fields_description()
+                if f not in ('id', 'flexible'))
+
+    def as_dict(self):
+        """Return the properties as a ``dict``.
+
+        This is not to be confused with the generic :meth:`to_dict` method of
+        all Models. The present method abstracts over the :attr:`flexible`
+        field and the regular ones. It also strips :attr:`id` and doesn't
+        attempt to follow relationships.
+        """
+        res = {k: getattr(self, k) for k in self._field_property_names()}
+        flex = self.flexible
+        if flex is not None:
+            res.update((k, deepcopy(v)) for k, v in flex.items())
+        return res
+
     def get(self, k, default=None):
-        if k in self.loaded_columns:
+        if k in self._field_property_names():
             return getattr(self, k)
         return self.flexible.get(k, default)
 
     def set(self, k, v):
         if k in ('id', 'flexible'):
-            raise ValueError("The key %k is reserved, and can't be used for "
+            raise ValueError("The key %r is reserved, and can't be used for "
                              "properties" % k)
         if k in self.fields_description():
             setattr(self, k, v)
@@ -245,10 +266,9 @@ class Properties:
     def duplicate(self):
         """Insert a copy of ``self`` and return its id."""
         fields = {k: getattr(self, k)
-                  for k in self.fields_description().keys()
+                  for k in self._field_property_names()
                   }
-        fields.pop('id')
-        return self.insert(**fields)
+        return self.insert(flexible=deepcopy(self.flexible), **fields)
 
     @classmethod
     def create(cls, **props):
@@ -261,7 +281,7 @@ class Properties:
         insertion followed by calls to :meth:`set`, because it guarantees that
         only one SQL INSERT will be issued.
         """
-        fields = cls.fields_description()
+        fields = set(cls._field_property_names())
         columns = {}
         flexible = {}
         forbidden = ('id', 'flexible')

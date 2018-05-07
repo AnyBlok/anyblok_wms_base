@@ -135,3 +135,25 @@ class TestGoodsProperties(BlokTestCase):
     def test_reserved(self):
         with self.assertRaises(ValueError):
             self.Props.create(batch='abcd', flexible=True)
+
+    def test_as_dict(self):
+        props = self.Props.create(batch='abcd', history=['a'], serial=2345)
+        as_dict = props.as_dict()
+        self.assertEqual(as_dict,
+                         dict(batch='abcd', history=['a'], serial=2345))
+
+        # mutability issues
+        as_dict['history'].append('b')
+        self.assertEqual(props.get('history'), ['a'])
+
+    def test_duplicate(self):
+        props = self.Props.create(batch='abcd', history=['a'], serial=2345)
+        dup = props.duplicate()
+        self.assertNotEqual(dup.id, props.id)
+        self.assertEqual(dup.as_dict(),
+                         dict(batch='abcd', history=['a'], serial=2345))
+
+        # niceties with mutability
+        dup.get('history').append('b')
+        self.assertEqual(dup.get('history'), ['a', 'b'])
+        self.assertEqual(props.get('history'), ['a'])
