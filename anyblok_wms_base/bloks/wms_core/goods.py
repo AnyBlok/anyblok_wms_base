@@ -21,6 +21,9 @@ from anyblok_wms_base.constants import (
     GOODS_STATES,
 )
 
+_missing = object()
+"""A marker to use as default value in get-like functions/methods."""
+
 
 register = Declarations.register
 Model = Declarations.Model
@@ -129,6 +132,31 @@ class Goods:
                     cls.id != self.id).limit(1).count():
                 self.properties = existing_props.duplicate()
         self.properties.set(k, v)
+
+    def has_property(self, name):
+        """Check if a Property with given name is present."""
+        props = self.properties
+        if props is None:
+            return False
+        return name in props
+
+    def has_properties(self, names):
+        """Check in one shot if Properties with given names are present."""
+        if not names:
+            return True
+        props = self.properties
+        if props is None:
+            return False
+        return all(n in props for n in names)
+
+    def has_property_values(self, mapping):
+        """Check that all key/value pairs of mapping are in properties."""
+        if not mapping:
+            return True
+        props = self.properties
+        if props is None:
+            return False
+        return all(props.get(k, _missing) == v for k, v in mapping.items())
 
 
 @register(Model.Wms.Goods)
@@ -345,6 +373,20 @@ class Properties:
         for it in iters:
             for k, v in it:
                 self[k] = v
+
+    def __contains__(self, k):
+        """Support for the 'in' operator.
+
+        Field properties are always present. Since one could say that
+        the database uses ``None`` to mark absence, it could be relevant
+        to return False if the value is ``None`` (TODO STABILIZATION).
+        """
+        if k in self._field_property_names():
+            return True
+        flex = self.flexible
+        if flex is None:
+            return False
+        return k in flex
 
 
 @register(Model.Wms.Goods)

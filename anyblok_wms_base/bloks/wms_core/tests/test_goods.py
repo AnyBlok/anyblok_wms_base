@@ -33,8 +33,18 @@ class TestGoods(WmsTestCase):
         self.assertIsNone(goods.get_property('foo'))
         self.assertEqual(goods.get_property('foo', default=-1), -1)
 
+        self.assertTrue(goods.has_properties(()))
+        self.assertTrue(goods.has_property_values({}))
+
         goods.set_property('foo', 1)
         self.assertEqual(goods.get_property('foo'), 1)
+
+        self.assertTrue(goods.has_property('foo'))
+        self.assertTrue(goods.has_properties(['foo']))
+
+        goods.set_property('bar', 2)
+        self.assertTrue(goods.has_properties(['foo', 'bar']))
+        self.assertTrue(goods.has_property_values(dict(foo=1, bar=2)))
 
     def test_str(self):
         gt = self.goods_type
@@ -200,6 +210,12 @@ class TestGoodsProperties(BlokTestCase):
         # mutability issues
         as_dict['history'].append('b')
         self.assertEqual(props.get('history'), ['a'])
+
+    def test_contains(self):
+        props = self.Props.create(batch='abc', x=4)
+        self.assertTrue('batch' in props)
+        self.assertTrue('x' in props)
+        self.assertFalse('y' in props)
 
     def test_duplicate(self):
         props = self.Props.create(batch='abcd', history=['a'], serial=2345)
