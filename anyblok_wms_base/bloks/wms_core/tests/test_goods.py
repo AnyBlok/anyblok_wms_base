@@ -124,6 +124,36 @@ class TestGoodsProperties(BlokTestCase):
     def setUp(self):
         self.Props = self.registry.Wms.Goods.Properties
 
+    def test_get_set(self):
+        props = self.Props.insert()
+
+        # at this stage, props.flexible is None, but get() and [] must behave
+        # as if it were an empty dict
+        with self.assertRaises(KeyError) as arc:
+            props['foo']
+        self.assertEqual(arc.exception.args, ('foo', ))
+        self.assertIsNone(props.get('foo'))
+        self.assertEqual(props.get('foo', 4), 4)
+
+        props['foo'] = 3
+        props[123] = 'bar'
+        props['batch'] = 1
+
+        self.assertEqual(props['foo'], 3)
+        self.assertEqual(props.get('foo'), 3)
+
+        self.assertEqual(props[123], 'bar')
+        self.assertEqual(props.get(123), 'bar')
+
+        self.assertEqual(props['batch'], 1)
+        self.assertEqual(props.get('batch'), 1)
+
+        self.assertIsNone(props.get('missing'))
+        self.assertEqual(props.get('missing', 1.2), 1.2)
+
+        with self.assertRaises(TypeError):
+            self.assertEqual(props.get('a', 'default', 'extra'))
+
     def test_create(self):
         props = self.Props.create(batch='abcd',
                                   serial=1234, expiry='2018-03-01')

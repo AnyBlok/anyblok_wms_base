@@ -248,20 +248,39 @@ class Properties:
             res.update((k, deepcopy(v)) for k, v in flex.items())
         return res
 
-    def get(self, k, default=None):
+    def __getitem__(self, k):
         if k in self._field_property_names():
             return getattr(self, k)
-        return self.flexible.get(k, default)
+        if self.flexible is None:
+            raise KeyError(k)
+        return self.flexible[k]
 
-    def set(self, k, v):
+    def get(self, k, *default):
+        if len(default) > 1:
+            raise TypeError("get expected at most 2 arguments, got %d" % (
+                len(default) + 1))
+
+        try:
+            return self[k]
+        except KeyError:
+            if default:
+                return default[0]
+            return None
+
+    def __setitem__(self, k, v):
         if k in ('id', 'flexible'):
-            raise ValueError("The key %r is reserved, and can't be used for "
-                             "properties" % k)
+            raise ValueError("The key %r is reserved, and can't be used "
+                             "as a property name" % k)
         if k in self.fields_description():
             setattr(self, k, v)
         else:
-            self.flexible[k] = v
+            if self.flexible is None:
+                self.flexible = {k: v}
+            else:
+                self.flexible[k] = v
             flag_modified(self, '__anyblok_field_flexible')
+
+    set = __setitem__  # backwards compatibility
 
     def duplicate(self):
         """Insert a copy of ``self`` and return its id."""
