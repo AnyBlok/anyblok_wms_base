@@ -85,6 +85,7 @@ class Move(Mixin.WmsSingleInputOperation, Operation):
     def revert_extra_fields(self):
         """Extra fields to take into account in :meth:`plan_revert_single`.
 
-        Singled out for easy subclassing.
+        Singled out for easy subclassing, e.g., by the
+        :ref:`wms-quantity Blok <blok_wms_quantity>`.
         """
         return {}

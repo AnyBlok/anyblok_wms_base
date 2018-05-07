@@ -316,10 +316,11 @@ Implemented
 ~~~~~~~~~~~
 .. _improvement_stock_levels:
 
-.. versionadded:: 0.7.0
-
 Location hierarchical structure and stock levels
 ------------------------------------------------
+
+.. versionadded:: 0.7.0
+
 Counting (or summing) the goods quantities is expensive within an
 arborescent structure, even if done with PostgreSQL recursive queries.
 

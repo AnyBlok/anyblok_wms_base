@@ -34,6 +34,8 @@ typically gets fulfilled through a *chain* of operations.
              code documentation  <anyblok_wms_base.bloks.wms_reservation>`.
 
 
+.. _blok_wms_quantity:
+
 wms-quantity
 ------------
 

@@ -27,16 +27,16 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
     meant to be reversible through appropriate Pack / Assembly Operations,
     which are not implemented yet at the time being.
 
-    What happens during unpacking is specified as behaviours of the
-    Goods Type of the Goods being unpacked.
+    Which Goods will get created and which Properties they will bear is
+    specified in the ``unpack`` behaviour of the Type of the Goods being
+    unpacked, together with their ``unpack_outcomes`` optional Properties.
+    See :meth:`get_outcome_specs` and :meth:`forward_props` for details
+    about these and how to achieve the wished functionality.
 
-    For the time being, Unpacks will create the new Avatar records
-    in the same location. Downstream libraries and applications can prepend
-    moves to unpacking areas, and/or append moves to final destinations.
-
-    It's possible that we'd introduce an optional 'destination' column
-    in the future, if the current schema is too inconvenient or bloats the
-    database too much.
+    Unpacks happen in place: the newly created Avatar appear in the
+    location where the input was. It is thus the caller's responsibility to
+    prepend moves to unpacking areas, and/or append moves to final
+    destinations.
     """
     TYPE = 'wms_unpack'
 
@@ -72,7 +72,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         """Create Goods record according to given specification.
 
         This singled out method is meant for easy subclassing (see, e.g,
-        in ``wms-quantity`` Blok).
+        in :ref:`wms-quantity Blok <blok_wms_quantity>`).
 
         :param fields: pre-baked fields, prepared by the base class. In the
                        current implementation, they are fully derived from
@@ -123,8 +123,26 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
     def forward_props(self, spec, outcome):
         """Handle the properties for a given outcome (Goods record)
 
-        :param spec: the relevant part of behaviour for this outcome
-        :param outcome: just-created Goods instance
+        :param dict spec: the relevant specification for this outcome, as
+                          produced by :meth:`get_outcome_specs` (see below
+                          for the contents).
+        :param outcome: the just created Goods instance
+
+        *Specification contents*
+
+        * ``required_properties``:
+            list (or iterable) of properties that are required on
+            ``self.input``. If one is missing, then
+            :class:`OperationInputsError` gets raised.
+            ``forward_properties``.
+        * ``forward_properties``:
+            list (or iterable) of properties to copy if present from
+            ``self.input`` to ``outcome``.
+
+        Required properties aren't automatically forwarded, so that it's
+        possible to require one for checking purposes without polluting the
+        Properties of ``outcome``. To forward and require a property, it has
+        thus to be in both lists.
         """
         packs = self.input.goods
         fwd_props = spec.get('forward_properties', ())
@@ -151,11 +169,16 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
             outcome.set_property(pname, pvalue)
 
     def get_outcome_specs(self):
-        """Produce a complete behaviour for outcomes and their properties.
+        """Produce a complete specification for outcomes and their properties.
 
-        Unless ``uniform_outcomes`` is set to ``True``,
+        In what follows "the behaviour" means the value associated with the
+        ``unpack`` key in the Goods Type :attr:`behaviours
+        <anyblok_wms_base.bloks.wms_core.goods.Type.behaviours>`.
+
+        Unless ``uniform_outcomes`` is set to ``True`` in the behaviour,
         the outcomes of the Unpack are obtained by merging those defined in
-        the Goods Types behaviour and in the packs (``self.input``) properties.
+        the behaviour (under the ``outcomes`` key) and in the
+        packs (``self.input``) ``unpack_outcomes`` Property.
 
         This accomodates various use cases:
 
@@ -181,8 +204,8 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         are merged with those of the outcomes, so that, for instance
         ``forward_properties`` have three key/value sources:
 
-        - top-level at the Goods Type ``unpack`` behaviour
-        - in each outcome of the Goods Type
+        - at toplevel of the behaviour (``uniform_outcomes=True``)
+        - in each outcome of the behaviour (``outcomes`` key)
         - in each outcome of the Goods record (``unpack_outcomes`` property)
 
         Here's a use-case: imagine the some purchase order reference is
