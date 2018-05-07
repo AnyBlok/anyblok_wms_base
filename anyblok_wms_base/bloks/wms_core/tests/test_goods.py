@@ -185,6 +185,8 @@ class TestGoodsProperties(BlokTestCase):
                               id=props.id,
                               flexible=dict(serial=1234, expiry='2018-03-01')))
 
+        self.assertIsNone(self.Props.create())
+
     def test_reserved(self):
         with self.assertRaises(ValueError):
             self.Props.create(batch='abcd', flexible=True)

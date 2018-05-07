@@ -299,7 +299,16 @@ class Properties:
         This method is a better alternative than
         insertion followed by calls to :meth:`set`, because it guarantees that
         only one SQL INSERT will be issued.
+
+        If no ``props`` are given, then nothing is created and ``None``
+        gets returned, thus avoiding a needless row in the database.
+        This may seem trivial, but it spares a test for callers that would
+        pass a ``dict``, using the ``**`` syntax, which could turn out to
+        be empty.
         """
+        if not props:
+            return
+
         fields = set(cls._field_property_names())
         columns = {}
         flexible = {}
