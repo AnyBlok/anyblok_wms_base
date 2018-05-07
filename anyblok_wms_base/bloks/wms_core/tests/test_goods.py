@@ -154,6 +154,29 @@ class TestGoodsProperties(BlokTestCase):
         with self.assertRaises(TypeError):
             self.assertEqual(props.get('a', 'default', 'extra'))
 
+    def test_update(self):
+        props = self.Props()
+
+        with self.assertRaises(TypeError):
+            # two positional arguments
+            props.update(dict(a=1), dict(b=2))
+
+        # a dict positional arg
+        props.update(dict(batch=1))
+        # an iterable of pairs
+        props.update([('x', 2), ('y', 3)])
+        # keyword arguments
+        props.update(z=5, foo='bar')
+
+        self.assertEqual(props.as_dict(),
+                         dict(batch=1, x=2, y=3, z=5, foo='bar'))
+
+        # both positional and keywords arguments (yes it works with dicts)
+        # also, overwritting existing properties
+        props.update(dict(batch=3), z=['a', 'b'], foo='spam')
+        self.assertEqual(props.as_dict(),
+                         dict(batch=3, x=2, y=3, z=['a', 'b'], foo='spam'))
+
     def test_create(self):
         props = self.Props.create(batch='abcd',
                                   serial=1234, expiry='2018-03-01')

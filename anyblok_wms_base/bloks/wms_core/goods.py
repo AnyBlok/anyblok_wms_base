@@ -315,6 +315,28 @@ class Properties:
                 flexible[k] = v
         return cls.insert(flexible=flexible, **columns)
 
+    def update(self, *args, **kwargs):
+        """Similar to :meth:`dict.update`
+
+        This current implementation doesn't attempt to be smarter that setting
+        the values one after the other, which means in particular going
+        through all the checks for each key. A future implementation might try
+        and be more efficient.
+        """
+        if len(args) > 1:
+            raise TypeError("update expected at most 1 arguments, got %d" % (
+                len(args)))
+        iters = [kwargs.items()]
+        if args:
+            positional = args[0]
+            if isinstance(positional, dict):
+                iters.append(positional.items())
+            else:
+                iters.append(positional)
+        for it in iters:
+            for k, v in it:
+                self[k] = v
+
 
 @register(Model.Wms.Goods)
 class Avatar:
