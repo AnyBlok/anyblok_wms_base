@@ -99,6 +99,32 @@ class TestOperation(WmsTestCase):
         self.assertEqual(hi.orig_dt_until, self.dt_test3)
         self.assertEqual(hi.latest_previous_op, arrival)
 
+    def test_before_insert(self):
+        other_loc = self.registry.Wms.Location.insert(code='other')
+
+        def before_insert(inputs=None, **fields):
+            """We're using it in this test to update the location.
+
+            Arrival should indeed in check_create_conditions already
+            test that it has a valid Location (but it doesn't at the time of
+            this writing)
+            """
+            return inputs, dict(location=other_loc)
+
+        Arrival = self.Operation.Arrival
+        orig_before_insert = Arrival.before_insert
+        Arrival.before_insert = before_insert
+        try:
+            arrival = Arrival.create(goods_type=self.goods_type,
+                                     location=self.incoming_loc,
+                                     dt_execution=self.dt_test1,
+                                     state='planned')
+        finally:
+            Arrival.before_insert = orig_before_insert
+        self.assertEqual(arrival.location, other_loc)
+        # and it's been done at the right time, before creating outcomes
+        self.assertEqual(arrival.outcomes[0].location, other_loc)
+
     def test_cancel(self):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,

@@ -344,3 +344,32 @@ class TestUnpack(WmsTestCase):
                                  dt_execution=self.dt_test2)
         repr(unp)
         str(unp)
+
+    def test_cancel(self):
+        """Plan an Unpack (uniform scenario), then cancel it
+        """
+        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(
+                uniform_outcomes=True,
+                outcomes=[
+                    dict(type=unpacked_type.id,
+                         quantity=6,
+                         ),
+                ],
+            )),
+            properties=dict(foo=7))
+
+        unp = self.Unpack.create(state='planned',
+                                 dt_execution=self.dt_test2,
+                                 input=self.packs)
+        unp.cancel()
+        Goods = self.Goods
+        self.assertEqual(
+            Goods.query().filter(Goods.type == unpacked_type).count(),
+            0)
+        self.assertEqual(
+            self.stock.quantity(self.packed_goods_type,
+                                additional_states=['future'],
+                                at_datetime=self.dt_test2),
+            1)
