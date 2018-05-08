@@ -53,7 +53,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
             quantity=quantity,
             **kwargs)
 
-        goods_type = inputs[0].type
+        goods_type = inputs[0].goods.type
         if 'unpack' not in goods_type.behaviours:
             raise OperationInputsError(
                 cls,
@@ -227,7 +227,8 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         # to propagate mutability to the DB. Not sure how much of it
         # is necessary.
         packs = self.input
-        behaviour = packs.type.behaviours['unpack']
+        goods_type = packs.goods.type
+        behaviour = goods_type.behaviours['unpack']
         specs = behaviour.get('outcomes', [])[:]
         if behaviour.get('uniform_outcomes', False):
             for outcome in specs:
@@ -243,7 +244,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
                 "Type {type} 'unpack' behaviour: {behaviour}, "
                 "specific outcomes from Goods properties: "
                 "{specific}",
-                type=packs.type, behaviour=behaviour,
+                type=goods_type, behaviour=behaviour,
                 specific=specific_outcomes)
 
         global_fwd = behaviour.get('forward_properties', ())

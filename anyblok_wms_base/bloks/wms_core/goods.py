@@ -508,8 +508,3 @@ class Avatar:
 
     def get_property(self, k, default=None):
         return self.goods.get_property(k, default=default)
-
-    @property
-    def type(self):
-        """Mostly to ease the separation of Avatars from Goods."""
-        return self.goods.type

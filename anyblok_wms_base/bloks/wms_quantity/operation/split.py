@@ -161,7 +161,7 @@ class Split(SingleInput, Operation):
         See :meth:`on Model.Goods.Type
         <anyblok_wms_base.bloks.wms_core.goods.Type.is_split_reversible>`
         """
-        return self.input.type.is_split_reversible()
+        return self.input.goods.type.is_split_reversible()
 
     def plan_revert_single(self, dt_execution, follows=()):
         if not follows:
