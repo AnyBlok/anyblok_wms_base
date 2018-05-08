@@ -7,6 +7,7 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from sqlalchemy import or_
+from sqlalchemy import func
 from anyblok import Declarations
 from anyblok_wms_base.constants import DATE_TIME_INFINITY
 
@@ -87,7 +88,7 @@ class Wms:
         Goods = cls.registry.Wms.Goods
         Location = cls.Location
         Avatar = Goods.Avatar
-        query, use_count = cls.base_quantity_query()
+        query = cls.base_quantity_query()
         if goods_type is not None:
             query = query.filter(Goods.type == goods_type)
 
@@ -121,19 +122,15 @@ class Wms:
             query = query.filter(Avatar.dt_from <= at_datetime,
                                  or_(Avatar.dt_until.is_(None),
                                      Avatar.dt_until > at_datetime))
-        if use_count:
-            return query.count()
-
         res = query.one()[0]
         return 0 if res is None else res
 
     @classmethod
     def base_quantity_query(cls):
-        """Return base join query, without any filtering, and eval indication.
+        """Return base join query, without any filtering
 
-        :return: query, ``True`` if ``count()`` is to be used. Otherwise,
-                 the query is assumed to produce exactly one row, with the
+        :return: The query is assumed to produce exactly one row, with the
                  wished quantity result (possibly ``None`` for 0)
         """
         Avatar = cls.Goods.Avatar
-        return Avatar.query().join(Avatar.goods), True
+        return Avatar.query(func.count(Avatar.id)).join(Avatar.goods)

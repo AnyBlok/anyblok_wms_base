@@ -20,5 +20,4 @@ class Wms:
         Goods = cls.registry.Wms.Goods
         Avatar = Goods.Avatar
         # TODO distinguish quantity on Avatars from those on Goods?
-        query = Avatar.query(func.sum(Goods.quantity)).join(Avatar.goods)
-        return query, False
+        return Avatar.query(func.sum(Goods.quantity)).join(Avatar.goods)
