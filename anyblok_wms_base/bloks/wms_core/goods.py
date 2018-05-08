@@ -513,8 +513,3 @@ class Avatar:
     def type(self):
         """Mostly to ease the separation of Avatars from Goods."""
         return self.goods.type
-
-    @property
-    def code(self):
-        """Mostly to ease the separation of Avatars from Goods."""
-        return self.goods.code
