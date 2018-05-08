@@ -138,7 +138,7 @@ class Split(SingleInput, Operation):
         """Call the base class's version and check that quantity is suitable.
         """
         super(Split, self).check_execute_conditions()
-        goods = self.input
+        goods = self.input.goods
         if self.quantity > goods.quantity:
             raise OperationQuantityError(
                 self,

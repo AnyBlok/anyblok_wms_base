@@ -158,7 +158,10 @@ class TestAggregate(WmsTestCase):
         new_avatars = self.Goods.Avatar.query().all()
         self.assertEqual(len(new_avatars), 2)
         for avatar in new_avatars:
-            exp_reason = other_reason if avatar.quantity == 1 else self.arrival
+            if avatar.goods.quantity == 1:
+                exp_reason = other_reason
+            else:
+                exp_reason = self.arrival
             self.assertEqual(avatar.reason, exp_reason)
 
         # CASCADE options did the necessary cleanups

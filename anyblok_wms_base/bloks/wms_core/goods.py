@@ -518,8 +518,3 @@ class Avatar:
     def code(self):
         """Mostly to ease the separation of Avatars from Goods."""
         return self.goods.code
-
-    @property
-    def quantity(self):
-        """Mostly to ease the separation of Avatars from Goods."""
-        return self.goods.quantity

@@ -31,25 +31,26 @@ class TestArrival(WmsTestCase):
                                                             bar='monty'),
                                       goods_type=self.goods_type)
         self.assertEqual(arrival.follows, [])
-        goods = self.assert_singleton(arrival.outcomes)
-        self.assertEqual(goods.state, 'future')
-        self.assertEqual(goods.location, self.incoming_loc)
+        avatar = self.assert_singleton(arrival.outcomes)
+        goods = avatar.goods
+        self.assertEqual(avatar.state, 'future')
+        self.assertEqual(avatar.location, self.incoming_loc)
         self.assertEqual(goods.quantity, 3)
         self.assertEqual(goods.type, self.goods_type)
         self.assertEqual(goods.code, '765')
         self.assertEqual(goods.get_property('foo'), 5)
         self.assertEqual(goods.get_property('bar'), 'monty')
-        self.assertEqual(goods.dt_from, self.dt_test1)
+        self.assertEqual(avatar.dt_from, self.dt_test1)
 
         arrival.execute(self.dt_test2)
         self.assertEqual(arrival.state, 'done')
         self.assertEqual(arrival.dt_execution, self.dt_test2)
         self.assertEqual(arrival.dt_start, self.dt_test2)
-        self.assertEqual(goods.state, 'present')
+        self.assertEqual(avatar.state, 'present')
         self.assertEqual(goods.get_property('foo'), 5)
         self.assertEqual(goods.get_property('bar'), 'monty')
         self.assertEqual(goods.code, '765')
-        self.assertEqual(goods.dt_from, self.dt_test2)
+        self.assertEqual(avatar.dt_from, self.dt_test2)
 
     def test_create_done(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
@@ -60,9 +61,10 @@ class TestArrival(WmsTestCase):
                                                             monty='python'),
                                       goods_type=self.goods_type)
         self.assertEqual(arrival.follows, [])
-        goods = self.assert_singleton(arrival.outcomes)
-        self.assertEqual(goods.state, 'present')
-        self.assertEqual(goods.location, self.incoming_loc)
+        avatar = self.assert_singleton(arrival.outcomes)
+        self.assertEqual(avatar.state, 'present')
+        self.assertEqual(avatar.location, self.incoming_loc)
+        goods = avatar.goods
         self.assertEqual(goods.quantity, 3)
         self.assertEqual(goods.type, self.goods_type)
         self.assertEqual(goods.code, 'x34/7')

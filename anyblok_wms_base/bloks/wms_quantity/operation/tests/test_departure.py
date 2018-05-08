@@ -48,7 +48,7 @@ class TestDeparture(WmsTestCaseWithGoods):
             self.Avatar.query().filter(self.Avatar.reason == dep))
         self.assertEqual(sent.state, 'past')
         self.assertEqual(sent.dt_until, self.dt_test2)
-        self.assertEqual(sent.quantity, 1)
+        self.assertEqual(sent.goods.quantity, 1)
         # dt_until being exclusive, at self.dt_test2 the
         # goods were already sent.
         self.assertQuantities(future=(2, self.dt_test2),
@@ -80,7 +80,7 @@ class TestDeparture(WmsTestCaseWithGoods):
         sent = sent[0]
         self.assertEqual(sent.state, 'past')
         self.assertEqual(sent.dt_until, self.dt_test3)
-        self.assertEqual(sent.quantity, 1)
+        self.assertEqual(sent.goods.quantity, 1)
         # dt_until being exclusive, at self.dt_test3 the
         # goods were already sent, at self.dt_test2, they aren't yet
         self.assertQuantities(future=(2, self.dt_test3),

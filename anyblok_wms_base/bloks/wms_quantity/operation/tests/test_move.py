@@ -20,30 +20,30 @@ class TestMove(WmsTestCaseWithGoods):
         self.stock = Wms.Location.insert(label="Stock")
 
         # avatars, actually
-        self.goods.dt_until = self.dt_test3
+        self.avatar.dt_until = self.dt_test3
         self.Move = Operation.Move
 
     def test_partial_done(self):
-        self.goods.update(state='present')
+        self.avatar.update(state='present')
         move = self.Move.create(destination=self.stock,
                                 quantity=1,
                                 state='done',
                                 dt_execution=self.dt_test2,
-                                input=self.goods)
+                                input=self.avatar)
         split = self.assert_singleton(move.follows)
         self.assertEqual(split.type, 'wms_split')
 
         # the original has been thrown in the past by the split
-        self.assertEqual(self.goods.quantity, 3)
-        self.assertEqual(self.goods.state, 'past')
-        self.assertEqual(self.goods.dt_from, self.dt_test1)
-        self.assertEqual(self.goods.dt_until, self.dt_test2)
+        self.assertEqual(self.avatar.goods.quantity, 3)
+        self.assertEqual(self.avatar.state, 'past')
+        self.assertEqual(self.avatar.dt_from, self.dt_test1)
+        self.assertEqual(self.avatar.dt_until, self.dt_test2)
 
         not_moved = self.assert_singleton(split.outcomes)
-        self.assertEqual(not_moved.quantity, 2)
+        self.assertEqual(not_moved.goods.quantity, 2)
 
         after_move = self.assert_singleton(move.outcomes)
-        self.assertEqual(after_move.quantity, 1)
+        self.assertEqual(after_move.goods.quantity, 1)
         self.assertEqual(after_move.dt_from, self.dt_test2)
         self.assertEqual(after_move.dt_until, self.dt_test3)
         self.assertEqual(after_move.location, self.stock)
@@ -54,27 +54,27 @@ class TestMove(WmsTestCaseWithGoods):
                                 quantity=1,
                                 state='planned',
                                 dt_execution=self.dt_test2,
-                                input=self.goods)
+                                input=self.avatar)
         split = self.assert_singleton(move.follows)
         self.assertEqual(split.type, 'wms_split')
 
-        self.goods.state = 'present'
+        self.avatar.state = 'present'
         self.registry.flush()
         move.execute(dt_execution=self.dt_test2)
 
         # the original has been thrown in the past by the split
-        self.assertEqual(self.goods.quantity, 3)
-        self.assertEqual(self.goods.state, 'past')
-        self.assertEqual(self.goods.dt_from, self.dt_test1)
-        self.assertEqual(self.goods.dt_until, self.dt_test2)
+        self.assertEqual(self.avatar.goods.quantity, 3)
+        self.assertEqual(self.avatar.state, 'past')
+        self.assertEqual(self.avatar.dt_from, self.dt_test1)
+        self.assertEqual(self.avatar.dt_until, self.dt_test2)
 
         # the moved Goods are not considered an outcome of the Split,
         # because the Move is now its reason
         not_moved = self.assert_singleton(split.outcomes)
-        self.assertEqual(not_moved.quantity, 2)
+        self.assertEqual(not_moved.goods.quantity, 2)
 
         after_move = self.assert_singleton(move.outcomes)
-        self.assertEqual(after_move.quantity, 1)
+        self.assertEqual(after_move.goods.quantity, 1)
         self.assertEqual(after_move.location, self.stock)
         self.assertEqual(after_move.dt_from, self.dt_test2)
         self.assertEqual(after_move.dt_until, self.dt_test3)

@@ -79,7 +79,7 @@ class TestSplit(WmsTestCase):
         self.assertEqual(self.avatar.state, 'present')
         self.assertEqual(self.avatar.dt_from, self.dt_test1)
         self.assertEqual(self.avatar.dt_until, self.dt_test2)
-        self.assertEqual(sum(out.quantity for out in all_outcomes), 3)
+        self.assertEqual(sum(out.goods.quantity for out in all_outcomes), 3)
         # this will fail if me mangle the datetimes severely
         self.assertEqual(
             self.incoming_loc.quantity(self.goods_type,
