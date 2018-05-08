@@ -35,13 +35,13 @@ class TestDeparture(WmsTestCaseWithGoods):
     def test_whole_planned_execute(self):
         dep = self.Departure.create(state='planned',
                                     dt_execution=self.dt_test2,
-                                    input=self.goods)
+                                    input=self.avatar)
 
         self.assertEqual(dep.follows, [self.arrival])
-        self.assertEqual(dep.input, self.goods)
-        self.assertEqual(self.goods.dt_until, self.dt_test2)
+        self.assertEqual(dep.input, self.avatar)
+        self.assertEqual(self.avatar.dt_until, self.dt_test2)
 
-        self.goods.state = 'present'
+        self.avatar.state = 'present'
         self.assertQuantities(future=(0, self.dt_test2),
                               present=1,
                               past=(1, self.dt_test1))
@@ -53,7 +53,7 @@ class TestDeparture(WmsTestCaseWithGoods):
         self.assertEqual(len(sent), 1)
         sent = sent[0]
         self.assertEqual(sent.state, 'past')
-        self.assertEqual(self.goods.dt_until, self.dt_test3)
+        self.assertEqual(self.avatar.dt_until, self.dt_test3)
         self.assertEqual(sent.reason, dep)
 
         self.assertQuantities(future=(0, self.dt_test2),
@@ -61,10 +61,10 @@ class TestDeparture(WmsTestCaseWithGoods):
                               past=(1, self.dt_test1))
 
     def test_whole_planned_execute_obliviate(self):
-        self.goods.state = 'present'
+        self.avatar.state = 'present'
         dep = self.Departure.create(state='planned',
                                     dt_execution=self.dt_test2,
-                                    input=self.goods)
+                                    input=self.avatar)
         dep.execute()
         dep.obliviate()
 
@@ -74,11 +74,11 @@ class TestDeparture(WmsTestCaseWithGoods):
         self.assertEqual(new_goods.location, self.incoming_loc)
 
     def test_whole_planned_cancel(self):
-        self.goods.state = 'present'
-        self.goods.dt_until = self.dt_test3
+        self.avatar.state = 'present'
+        self.avatar.dt_until = self.dt_test3
         dep = self.Departure.create(state='planned',
                                     dt_execution=self.dt_test2,
-                                    input=self.goods)
+                                    input=self.avatar)
         dep.cancel()
 
         new_goods = self.single_result(self.Avatar.query())
@@ -88,25 +88,25 @@ class TestDeparture(WmsTestCaseWithGoods):
         self.assertEqual(new_goods.location, self.incoming_loc)
 
     def test_whole_done(self):
-        self.goods.update(state='present')
+        self.avatar.update(state='present')
         dep = self.Departure.create(state='done',
                                     dt_execution=self.dt_test2,
-                                    input=self.goods)
+                                    input=self.avatar)
 
         self.assertEqual(dep.follows, [self.arrival])
-        self.assertEqual(dep.input, self.goods)
+        self.assertEqual(dep.input, self.avatar)
         self.assertQuantities(future=(0, self.dt_test2),
                               present=0,
                               past=(1, self.dt_test1))
-        self.assertEqual(self.goods.reason, dep)
-        self.assertEqual(self.goods.state, 'past')
-        self.assertEqual(self.goods.dt_until, self.dt_test2)
+        self.assertEqual(self.avatar.reason, dep)
+        self.assertEqual(self.avatar.state, 'past')
+        self.assertEqual(self.avatar.dt_until, self.dt_test2)
 
     def test_done_obliviate(self):
-        self.goods.update(state='present')
+        self.avatar.update(state='present')
         dep = self.Departure.create(state='done',
                                     dt_execution=self.dt_test2,
-                                    input=self.goods)
+                                    input=self.avatar)
         dep.obliviate()
         new_goods = self.single_result(self.Avatar.query())
         self.assertEqual(new_goods.state, 'present')
@@ -116,6 +116,6 @@ class TestDeparture(WmsTestCaseWithGoods):
     def test_repr(self):
         dep = self.Departure.create(state='planned',
                                     dt_execution=self.dt_test2,
-                                    input=self.goods)
+                                    input=self.avatar)
         repr(dep)
         str(dep)

@@ -89,8 +89,6 @@ class WmsTestCaseWithGoods(WmsTestCase):
                                                 **self.arrival_kwargs)
 
         self.avatar = self.assert_singleton(self.arrival.outcomes)
-        # kept for easy compatibility of tests during Avatar refactor
-        self.goods = self.avatar
         self.Goods = Wms.Goods
         self.Avatar = Wms.Goods.Avatar
 

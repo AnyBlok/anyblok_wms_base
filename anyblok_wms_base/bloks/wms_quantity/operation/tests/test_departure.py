@@ -35,11 +35,11 @@ class TestDeparture(WmsTestCaseWithGoods):
                              qty)
 
     def test_partial_done(self):
-        self.goods.state = 'present'
+        self.avatar.state = 'present'
         dep = self.Departure.create(quantity=1,
                                     state='done',
                                     dt_execution=self.dt_test2,
-                                    input=self.goods)
+                                    input=self.avatar)
 
         self.assertEqual(dep.follows[0].type, 'wms_split')
         self.assertEqual(dep.follows[0].follows, [self.arrival])
@@ -63,12 +63,12 @@ class TestDeparture(WmsTestCaseWithGoods):
         dep = self.Departure.create(quantity=1,
                                     state='planned',
                                     dt_execution=self.dt_test2,
-                                    input=self.goods)
+                                    input=self.avatar)
 
         self.assertEqual(dep.follows[0].type, 'wms_split')
         self.assertEqual(dep.follows[0].follows, [self.arrival])
 
-        self.goods.state = 'present'
+        self.avatar.state = 'present'
         self.assertQuantities(future=(2, self.dt_test2),
                               present=3,
                               past=(3, self.dt_test1))
@@ -92,6 +92,6 @@ class TestDeparture(WmsTestCaseWithGoods):
         dep = self.Departure.create(quantity=3,
                                     state='planned',
                                     dt_execution=self.dt_test2,
-                                    input=self.goods)
+                                    input=self.avatar)
         repr(dep)
         str(dep)

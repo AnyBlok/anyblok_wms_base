@@ -28,46 +28,46 @@ class TestSingleInputOperation(WmsTestCaseWithGoods):
 
     def test_create_input_inputs(self):
         """Test that in create(), the input and inputs kwargs work."""
-        goods = self.goods
+        avatar = self.avatar
 
         def create(**kwargs):
-            goods.state = 'present'
+            avatar.state = 'present'
             return self.Move.create(destination=self.stock,
                                     state='done', **kwargs)
 
-        move = create(input=goods)
-        self.assertEqual(move.inputs, [goods])
+        move = create(input=avatar)
+        self.assertEqual(move.inputs, [avatar])
 
-        move = create(inputs=[goods])
-        self.assertEqual(move.inputs, [goods])
+        move = create(inputs=[avatar])
+        self.assertEqual(move.inputs, [avatar])
 
         with self.assertRaises(OperationError) as arc:
-            create(inputs=[goods], input=goods)
+            create(inputs=[avatar], input=avatar)
         self.assertEqual(arc.exception.kwargs,
-                         dict(input=goods, inputs=[goods]))
+                         dict(input=avatar, inputs=[avatar]))
 
     def test_input_attr(self):
         move = self.Move.create(destination=self.stock,
-                                inputs=[self.goods],
+                                inputs=[self.avatar],
                                 state='planned', dt_execution=self.dt_test2)
-        self.assertEqual(move.input, self.goods)
+        self.assertEqual(move.input, self.avatar)
 
     def test_whole_done_but_not_ready(self):
         # TODO should go to test_operation
-        self.assertEqual(self.goods.state, 'future')
+        self.assertEqual(self.avatar.state, 'future')
         with self.assertRaises(OperationInputsError) as arc:
             self.Move.create(destination=self.stock,
                              dt_execution=self.dt_test2,
                              state='done',
-                             input=self.goods)
+                             input=self.avatar)
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
-        self.assertEqual(exc.kwargs.get('record'), self.goods)
-        self.assertEqual(list(exc.kwargs.get('inputs')), [self.goods])
+        self.assertEqual(exc.kwargs.get('record'), self.avatar)
+        self.assertEqual(list(exc.kwargs.get('inputs')), [self.avatar])
 
     def test_missing_goods(self):
         # TODO should go to test_operation
-        self.goods.state = 'present'
+        self.avatar.state = 'present'
         with self.assertRaises(OperationMissingInputsError) as arc:
             self.Move.create(destination=self.stock,
                              dt_execution=self.dt_test2,
@@ -80,12 +80,12 @@ class TestSingleInputOperation(WmsTestCaseWithGoods):
         move = self.Move.create(destination=self.stock,
                                 dt_execution=self.dt_test2,
                                 state='planned',
-                                input=self.goods)
+                                input=self.avatar)
         self.assertEqual(move.follows, [self.arrival])
-        self.assertEqual(move.input, self.goods)
+        self.assertEqual(move.input, self.avatar)
         with self.assertRaises(OperationInputsError) as arc:
             move.execute()
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
-        self.assertEqual(list(exc.kwargs.get('inputs')), [self.goods])
-        self.assertEqual(exc.kwargs.get('record'), self.goods)
+        self.assertEqual(list(exc.kwargs.get('inputs')), [self.avatar])
+        self.assertEqual(exc.kwargs.get('record'), self.avatar)

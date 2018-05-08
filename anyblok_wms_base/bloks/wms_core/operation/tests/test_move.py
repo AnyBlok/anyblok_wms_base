@@ -17,8 +17,7 @@ class TestMove(WmsTestCaseWithGoods):
         Operation = Wms.Operation
         self.stock = Wms.Location.insert(label="Stock")
 
-        # avatars, actually
-        self.goods.dt_until = self.dt_test3
+        self.avatar.dt_until = self.dt_test3
         self.Move = Operation.Move
 
     def assertBackToBeginning(self):
@@ -34,14 +33,14 @@ class TestMove(WmsTestCaseWithGoods):
         move = self.Move.create(destination=self.stock,
                                 state='planned',
                                 dt_execution=self.dt_test2,
-                                input=self.goods)
+                                input=self.avatar)
         self.assertEqual(move.follows, [self.arrival])
-        self.assertEqual(move.input, self.goods)
-        self.goods.update(state='present')
+        self.assertEqual(move.input, self.avatar)
+        self.avatar.update(state='present')
 
         move.execute()
         self.assertEqual(move.state, 'done')
-        self.assertEqual(self.goods.reason, move)
+        self.assertEqual(self.avatar.reason, move)
 
         moved = self.assert_singleton(move.outcomes)
         self.assertEqual(moved.state, 'present')
@@ -52,11 +51,11 @@ class TestMove(WmsTestCaseWithGoods):
             self.Avatar.state != 'past').count(), 0)
 
     def test_whole_done(self):
-        self.goods.update(state='present')
+        self.avatar.update(state='present')
         move = self.Move.create(destination=self.stock,
                                 state='done',
                                 dt_execution=self.dt_test2,
-                                input=self.goods)
+                                input=self.avatar)
         self.assertEqual(move.follows, [self.arrival])
 
         after_move = move.outcomes[0]
@@ -68,10 +67,10 @@ class TestMove(WmsTestCaseWithGoods):
         self.assertEqual(not_moved.state, 'past')
 
     def test_whole_done_obliviate(self):
-        self.goods.state = 'present'
+        self.avatar.state = 'present'
         move = self.Move.create(destination=self.stock,
                                 state='done',
-                                input=self.goods)  # result already tested
+                                input=self.avatar)  # result already tested
         move.obliviate()
         self.assertBackToBeginning()
 
@@ -79,8 +78,8 @@ class TestMove(WmsTestCaseWithGoods):
         move = self.Move.create(destination=self.stock,
                                 dt_execution=self.dt_test2,
                                 state='planned',
-                                input=self.goods)
-        self.goods.update(state='present')
+                                input=self.avatar)
+        self.avatar.update(state='present')
         move.execute()  # result already tested
         move.obliviate()
         self.assertBackToBeginning()
