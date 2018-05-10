@@ -228,7 +228,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         # is necessary.
         packs = self.input
         goods_type = packs.goods.type
-        behaviour = goods_type.behaviours['unpack']
+        behaviour = goods_type.get_behaviour('unpack')
         specs = behaviour.get('outcomes', [])[:]
         if behaviour.get('uniform_outcomes', False):
             for outcome in specs:

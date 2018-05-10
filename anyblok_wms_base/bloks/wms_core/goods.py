@@ -186,7 +186,11 @@ class Type:
                  <anyblok_wms_base.bloks.wms_core.operation.unpack.Unpack>`
                  for a complex example.
 
-    The value is a key/value mapping.
+    The value is a key/value mapping (behaviour name/value).
+
+    .. warning:: direct read access to a behaviour is to be
+                 avoided in favour of :meth:`get_behaviour`
+                 (see :ref:`improvement_goods_type_hierarchy`).
 
     This field is also open for downstream libraries and applications to
     make use of it to define some of their specific logic, but care must be
@@ -201,16 +205,18 @@ class Type:
     def __repr__(self):
         return "Wms.Goods.Type" + str(self)
 
-    def get_behaviour(self, key, default=None):
-        """Get the value of the behaviour with given key.
+    def get_behaviour(self, name, default=None):
+        """Get the value of the behaviour with given name.
 
-        This is shortcut to avoid testing over and over if :attr:`behaviours`
-        is ``None``.
+        This method is the preferred way to access a given behaviour.
+        It performs all the needed resolutions and defaultings.
+        In particular, it takes care of the case where :attr:`behaviours` is
+        ``None`` as a whole.
         """
         behaviours = self.behaviours
         if behaviours is None:
             return default
-        return behaviours.get(key, default)
+        return behaviours.get(name, default)
 
 
 @register(Model.Wms.Goods)

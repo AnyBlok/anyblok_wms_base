@@ -102,6 +102,11 @@ If the application considers service products (such as consulting,
 extensions of warranty, etc.) besides products representing physical
 goods, those services would simply have no Goods Type counterparts.
 
+.. _goods_behaviours:
+
+Behaviours
+++++++++++
+
 In WMS Base, Goods Types have a ``behaviours`` flexible field that's
 used notably to encode the needed information for :ref:`Operations
 <operation>`. A typical example of this is the :ref:`op_unpack`

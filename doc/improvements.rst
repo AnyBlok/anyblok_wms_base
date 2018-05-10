@@ -311,6 +311,76 @@ Well, yeah, this page should be superseded. How ?
   Maybe that's too formal, but keeping somehow in the docs allows to
   cross-reference, like we did already in :ref:`goal_stubborn_reality`
 
+.. _improvement_goods_type_hierarchy:
+
+Goods Type hierarchy and behaviour inheritance
+----------------------------------------------
+
+Some applications will have many of :ref:`Goods Types <goods_type>`,
+which will be often mere variations of each other, for example clothes
+of different sizes.
+
+It is therefore natural to group them in one way or another, both for
+direct consideration by applicative code, and to allow mutualisation
+of configuration within WMS Base.
+
+Namely, we could make the :ref:`goods_type` Model hierarchical, by
+means of a ``parent`` field. This would bring the following
+possibilities:
+
+* Behaviour inheritance:
+    If a :ref:`behaviour <goods_behaviours>` is not found on a given
+    Goods Type, then it would be looked up recursively on its parent,
+    meaning that direct access to the ``behaviours`` field in applicative code
+    should be prohibited, in favour of the :meth:`get_behaviour()
+    <anyblok_wms_base.bloks.wms_core.goods.Type.get_behaviour>` method,
+    that would take care of the inheritance.
+
+    We could also allow *merging* of behaviours: a Goods Type could
+    for instance inherit the ``unpack`` behaviour from its parent,
+    changing only the ``required_properties`` key/value pair. Nested
+    mapping merging is rather simple. Merging lists would be more
+    complicated to specify.
+* Generic reference:
+    In some cases, it'd be interesting to specify an intermediate node
+    in the :ref:`goods_type` hierarchy rather than the most precise
+    one. This could be useful for instance in Assembly Operations.
+* (needs more thinking) Specialization:
+    Help resolve the hard choices between :ref:`goods_type` and
+    :ref:`goods_properties` by providing a way to convert the Type of
+    some Goods to a more precise one according to its Properties.
+
+    The interesting thing is that this could be done without any
+    change in the ``id`` of the Goods, which is how we decided to
+    represent that the physical object itelf is unchanged: only our way
+    to consider has actually changed.
+
+    This has the drawback that a given Goods record could be
+    represented in several ways, and that is definitely not sane. Some
+    logic, such as quantity queries, could be aware of it at a high
+    complexity price. Perhaps the good way to do it would be to make
+    it transparent:
+
+    + define some Property to encode the specialization of a Goods
+      Type relative to its parent.
+    + have the :meth:`set_property()
+      <anyblok_wms_base.bloks.wms_core.goods.Goods.set_property>` method
+      set the proper Goods Type automatically on changes of that
+      Property.
+    * have the :meth:`get_property()
+      <anyblok_wms_base.bloks.wms_core.goods.Goods.get_property>` method
+      return the proper value for that Property, inferred from the
+      actual Goods Type
+
+    This transparency would also simplify configuration of Assembly
+    Operations when faced with generic types: no need for even more
+    complex configuration to decide on the final Goods Type, just
+    treat it like any other Property.
+
+    Also, it would help refactoring applications that would start by
+    considering a parameter to be a simple Property, and later on
+    recognize that they need to represent it as a full Goods Type.
+
 
 Implemented
 ~~~~~~~~~~~
