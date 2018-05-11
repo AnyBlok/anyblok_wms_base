@@ -112,6 +112,22 @@ class Goods:
 
         return self.properties.get(k, default)
 
+    def _maybe_duplicate_props(self):
+        """Internal method to duplicate Properties
+
+        Duplication occurs iff there are other Goods with the same
+        Properties instance.
+
+        The caller must have already checked that ``self.properties`` is not
+        ``None``.
+        """
+        cls = self.__class__
+        existing = self.properties
+        if cls.query(cls.id).filter(
+                cls.properties == existing,
+                cls.id != self.id).limit(1).count():
+            self.properties = existing.duplicate()
+
     def set_property(self, k, v):
         """Property setter.
 
@@ -126,12 +142,39 @@ class Goods:
             self.properties = self.registry.Wms.Goods.Properties(
                 flexible=dict())
         elif existing_props.get(k) != v:
-            cls = self.__class__
-            if cls.query(cls.id).filter(
-                    cls.properties == existing_props,
-                    cls.id != self.id).limit(1).count():
-                self.properties = existing_props.duplicate()
+            self._maybe_duplicate_props()
         self.properties.set(k, v)
+
+    def update_properties(self, mapping):
+        """Update Properties in one shot, similar to :meth:`dict.update`
+
+        :param mapping: a :class:`dict` like object, or an iterable of
+                        (key, value) pairs
+        This method implements a simple Copy-on-Write mechanism. Namely,
+        if the properties are referenced by other Goods records, it
+        will duplicate them before actually setting the wished value.
+        """
+        items_meth = getattr(mapping, 'items', None)
+        if items_meth is None:
+            items = mapping
+        else:
+            items = mapping.items()
+
+        existing_props = self.properties
+        if existing_props is None:
+            self.properties = self.registry.Wms.Goods.Properties.create(
+                **{k: v for k, v in items})
+            return
+
+        actual_upd = []
+        for k, v in items:
+            if existing_props.get(k, _missing) != v:
+                actual_upd.append((k, v))
+        if not actual_upd:
+            return
+
+        self._maybe_duplicate_props()
+        self.properties.update(actual_upd)
 
     def has_property(self, name):
         """Check if a Property with given name is present."""

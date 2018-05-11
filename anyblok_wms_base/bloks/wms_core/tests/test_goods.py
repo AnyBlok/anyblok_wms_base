@@ -49,6 +49,13 @@ class TestGoods(WmsTestCase):
         self.assertTrue(goods.has_properties(['foo', 'bar']))
         self.assertTrue(goods.has_property_values(dict(foo=1, bar=2)))
 
+        goods.update_properties([('foo', 'x'), ('bar', 'y'), ('spam', 'eggs')])
+        self.assertEqual(goods.properties.as_dict(),
+                         dict(batch=None, foo='x', bar='y', spam='eggs'))
+        goods.update_properties(dict(batch=3, spam='no'))
+        self.assertEqual(goods.properties.as_dict(),
+                         dict(batch=3, foo='x', bar='y', spam='no'))
+
     def test_str(self):
         gt = self.goods_type
         goods = self.Goods.insert(type=gt)
@@ -100,6 +107,43 @@ class TestGoods(WmsTestCase):
         goods2.set_property('batch', '6789')
         self.assertEqual(goods.get_property('batch'), '12345')
         self.assertEqual(goods2.get_property('batch'), '6789')
+
+    def test_prop_api_duplication_not_needed(self):
+        goods = self.Goods.insert(type=self.goods_type)
+
+        goods.set_property('batch', '12345')
+        self.assertEqual(goods.get_property('batch'), '12345')
+
+        goods2 = self.Goods.insert(type=self.goods_type,
+                                   properties=goods.properties)
+        goods2.set_property('batch', '12345')
+        self.assertEqual(goods.properties, goods2.properties)
+
+    def test_prop_api_update_duplication(self):
+        goods = self.Goods.insert(type=self.goods_type)
+
+        # this tests in particular the case with no Properties to begin
+        # with
+        goods.update_properties(dict(foo=3, bar='xy'))
+        self.assertIsNotNone(goods.properties)
+        self.assertEqual(goods.properties.as_dict(),
+                         dict(foo=3, batch=None, bar='xy'))
+
+        goods2 = self.Goods.insert(type=self.goods_type,
+                                   properties=goods.properties)
+        goods2.update_properties(dict(foo=4))
+        self.assertNotEqual(goods.properties, goods2.properties)
+        self.assertEqual(goods2.get_property('foo'), 4)
+
+    def test_prop_api_update_duplication_not_needed(self):
+        goods = self.Goods.insert(type=self.goods_type)
+        upd = dict(foo=3, bar='xy')
+        goods.update_properties(upd)
+
+        goods2 = self.Goods.insert(type=self.goods_type,
+                                   properties=goods.properties)
+        goods2.update_properties(upd)
+        self.assertEqual(goods.properties, goods2.properties)
 
     def test_prop_api_reserved_property_names(self):
         goods = self.Goods.insert(type=self.goods_type)
