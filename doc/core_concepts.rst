@@ -63,11 +63,6 @@ configurable way, according to the :ref:`goods_type` behaviours.
 For a very simple example, see :ref:`op_arrival`, for a less trivial
 one, see :ref:`op_unpack`.
 
-For the time being, records of goods also have quantities that
-represent either a physical measure, or a number of physical items that are
-completely identical (including properties), but see
-:ref:`improvement_no_quantities`.
-
 .. _goods_type:
 
 Goods Type
@@ -131,25 +126,57 @@ While it's necessary to categorize the Goods as we've done with Goods
 Types, there is some variability to represent for Goods of the same
 Type. After all, they are different concrete objects.
 
-One of the first goal of Goods Properties is to provide the means to
-implement the wished traceability features : serial numbers,
-production batches of the Goods or of their critical parts…
+Goods Properties allow to store and retrieve any information on a
+given Goods Record, and behave mostly like a Python
+:class:`dict`. They have to be handled through a dedicated API, though.
 
-As usual, WMS Base doesn't impose anything on property values.
+Typical examples
+++++++++++++++++
+
+* traceability features: serial numbers, production batches of the
+  Goods or of their critical parts…
+* for generic parcels, contents, weight…
+* customisations: engraving etc.
+* assessments: quality control results, etc.
+* anything that varies so wildly that in practice almost all Goods
+  have different values.
+
+Properties semantics
+++++++++++++++++++++
+
+As usual, WMS Base doesn't impose anything on Property values, except
+for a few predefined Properties that are meaningful for some Operations.
+
 Some :ref:`Operations <operation>`, such as :ref:`op_move`, won't
 touch properties at all, while some other, such as :ref:`op_unpack`
-will manipulate them, according to behaviours on the :ref:`goods_type`.
+will manipulate them, according to behaviours on the appropriate
+:ref:`goods_type`.
+
+Properties vs Type
+++++++++++++++++++
 
 There's a fine line between what should be encoded as Properties, and
 what should be deduced from the :ref:`goods_type`. For an example of
 this, imagine that the application cares about the weight of the
 Goods: in many cases, that depends only on the Goods Type, but in some
-other it might actually be different among Goods of the same Type.
+others, it might actually be different among Goods of the same Type.
 
-The Properties model can be enriched to make true Anyblok fields out
-of some properties (typically ending up as columns in the database),
+That being said, there are currently plans to make the Type
+information partly recoverable from Properties, that could help
+changing this distinction over an application lifetime, see
+:ref:`improvement_goods_type_hierarchy`.
+
+Database Schema
++++++++++++++++
+
+The default storage of a given Property is within the
+``flexible`` JSON field, but the Properties Model can also be enriched
+to make true Anyblok fields out
+of some Properties (typically ending up as columns in the database),
 which can improve querying capabilities, and make for an easier and
-safer programming experience.
+safer programming experience. This can be done without almost any
+change in the application code, provided it uses the Property API rather
+than direct access.
 
 .. _goods_avatar:
 
