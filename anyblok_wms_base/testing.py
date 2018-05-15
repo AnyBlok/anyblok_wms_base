@@ -54,6 +54,21 @@ class WmsTestCase(BlokTestCase):
         for elt in collection:
             return elt
 
+    def sorted_props(self, record):
+        """Extract Goods Properties, as a sorted tuple.
+
+        :param record: either a Wms.Goods or Wms.Goods.Avatar instance
+        The tuple is hashable, and sorting it removes randomness
+        """
+        model = record.__registry_name__
+        if model == 'Model.Wms.Goods.Avatar':
+            goods = record.goods
+        elif model == 'Model.Wms.Goods':
+            goods = record
+        else:
+            self.fail("%r is neither a Goods nor an Avatar instance" % record)
+        return tuple(sorted(goods.properties.as_dict().items()))
+
 
 class WmsTestCaseWithGoods(WmsTestCase):
     """Same as WmsTestCase with a prebaked Goods and Avatar.

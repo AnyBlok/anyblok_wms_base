@@ -63,6 +63,11 @@ configurable way, according to the :ref:`goods_type` behaviours.
 For a very simple example, see :ref:`op_arrival`, for a less trivial
 one, see :ref:`op_unpack`.
 
+For the time being, records of goods also have quantities that
+represent either a physical measure, or a number of physical items that are
+completely identical (including properties), but see
+:ref:`improvement_no_quantities`.
+
 .. _goods_type:
 
 Goods Type
@@ -126,57 +131,25 @@ While it's necessary to categorize the Goods as we've done with Goods
 Types, there is some variability to represent for Goods of the same
 Type. After all, they are different concrete objects.
 
-Goods Properties allow to store and retrieve any information on a
-given Goods Record, and behave mostly like a Python
-:class:`dict`. They have to be handled through a dedicated API, though.
+One of the first goal of Goods Properties is to provide the means to
+implement the wished traceability features : serial numbers,
+production batches of the Goods or of their critical parts…
 
-Typical examples
-++++++++++++++++
-
-* traceability features: serial numbers, production batches of the
-  Goods or of their critical parts…
-* for generic parcels, contents, weight…
-* customisations: engraving etc.
-* assessments: quality control results, etc.
-* anything that varies so wildly that in practice almost all Goods
-  have different values.
-
-Properties semantics
-++++++++++++++++++++
-
-As usual, WMS Base doesn't impose anything on Property values, except
-for a few predefined Properties that are meaningful for some Operations.
-
+As usual, WMS Base doesn't impose anything on property values.
 Some :ref:`Operations <operation>`, such as :ref:`op_move`, won't
 touch properties at all, while some other, such as :ref:`op_unpack`
-will manipulate them, according to behaviours on the appropriate
-:ref:`goods_type`.
-
-Properties vs Type
-++++++++++++++++++
+will manipulate them, according to behaviours on the :ref:`goods_type`.
 
 There's a fine line between what should be encoded as Properties, and
 what should be deduced from the :ref:`goods_type`. For an example of
 this, imagine that the application cares about the weight of the
 Goods: in many cases, that depends only on the Goods Type, but in some
-others, it might actually be different among Goods of the same Type.
+other it might actually be different among Goods of the same Type.
 
-That being said, there are currently plans to make the Type
-information partly recoverable from Properties, that could help
-changing this distinction over an application lifetime, see
-:ref:`improvement_goods_type_hierarchy`.
-
-Database Schema
-+++++++++++++++
-
-The default storage of a given Property is within the
-``flexible`` JSON field, but the Properties Model can also be enriched
-to make true Anyblok fields out
-of some Properties (typically ending up as columns in the database),
+The Properties model can be enriched to make true Anyblok fields out
+of some properties (typically ending up as columns in the database),
 which can improve querying capabilities, and make for an easier and
-safer programming experience. This can be done without almost any
-change in the application code, provided it uses the Property API rather
-than direct access.
+safer programming experience.
 
 .. _goods_avatar:
 
@@ -484,11 +457,46 @@ packs being considered or a bit of both. See the documentation of
 <anyblok_wms_base.bloks.wms_core.operation.unpack.Unpack.get_outcome_specs>`
 for a full discussion with concrete use cases.
 
-Since Unpacks are destructive operations in reality,
-they are currently irreversible in the sense of
-:ref:`op_cancel_revert_obliviate`, but will be conditionally
-reversible once we have the converse Pack (or the more general Assembly)
-Operation, maybe consuming some other Goods for packaging (cardboard,
-pallet wood). Again, this will be controled by behaviours.
+Unpacks can be reverted by an :ref:`op_assembly` of the proper name
+(by default, ``'pack'``), provided that no extra input Goods are to be
+consumed by the Assembly.
 
+This means that either
 
+* the wrapping is not been tracked in the system
+* the wrapping is tracked, is among the outcomes of the Unpack and can
+  be reused.
+
+.. _op_assembly:
+
+Assembly
+--------
+
+.. note:: This is an overview, see :class:`the code documentation
+          <anyblok_wms_base.bloks.wms_core.operation.assembly.Assembly>`
+          for more details.
+
+Packing and simple manufacturing needs are covered by the Assembly
+Operations : several inputs are consumed to produce a single outcome.
+
+Assemblies have an outcome :ref:`goods_type`, and a name, so that a given
+:ref:`Type <goods_type>` can be assembled in different ways.
+
+The inputs of the Assembly and how to build :ref:`Properties
+<goods_properties>` on
+the outcome are specified within the ``assembly`` behaviour of the
+outcome Goods Type, using the given name as key.
+
+The outcome :ref:`Properties <goods_properties>` can be created by the
+Assembly or forwarded from the inputs with simple rules. There are also
+hooks for applications to implement more complex cases.
+
+There are various rules to match the inputs by their
+:ref:`Type <goods_type>` and :ref:`Properties <goods_properties>`.
+They are useful for checking purposes, as well as to give fine
+control over the forwarding of :ref:`Properties <goods_properties>`.
+Assemblies can have variable inputs, depending on a specification parameter.
+
+Assemblies can be reverted by :ref:`op_unpack`, if the outcome
+:ref:`Type <goods_type>` supports them. In some cases, the
+:ref:`op_unpack` will be able to reuse the input :ref:`Goods <goods_goods>`.

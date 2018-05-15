@@ -367,7 +367,7 @@ possibilities:
       <anyblok_wms_base.bloks.wms_core.goods.Goods.set_property>` method
       set the proper Goods Type automatically on changes of that
       Property.
-    * have the :meth:`get_property()
+    + have the :meth:`get_property()
       <anyblok_wms_base.bloks.wms_core.goods.Goods.get_property>` method
       return the proper value for that Property, inferred from the
       actual Goods Type

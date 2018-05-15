@@ -24,7 +24,7 @@ class TestUnpack(WmsTestCase):
 
         self.stock = Wms.Location.insert(label="Stock")
 
-    def create_packs(self, type_behaviours=None, properties=None):
+    def create_packs(self, type_behaviours=None, properties=None, quantity=5):
         self.packed_goods_type = self.Goods.Type.insert(
             label="Pack",
             behaviours=type_behaviours)
@@ -34,7 +34,7 @@ class TestUnpack(WmsTestCase):
             dt_execution=self.dt_test1,
             goods_properties=properties,
             state='planned',
-            quantity=5)
+            quantity=quantity)
 
         self.packs = self.assert_singleton(self.arrival.outcomes)
 
@@ -171,6 +171,86 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(unpacked_goods.type, unpacked_type)
         self.assertEqual(unpacked_goods.get_property('foo'), 3)
         self.assertEqual(unpacked_goods.get_property('baz'), 'second hand')
+
+    def test_whole_done_non_uniform_local_id(self):
+        """Unpack with local_goods_ids in pack properties
+
+        Properties after unpack are forwarded according to configuration
+        on the packs' Goods Type and on the packs' properties.
+        """
+        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        existing = self.Goods.insert(type=unpacked_type, quantity=2)
+        existing.set_property('grade', 'best')
+        self.create_packs(
+            quantity=1,
+            type_behaviours=dict(unpack=dict(
+                forward_properties=['foo'],
+                required_properties=['foo'],
+            )),
+            properties=dict(foo=3,
+                            baz='yes',
+                            unpack_outcomes=[
+                                dict(type=unpacked_type.id,
+                                     quantity=2,
+                                     local_goods_ids=[existing.id],
+                                     forward_properties=['bar', 'baz']
+                                     )
+                            ]))
+        self.packs.update(state='present')
+        unp = self.Unpack.create(quantity=1,
+                                 state='done',
+                                 dt_execution=self.dt_test2,
+                                 input=self.packs)
+        self.assertEqual(unp.follows, [self.arrival])
+
+        unpacked_goods = self.single_result(
+            self.Goods.query().filter(self.Goods.type == unpacked_type))
+
+        self.assertEqual(unpacked_goods, existing)
+        self.assertEqual(unpacked_goods.quantity, 2)
+        self.assertEqual(unpacked_goods.type, unpacked_type)
+        self.assertEqual(unpacked_goods.get_property('foo'), 3)
+        self.assertEqual(unpacked_goods.get_property('baz'), 'yes')
+        self.assertEqual(unpacked_goods.get_property('grade'), 'best')
+
+    def test_local_id_several_wrong(self):
+        """Unpack with outcomes defined in pack properties, wrong quantity
+
+        Properties after unpack are forwarded according to configuration
+        on the packs' Goods Type and on the packs' properties.
+        """
+        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        existing = self.Goods.insert(type=unpacked_type, quantity=2)
+        existing.set_property('grade', 'best')
+        self.create_packs(
+            quantity=2,
+            type_behaviours=dict(unpack=dict(
+                forward_properties=['foo'],
+                required_properties=['foo'],
+            )),
+            properties=dict(foo=3,
+                            baz='yes',
+                            unpack_outcomes=[
+                                dict(type=unpacked_type.id,
+                                     quantity=2,
+                                     local_goods_ids=[existing.id],
+                                     forward_properties=['bar', 'baz']
+                                     )
+                            ]))
+        self.packs.update(state='present')
+        with self.assertRaises(OperationInputsError) as arc:
+            self.Unpack.create(quantity=2,
+                               state='done',
+                               dt_execution=self.dt_test2,
+                               input=self.packs)
+        exckw = arc.exception.kwargs
+        self.assertEqual(exckw.get('target_qty'), 4)
+        self.assertEqual(exckw.get('spec'),
+                         dict(type=unpacked_type.id,
+                              quantity=2,
+                              local_goods_ids=[existing.id],
+                              forward_properties=['bar', 'baz', 'foo'],
+                              required_properties=['foo']))
 
     def test_whole_done_one_unpacked_type_missing_props(self):
         unpacked_type = self.Goods.Type.insert(label="Unpacked")

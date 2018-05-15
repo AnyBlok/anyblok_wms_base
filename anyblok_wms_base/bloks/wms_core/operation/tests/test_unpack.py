@@ -16,7 +16,7 @@ class TestUnpack(WmsTestCase):
 
     def setUp(self):
         super(TestUnpack, self).setUp()
-        Wms = self.registry.Wms
+        Wms = self.Wms = self.registry.Wms
         self.Operation = Operation = Wms.Operation
         self.Unpack = Operation.Unpack
         self.Goods = Wms.Goods
@@ -151,6 +151,10 @@ class TestUnpack(WmsTestCase):
                             unpack_outcomes=[
                                 dict(type=unpacked_type.id,
                                      quantity=2,
+                                     properties=dict(direct='hop',
+                                                     foo='will be overridden',
+                                                     baz='will be overridden',
+                                                     ),
                                      forward_properties=['bar', 'baz']
                                      )
                             ]))
@@ -162,8 +166,96 @@ class TestUnpack(WmsTestCase):
 
         for unpacked_goods in self.assert_goods_records(2, unpacked_type):
             self.assertEqual(unpacked_goods.type, unpacked_type)
+            self.assertEqual(unpacked_goods.get_property('direct'), 'hop')
             self.assertEqual(unpacked_goods.get_property('foo'), 3)
             self.assertEqual(unpacked_goods.get_property('baz'), 'second hand')
+
+    def test_done_non_uniform_local_id(self):
+        """Unpack with local_goods_ids in pack properties.
+
+        The unpacked Goods are directly picked by the specified values of
+        ``local_goods_ids``.
+
+        Properties after unpack are still forwarded according to configuration
+        on the packs' Goods Type and on the packs' properties.
+        """
+        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        outcome1 = self.Goods.insert(type=unpacked_type)
+        outcome1.set_property('grade', 'best')
+        outcome2 = self.Goods.insert(type=unpacked_type)
+        outcome2.set_property('grade', 'regular')
+
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(
+                forward_properties=['foo', 'bar'],
+                required_properties=['foo'],
+            )),
+            properties=dict(foo=3,
+                            bar='yes',
+                            unpack_outcomes=[
+                                dict(type=unpacked_type.id,
+                                     quantity=1,
+                                     local_goods_ids=[outcome1.id],
+                                     properties=dict(direct='ignored'),
+                                     forward_properties=['bar']
+                                     ),
+                                dict(type=unpacked_type.id,
+                                     quantity=1,
+                                     local_goods_ids=[outcome2.id],
+                                     properties=dict(direct='ignored'),
+                                     forward_properties=['bar']
+                                     )
+                            ]))
+        self.packs.update(state='present')
+        unp = self.Unpack.create(state='done',
+                                 dt_execution=self.dt_test2,
+                                 input=self.packs)
+        self.assertEqual(unp.follows, [self.arrival])
+
+        unpacked_goods = self.assert_goods_records(2, unpacked_type)
+        self.assertEqual(
+            set((g, g.get_property('grade')) for g in unpacked_goods),
+            set(((outcome1, 'best'), (outcome2, 'regular'))))
+        for unpacked in unpacked_goods:
+            self.assertEqual(unpacked.type, unpacked_type)
+            self.assertIsNone(unpacked.get_property('direct'))
+            self.assertEqual(unpacked.get_property('foo'), 3)
+            self.assertEqual(unpacked.get_property('bar'), 'yes')
+
+    def test_done_non_uniform_local_id_wrong_qty(self):
+        """Unpack with local_goods_ids in pack properties, wrong quantity
+        """
+        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        outcome1 = self.Goods.insert(type=unpacked_type)
+
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(
+                required_properties=['foo'],
+                forward_properties=['foo'],
+            )),
+            properties=dict(foo=3,
+                            bar='yes',
+                            unpack_outcomes=[
+                                dict(type=unpacked_type.id,
+                                     quantity=2,
+                                     local_goods_ids=[outcome1.id],
+                                     ),
+                            ]))
+        self.packs.update(state='present')
+
+        with self.assertRaises(OperationInputsError) as arc:
+            self.Unpack.create(state='done',
+                               dt_execution=self.dt_test2,
+                               input=self.packs)
+
+        exckw = arc.exception.kwargs
+        self.assertEqual(exckw.get('target_qty'), 2)
+        self.assertEqual(exckw.get('spec'),
+                         dict(type=unpacked_type.id,
+                              quantity=2,
+                              local_goods_ids=[outcome1.id],
+                              forward_properties=['foo'],
+                              required_properties=['foo']))
 
     def test_done_one_unpacked_type_missing_props(self):
         unpacked_type = self.Goods.Type.insert(label="Unpacked")
@@ -344,6 +436,128 @@ class TestUnpack(WmsTestCase):
                                  dt_execution=self.dt_test2)
         repr(unp)
         str(unp)
+
+    def test_assembly_name_no_behaviour(self):
+        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(
+                uniform_outcomes=True,
+                outcomes=[
+                    dict(type=unpacked_type.id,
+                         quantity=1,
+                         ),
+                ]),
+            ),
+            properties={})
+        unp = self.Unpack.create(state='planned', input=self.packs,
+                                 dt_execution=self.dt_test2)
+
+        del self.packed_goods_type.behaviours['unpack']
+        self.assertEqual(unp.reverse_assembly_name(), 'pack')
+
+    def test_revert_default_assembly_final(self):
+        unpacked_type = self.Goods.Type.insert(label="Unpacked", code="GT")
+        self.create_packs(
+            type_behaviours=dict(
+                unpack=dict(
+                    uniform_outcomes=True,
+                    outcomes=[dict(type=unpacked_type.id,
+                                   quantity=2),
+                              ]),
+                assembly=dict(
+                    pack=dict(
+                        inputs=[dict(type=unpacked_type.code,
+                                     quantity=2)]
+                    ),
+                )
+            ),
+            properties={}
+        )
+        self.packs.state = 'present'
+        unp = self.Unpack.create(state='done',
+                                 dt_execution=self.dt_test2,
+                                 input=self.packs)
+        self.assertTrue(unp.is_reversible())
+        assembly, _ = unp.plan_revert()
+        assembly.execute()
+
+        quantity = self.Wms.quantity
+        self.assertEqual(quantity(goods_type=unpacked_type), 0)
+        self.assertEqual(quantity(goods_type=self.packed_goods_type), 1)
+
+    def test_revert_default_assembly_not_final(self):
+        unpacked_type = self.Goods.Type.insert(label="Unpacked", code="GT")
+        self.create_packs(
+            type_behaviours=dict(
+                unpack=dict(
+                    uniform_outcomes=True,
+                    outcomes=[dict(type=unpacked_type.id,
+                                   quantity=2),
+                              ]),
+                assembly=dict(
+                    pack=dict(
+                        inputs=[dict(type=unpacked_type.code,
+                                     quantity=2)]
+                    ),
+                )
+            ),
+            properties={}
+        )
+        self.packs.state = 'present'
+        unp = self.Unpack.create(state='done',
+                                 dt_execution=self.dt_test2,
+                                 input=self.packs)
+        self.assertEqual(len(unp.outcomes), 2)  # just a reminder
+        other_loc = self.Wms.Location.insert(code='other')
+        first_outcome = unp.outcomes[0]
+        self.Operation.Move.create(state='done',
+                                   input=first_outcome,
+                                   destination=other_loc)
+
+        self.assertTrue(unp.is_reversible())
+        assembly, _ = unp.plan_revert()
+        self.assertEqual(len(assembly.follows), 2)
+        move_back = self.assert_singleton(
+            [op for op in assembly.follows if op != unp])
+        self.assertIsInstance(move_back, self.Operation.Move)
+        move_back.execute()
+        assembly.execute()
+
+        quantity = self.Wms.quantity
+        self.assertEqual(quantity(goods_type=unpacked_type), 0)
+        self.assertEqual(quantity(goods_type=self.packed_goods_type), 1)
+
+    def test_revert_specified_assembly(self):
+        unpacked_type = self.Goods.Type.insert(label="Unpacked", code='PCK')
+        self.create_packs(
+            type_behaviours=dict(
+                unpack=dict(
+                    uniform_outcomes=True,
+                    reverse_assembly='bolt',
+                    outcomes=[dict(type=unpacked_type.id,
+                                   quantity=2),
+                              ]),
+                assembly=dict(
+                    bolt=dict(
+                        inputs=[dict(type=unpacked_type.code,
+                                     quantity=2)],
+                    )
+                ),
+            ),
+            properties={}
+        )
+        unp = self.Unpack.create(state='planned',
+                                 dt_execution=self.dt_test2,
+                                 input=self.packs)
+        self.assertTrue(unp.is_reversible())
+
+        del self.packs.goods.type.behaviours['assembly']['bolt']
+        self.assertFalse(unp.is_reversible())
+
+        del self.packs.goods.type.behaviours['assembly']
+        self.assertFalse(unp.is_reversible())
+        # and that's enough testing: once the name is properly resolved
+        # it works the same as in the default name case.
 
     def test_cancel(self):
         """Plan an Unpack (uniform scenario), then cancel it

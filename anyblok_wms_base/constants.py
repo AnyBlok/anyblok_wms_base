@@ -60,7 +60,7 @@ OPERATION_TYPES = dict(wms_move="wms_op_types_move",
                        wms_split="wms_op_types_split",
                        wms_aggregate="wms_op_types_aggregate",
                        wms_unpack="wms_op_types_unpack",
-                       wms_pack="wms_op_types_pack",
+                       wms_assembly="wms_op_types_assembly",
                        wms_arrival="wms_op_types_arrival",
                        wms_departure="wms_op_types_departure",
                        )
@@ -81,4 +81,12 @@ DATE_TIME_INFINITY = object()
 For instance, if a method is used to query Avatars for a given date, using
 this marker in the interface is more explicit than using None (which could
 also mean one does not care about dates).
+"""
+
+
+DEFAULT_ASSEMBLY_NAME = 'default'
+"""The default name to use for assemblies.
+
+See :class:`Wms.Operation.Assembly
+<anyblok_wms_base.bloks.wms_core.operation.assembly>` for more detail.
 """
