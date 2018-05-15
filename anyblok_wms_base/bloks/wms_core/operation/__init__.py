@@ -15,3 +15,4 @@ from . import arrival
 from . import departure
 from . import move
 from . import unpack
+from . import assembly

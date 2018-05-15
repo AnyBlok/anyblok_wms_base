@@ -106,3 +106,94 @@ class OperationIrreversibleError(OperationError):
 class OperationGoodsReserved(OperationError):
     """Used if an Operation tries and work on some reserved Goods in a
     txn that doesn't own the reservation."""
+
+
+class AssemblyInputNotMatched(OperationInputsError):
+
+    def __init__(self, op_model_or_record, spec_item,
+                 prelude=None, fmt=None, **kwargs):
+        """Initialisation.
+
+        :param spec_item: the pair made of the item in inputs specification that
+                          hasn't been matched and its index (first is 0).
+        """
+        spec_detail, spec_index = spec_item
+
+        if fmt is None:
+            if prelude is None:
+                prelude = "In {operation}"
+            fmt = prelude + (", could not satisfy inputs specification item "
+                             "#{spec_nr} {spec_detail} "
+                             "(after previous ones have been applied)")
+        OperationInputsError.__init__(
+            self, op_model_or_record, fmt,
+            spec_index=spec_index,
+            spec_nr=spec_index + 1,
+            spec_detail=spec_detail,
+            **kwargs)
+
+
+class AssemblyPropertyConflict(OperationInputsError):
+
+    def __init__(self, op, spec_item, prop, existing, candidate,
+                 prelude=None, fmt=None, **kwargs):
+        """Initialisation.
+
+        :param spec_item: the pair made of the item in inputs specification that
+                          hasn't been matched and its index (first is 0).
+        """
+        spec_index, spec_detail = spec_item
+
+        fmt = ("{operation}, inconsistent properties. "
+               "Input specification item #{spec_nr} {spec_detail} "
+               "would override the already set value "
+               "{existing!r} of Property {prop!r} "
+               "with {candidate!r}")
+        OperationInputsError.__init__(
+            self, op, fmt,
+            spec_index=spec_index,
+            prop=prop,
+            candidate=candidate,
+            existing=existing,
+            spec_nr=spec_index + 1,
+            spec_detail=spec_detail,
+            **kwargs)
+
+
+class AssemblyExtraInputs(OperationInputsError):
+
+    def __init__(self, op, extra,
+                 prelude=None, fmt=None, **kwargs):
+        """Initialisation.
+
+        :param spec_item: the pair made of the item in inputs specification that
+                          hasn't been matched and its index (first is 0).
+        """
+        if fmt is None:
+            if prelude is None:
+                prelude = "In {operation}"
+            fmt = prelude + (", extra inputs {extra!r} after all required "
+                             "ones have been found, but this is not allowed "
+                             "in behaviour for Assembly {op_name!r}")
+        OperationInputsError.__init__(self, op, fmt,
+                                      op_name=op.name,
+                                      extra=extra,
+                                      **kwargs)
+
+
+class UnknownExpressionType(OperationError):
+
+    def __init__(self, op, etype, evalue,
+                 prelude=None, fmt=None, **kwargs):
+        """Initialisation.
+
+        :param spec_item: the pair made of the item in inputs specification that
+                          hasn't been matched and its index (first is 0).
+        """
+        if fmt is None:
+            if prelude is None:
+                prelude = "In {operation}"
+            fmt = prelude + (", unknown expression type {expr_type} "
+                             "(value was {expr_value})")
+        OperationError.__init__(self, op, fmt,
+                                expr_type=etype, expr_value=evalue)

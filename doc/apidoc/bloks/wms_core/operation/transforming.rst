@@ -69,3 +69,38 @@ This Operation Model inherits from :class:`Mixin.WmsSingleInput
    .. automethod:: after_insert
    .. automethod:: execute_planned
 
+
+Model.Wms.Operation.Assembly
+----------------------------
+
+.. py:currentmodule:: anyblok_wms_base.bloks.wms_core.operation.assembly
+
+.. autoclass:: anyblok_wms_base.bloks.wms_core.operation.assembly.Assembly
+
+   .. raw:: html
+
+      <h3>Fields and their semantics</h3>
+
+   .. autoattribute:: id
+   .. autoattribute:: outcome_type
+   .. autoattribute:: name
+
+   .. raw:: html
+
+      <h3>Specific members</h3>
+
+   .. autoattribute:: specification
+   .. autoattribute:: DEFAULT_FOR_UNPACK_OUTCOMES
+   .. automethod:: build_outcome_properties
+   .. automethod:: eval_typed_expr
+   .. automethod:: eval_spec_exprs
+   .. automethod:: specific_build_outcome_properties
+   .. autoattribute:: props_hook_fmt
+
+   .. raw:: html
+
+      <h3>Mandatory methods of Operation subclasses</h3>
+
+   .. automethod:: check_create_conditions
+   .. automethod:: after_insert
+   .. automethod:: execute_planned

@@ -304,3 +304,54 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
             avatar.delete()
         for goods in all_goods:
             goods.delete()
+
+    def reverse_assembly_name(self):
+        """Return the name of Assembly that can revert this Unpack."""
+        behaviour = self.input.goods.type.get_behaviour('unpack')
+        default = 'pack'
+        if behaviour is None:
+            return default  # probably not useful, but that's consistent
+        return behaviour.get('reverse_assembly', default)
+
+    def is_reversible(self):
+        """Unpack can be reversed by an Assembly.
+
+        The exact criterion is that Unpack can be reversed, if there exists
+        an :class:`Assembly <anyblok_wms_base.bloks.core.operation.assembly`
+        whose name is given by the ``reverse_assembly`` key in the behaviour,
+        with a default: ``'pack'``
+        """
+        gt = self.input.goods.type
+        # TODO define a has_behaviour() API on goods_type
+        ass_beh = gt.get_behaviour('assembly')
+        if ass_beh is None:
+            return False
+        return self.reverse_assembly_name() in ass_beh
+
+    def plan_revert_single(self, dt_execution, follows=()):
+        """Plan reversal
+
+        Currently, there is no way to specify extra inputs to be consumed
+        by the reverse Assembly. As a consequence, Unpack reversal is only
+        meaningful in the following cases:
+
+        * wrapping material is not tracked in the system at all
+        * wrapping material is tracked, and is not destroyed by the Unpack,
+          so that it is both one of the Unpack outcomes, and one of the
+          packing Assembly inputs.
+
+        Also, currently the Assembly will have to take place exactly where the
+        Unpack took place. This may not fit some concrete work organizations
+        in warehouses.
+        """
+        pack_inputs = [out for op in follows for out in op.outcomes]
+        # self.outcomes has actually only those outcomes that aren't inputs
+        # of downstream operations
+        # TODO maybe change that and create a new method instead
+        # for API clarity
+        pack_inputs.extend(self.outcomes)
+        return self.registry.Wms.Operation.Assembly.create(
+            outcome_type=self.input.goods.type,
+            dt_execution=dt_execution,
+            name=self.reverse_assembly_name(),
+            inputs=pack_inputs)
