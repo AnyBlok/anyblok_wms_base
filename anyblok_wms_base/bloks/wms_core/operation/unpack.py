@@ -48,6 +48,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
     @classmethod
     def check_create_conditions(cls, state, dt_execution,
                                 inputs=None, quantity=None, **kwargs):
+        # TODO quantity is now irrelevant in wms-core
         super(Unpack, cls).check_create_conditions(
             state, dt_execution, inputs=inputs,
             quantity=quantity,
@@ -80,13 +81,29 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
                        but the point is that they are outside the
                        responsibility of this method.
         :param spec: specification for these Goods, should be used minimally
-                     in subclasses, typically for quantity related adjustments
+                     in subclasses, typically for quantity related adjustments.
+                     Also, if the special ``local_goods_ids`` is provided,
+                     this method should attempt to reuse the Goods record with
+                     that ``id`` (interplay with quantity might depend on the
+                     implementation).
         :return: the list of created Goods records. In ``wms-core``, there
                  will be as many as the wished quantity, but in
                  ``wms-quantity``, this maybe a single record bearing the
                  total quantity.
         """
         Goods = self.registry.Wms.Goods
+        existing_ids = spec.get('local_goods_ids')
+        target_qty = spec['quantity']
+        if existing_ids is not None:
+            if len(existing_ids) != target_qty:
+                raise OperationInputsError(
+                    self,
+                    "final outcome specification {spec!r} has "
+                    "'local_goods_ids' parameter, but they don't provide "
+                    "the wished total quantity {target_qty} "
+                    "Detailed input: {inputs[0]!r}",
+                    spec=spec, target_qty=target_qty)
+            return [Goods.query().get(eid) for eid in existing_ids]
         return [Goods.insert(**fields) for _ in range(spec['quantity'])]
 
     def after_insert(self):
@@ -123,6 +140,8 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
     def forward_props(self, spec, outcome):
         """Handle the properties for a given outcome (Goods record)
 
+        This is actually a bit more that just forwarding.
+
         :param dict spec: the relevant specification for this outcome, as
                           produced by :meth:`get_outcome_specs` (see below
                           for the contents).
@@ -130,6 +149,18 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
 
         *Specification contents*
 
+        * ``properties``:
+            A direct mapping of properties to set on the outcome. These have
+            the lowest precedence, meaning that they will
+            be overridden by properties forwarded from ``self.input``.
+
+            Also, if spec has the ``local_goods_id`` key, ``properties`` is
+            ignored. The rationale for this is that normally, there are no
+            present or future Avatar for these Goods, and therefore the
+            Properties of outcome should not have diverged from the contents
+            of ``properties`` since the spec (which must itself not come from
+            the behaviour, but instead from ``unpack_outcomes``) has been
+            created (typically by an Assembly).
         * ``required_properties``:
             list (or iterable) of properties that are required on
             ``self.input``. If one is missing, then
@@ -144,6 +175,9 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         Properties of ``outcome``. To forward and require a property, it has
         thus to be in both lists.
         """
+        direct_props = spec.get('properties')
+        if direct_props is not None and 'local_goods_ids' not in spec:
+            outcome.update_properties(direct_props)
         packs = self.input.goods
         fwd_props = spec.get('forward_properties', ())
         req_props = spec.get('required_properties')
@@ -156,6 +190,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
                 type=packs.type, req_props=req_props)
         if not fwd_props:
             return
+        upd = []
         for pname in fwd_props:
             pvalue = packs.get_property(pname)
             if pvalue is None:
@@ -166,7 +201,8 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
                     "Packs {inputs[0]} lacks the property {prop}"
                     "required by their type for Unpack operation",
                     prop=pname)
-            outcome.set_property(pname, pvalue)
+            upd.append((pname, pvalue))
+        outcome.update_properties(upd)
 
     def get_outcome_specs(self):
         """Produce a complete specification for outcomes and their properties.
@@ -193,7 +229,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         according to the ``forward_properties`` and ``required_properties``
         of the outcomes, unless again if ``uniform_outcomes`` is set to
         ``True``, in which case the properties of the packs (``self.input``)
-        aren't even read, they but simply
+        aren't even read, but simply
         cloned (referenced again) in the outcomes. This should be better
         for performance in high volume operation.
         The same can be achieved on a given outcome by specifying the
