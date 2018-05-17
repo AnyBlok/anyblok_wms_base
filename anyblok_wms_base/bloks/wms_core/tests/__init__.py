@@ -7,6 +7,7 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from datetime import datetime
+from anyblok.blok import BlokManager
 from anyblok.tests.testcase import BlokTestCase
 
 
@@ -27,3 +28,13 @@ class TestCore(BlokTestCase):
         self.assertEqual(op, arrival)
         self.assertEqual(op.state, 'done')
         self.assertEqual(op.location, loc)
+
+    def test_reload(self):
+        import sys
+        module_type = sys.__class__  # is there a simpler way ?
+
+        def fake_reload(module):
+            self.assertIsInstance(module, module_type)
+
+        blok = BlokManager.get('wms-core')
+        blok.reload_declaration_module(fake_reload)
