@@ -32,7 +32,7 @@ class Location:
     the :attr:`parent` field, and have :attr:`tags <tag>` which can be used to
     express functional meaning, especially for
     :meth:`quantity computations
-    <anyblok_wms_base.bloks.wms_core.wms.Wms.quantity>`.
+    <anyblok_wms_base.core.wms.Wms.quantity>`.
 
     Downstream libraries and applications which don't want to use this hierarchy
     and the defaulting of tags that comes along can do so by overriding
@@ -89,7 +89,7 @@ class Location:
 
         This is kept for backwards compatibility and simply calls
         :meth:`Wms.quantity()
-        <anyblok_wms_base.bloks.wms_core.wms.Wms.quantity>`
+        <anyblok_wms_base.core.wms.Wms.quantity>`
 
         (see source code for details on arguments passing)
         """
@@ -135,7 +135,7 @@ class Location:
 
         1. one might design a flat Location hierarchy using prefixing on
            :attr:`code` to express inclusion instead of the provided
-           :attr:`parent`. See :meth:`anyblok_wms_base.bloks.wms_core.tests
+           :attr:`parent`. See :meth:`anyblok_wms_base.core.tests
            .test_location.test_override_tag_recursion` for a proof of concept
            of this.
         2. one might make a materialized view out of the present recursive CTE,

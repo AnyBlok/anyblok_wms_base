@@ -5,11 +5,11 @@ Model.Wms.Operation.Split
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This Operation Model inherits from :class:`Mixin.WmsSingleInput
-<anyblok_wms_base.bloks.wms_core.operation.single_input.WmsSingleInputOperation>`
+<anyblok_wms_base.core.operation.single_input.WmsSingleInputOperation>`
 
-.. py:currentmodule:: anyblok_wms_base.bloks.wms_quantity.operation.split
+.. py:currentmodule:: anyblok_wms_base.quantity.operation.split
 
-.. autoclass:: anyblok_wms_base.bloks.wms_quantity.operation.split.Split
+.. autoclass:: anyblok_wms_base.quantity.operation.split.Split
 
    .. autoattribute:: TYPE
 
@@ -37,9 +37,9 @@ This Operation Model inherits from :class:`Mixin.WmsSingleInput
 
 Model.Wms.Operation.Aggregate
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. py:currentmodule:: anyblok_wms_base.bloks.wms_quantity.operation.aggregate
+.. py:currentmodule:: anyblok_wms_base.quantity.operation.aggregate
 
-.. autoclass:: anyblok_wms_base.bloks.wms_quantity.operation.aggregate.Aggregate
+.. autoclass:: anyblok_wms_base.quantity.operation.aggregate.Aggregate
 
    .. raw:: html
 
@@ -67,9 +67,9 @@ Model.Wms.Operation.Aggregate
 Splitter Mixins: splitting Goods if needed
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. py:module:: anyblok_wms_base.bloks.wms_quantity.operation.splitter
+.. py:module:: anyblok_wms_base.quantity.operation.splitter
 
-.. autoclass:: anyblok_wms_base.bloks.wms_quantity.operation.splitter.WmsSplitterOperation
+.. autoclass:: anyblok_wms_base.quantity.operation.splitter.WmsSplitterOperation
 
    .. raw:: html
 
@@ -90,12 +90,12 @@ Splitter Mixins: splitting Goods if needed
    .. automethod:: check_execute_conditions
    .. automethod:: execute_planned
 
-.. autoclass:: anyblok_wms_base.bloks.wms_quantity.operation.splitter.WmsSplitterSingleInputOperation
+.. autoclass:: anyblok_wms_base.quantity.operation.splitter.WmsSplitterSingleInputOperation
 
 Model.Wms.Operation.Move
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. autoclass:: anyblok_wms_base.bloks.wms_quantity.operation.move.Move
+.. autoclass:: anyblok_wms_base.quantity.operation.move.Move
 
    .. raw:: html
 
@@ -114,7 +114,7 @@ Model.Wms.Operation.Unpack
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. py:module:: anyblok_wms_base.bloks
 
-.. autoclass:: anyblok_wms_base.bloks.wms_quantity.operation.unpack.Unpack
+.. autoclass:: anyblok_wms_base.quantity.operation.unpack.Unpack
 
    .. raw:: html
 
@@ -131,5 +131,5 @@ Model.Wms.Operation.Unpack
 Model.Wms.Operation.Departure
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. autoclass:: anyblok_wms_base.bloks.wms_quantity.operation.splitter.Departure
+.. autoclass:: anyblok_wms_base.quantity.operation.splitter.Departure
 

@@ -37,11 +37,11 @@ class Type:
     behaviours = Jsonb(label="Behaviours in operations")
     """
     Goods Types specify with this flexible field how various :class:`Operations
-    <anyblok_wms_base.bloks.wms_core.operation.base.Operation>` will treat
+    <anyblok_wms_base.core.operation.base.Operation>` will treat
     the represented Goods.
 
     .. seealso:: :class:`Unpack
-                 <anyblok_wms_base.bloks.wms_core.operation.unpack.Unpack>`
+                 <anyblok_wms_base.core.operation.unpack.Unpack>`
                  for a complex example.
 
     The value is a key/value mapping (behaviour name/value).

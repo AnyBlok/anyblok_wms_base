@@ -26,7 +26,7 @@ class Split(SingleInput, Operation):
     """A split of Goods record in two.
 
     Splits replace their input's :class:`Goods
-    <anyblok_wms_base.bloks.wms_quantity.goods.Goods>` record with
+    <anyblok_wms_base.quantity.goods.Goods>` record with
     two of them, one having the wished :attr:`quantity`, along with
     Avatars at the same location, while
     keeping the same properties and the same total quantity.
@@ -48,7 +48,7 @@ class Split(SingleInput, Operation):
     the Goods Type.
 
     .. seealso:: :class:`Model.Wms.Goods.Type
-                 <anyblok_wms_base.bloks.wms_quantity.goods.Type>`
+                 <anyblok_wms_base.quantity.goods.Type>`
                  for a full discussion including use-cases of formal and
                  physical splits and reversal of the latter.
 
@@ -117,10 +117,10 @@ class Split(SingleInput, Operation):
         """Return the Goods record with the wished quantity.
 
         This is only one of :attr:`outcomes
-        <anyblok_wms_base.bloks.wms_core.operation.base.Operation.outcomes>`
+        <anyblok_wms_base.core.operation.base.Operation.outcomes>`
 
         :rtype: :class:`Wms.Goods
-                <anyblok_wms_base.bloks.wms_core.goods.Goods>`
+                <anyblok_wms_base.core.goods.Goods>`
         """
         Goods = self.registry.Wms.Goods
         Avatar = Goods.Avatar
@@ -159,7 +159,7 @@ class Split(SingleInput, Operation):
         """Reversibility depends on the relevant Goods Type.
 
         See :meth:`on Model.Goods.Type
-        <anyblok_wms_base.bloks.wms_core.goods.Type.is_split_reversible>`
+        <anyblok_wms_base.core.goods.Type.is_split_reversible>`
         """
         return self.input.goods.type.is_split_reversible()
 

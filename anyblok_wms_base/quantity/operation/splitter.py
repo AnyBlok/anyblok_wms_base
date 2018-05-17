@@ -26,7 +26,7 @@ class WmsSplitterOperation:
     """Mixin for operations on a single input that can split.
 
     This is to be applied after :class:`Mixin.WmsSingleInputOperation
-    <anyblok_wms_base.bloks.wms_core.operation.single_input.WmsSingleInputOperation>`.
+    <anyblok_wms_base.core.operation.single_input.WmsSingleInputOperation>`.
     Use :class:`WmsSplitterSingleInputOperation` to get both at once.
 
     It defines the :attr:`quantity` field to express that the Operation only
@@ -162,7 +162,7 @@ class Departure(Splitter):
     """Override making Departure a Splitter Operation.
 
     As with all :class:`Splitter Operations
-    <anyblok_wms_base.bloks.wms_quantity.operation.splitter.WmsSplitterOperation>`,
+    <anyblok_wms_base.quantity.operation.splitter.WmsSplitterOperation>`,
     Departures can be partial, i.e.,
     there's no need to match the exact quantity held in the underlying Goods
     record: an automatic Split will occur if needed.

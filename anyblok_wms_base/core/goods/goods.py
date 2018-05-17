@@ -50,7 +50,7 @@ class Goods:
     """Primary key."""
 
     type = Many2One(model='Model.Wms.Goods.Type', nullable=False, index=True)
-    """The :class:`Goods Type <.Type>`"""
+    """The :class:`Goods Type <.type.Type>`"""
 
     code = String(label="Identifying code",
                   index=True)
@@ -409,7 +409,7 @@ class Avatar:
                         index=True)
     """Where the Goods are/will be/were.
 
-    See :class:`Location <anyblok_wms_base.bloks.wms_core.location.Location>`
+    See :class:`Location <anyblok_wms_base.core.location.Location>`
     for a discussion of what this should actually mean.
     """
 
@@ -431,7 +431,7 @@ class Avatar:
       ``wms-core`` doesn't do much about it, besides using it to avoid
       counting several :ref:`goods_avatar` of the same physical goods
       while :meth:`peeking at quantities in the future
-      <anyblok_wms_base.bloks.wms_core.location.Location.quantity>`.
+      <anyblok_wms_base.core.location.Location.quantity>`.
       If the end application does serious time prediction, it can use it
       freely.
 

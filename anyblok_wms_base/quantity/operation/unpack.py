@@ -22,7 +22,7 @@ class Unpack:
         """Create just a record, bearing the total quantity.
 
         See also this method :meth:`in the base class
-        <anyblok_wms_base.bloks.wms_core.operation.Unpack.create_unpacked_goods>`
+        <anyblok_wms_base.core.operation.Unpack.create_unpacked_goods>`
 
         TODO: introduce a behaviour (available in spec) to create as many
         records as specified. Even if ``wms-quantity`` is installed, it might

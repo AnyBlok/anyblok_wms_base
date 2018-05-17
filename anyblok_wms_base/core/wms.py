@@ -39,7 +39,7 @@ class Wms:
         """Compute the quantity of Goods meeting various criteria.
 
         The computation actually involves querying :class:`Avatars
-        <anyblok_wms_base.bloks.wms_core.goods.Avatar>`, which hold the
+        <anyblok_wms_base.core.goods.Avatar>`, which hold the
         information about location, states and date/time.
 
         :param goods_type:

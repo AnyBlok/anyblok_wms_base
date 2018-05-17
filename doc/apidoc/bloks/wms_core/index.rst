@@ -1,7 +1,7 @@
 wms_core
 ========
 
-.. py:module:: anyblok_wms_base.bloks.wms_core
+.. py:module:: anyblok_wms_base.core
 
 .. toctree::
 

@@ -1,10 +1,10 @@
 wms_core.goods
 ==============
-.. py:module:: anyblok_wms_base.bloks.wms_core.goods
+.. py:module:: anyblok_wms_base.core.goods.goods
 
 Model.Wms.Goods
 ~~~~~~~~~~~~~~~
-.. autoclass:: anyblok_wms_base.bloks.wms_core.goods.Goods
+.. autoclass:: anyblok_wms_base.core.goods.goods.Goods
 
    .. raw:: html
 
@@ -24,7 +24,7 @@ Model.Wms.Goods
 
 Model.Wms.Goods.Type
 ~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: anyblok_wms_base.bloks.wms_core.goods.Type
+.. autoclass:: anyblok_wms_base.core.goods.type.Type
 
    .. raw:: html
 
@@ -43,7 +43,7 @@ Model.Wms.Goods.Type
 
 Model.Wms.Goods.Properties
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: anyblok_wms_base.bloks.wms_core.goods.Properties
+.. autoclass:: anyblok_wms_base.core.goods.goods.Properties
 
    .. raw:: html
 
@@ -63,7 +63,7 @@ Model.Wms.Goods.Properties
 
 Model.Wms.Goods.Avatar
 ~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: anyblok_wms_base.bloks.wms_core.goods.Avatar
+.. autoclass:: anyblok_wms_base.core.goods.goods.Avatar
 
    .. raw:: html
 

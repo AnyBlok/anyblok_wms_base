@@ -21,6 +21,6 @@ class Move:
         """Take quantity into account for reversal.
 
         See also this method's documentation :meth:`in the base class
-        <anyblok_wms_base.bloks.wms_core.operation.move.Move.revert_extra_fields>`.
+        <anyblok_wms_base.core.operation.move.Move.revert_extra_fields>`.
         """
         return dict(quantity=self.quantity)
