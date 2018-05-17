@@ -16,3 +16,13 @@ from . import departure
 from . import move
 from . import unpack
 from . import assembly
+
+
+def reload_declarations(reload):
+    reload(ns)
+    reload(single_input)
+    reload(arrival)
+    reload(departure)
+    reload(move)
+    reload(unpack)
+    reload(assembly)

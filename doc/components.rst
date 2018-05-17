@@ -15,7 +15,7 @@ wms-core
 As the name suggests, this Blok provides the :ref:`core_concepts` of
 Anyblok / Wms.
 
-.. seealso:: :mod:`the code documentation  <anyblok_wms_base.bloks.wms_core>`.
+.. seealso:: :mod:`the code documentation  <anyblok_wms_base.core>`.
 
 
 .. _blok_wms_reservation:
@@ -31,7 +31,7 @@ typically gets fulfilled through a *chain* of operations.
 
 .. seealso:: :ref:`the overwiew of reservation concepts,
              <reservation>` and :mod:`the
-             code documentation  <anyblok_wms_base.bloks.wms_reservation>`.
+             code documentation  <anyblok_wms_base.reservation>`.
 
 
 .. _blok_wms_quantity:

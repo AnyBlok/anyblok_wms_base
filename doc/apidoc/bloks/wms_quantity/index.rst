@@ -1,7 +1,7 @@
 wms_quantity
 ============
 
-.. py:module:: anyblok_wms_base.bloks.wms_quantity
+.. py:module:: anyblok_wms_base.quantity
 
 .. toctree::
 

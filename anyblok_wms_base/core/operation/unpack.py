@@ -209,7 +209,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
 
         In what follows "the behaviour" means the value associated with the
         ``unpack`` key in the Goods Type :attr:`behaviours
-        <anyblok_wms_base.bloks.wms_core.goods.Type.behaviours>`.
+        <anyblok_wms_base.core.goods.Type.behaviours>`.
 
         Unless ``uniform_outcomes`` is set to ``True`` in the behaviour,
         the outcomes of the Unpack are obtained by merging those defined in

@@ -35,7 +35,7 @@ specifications.
 Reservation Requests are actually made of several Request Items.
 
 .. seealso:: the :class:`code documentation
-             <anyblok_wms_base.bloks.wms_reservation.request.Request>`.
+             <anyblok_wms_base.reservation.request.Request>`.
 
 .. _resa_reservation:
 
@@ -56,5 +56,5 @@ planned for these :ref:`goods_goods` unless either:
   are supposed to leave the system later on.
 
 .. seealso:: the :class:`code documentation
-             <anyblok_wms_base.bloks.wms_reservation.reservation.Reservation>`.
+             <anyblok_wms_base.reservation.reservation.Reservation>`.
 

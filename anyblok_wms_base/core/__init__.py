@@ -22,4 +22,15 @@ class WmsCore(Blok):
         from . import operation  # noqa
         from . import goods  # noqa
 
-    # TODO reload
+    @classmethod
+    def reload_declaration_module(cls, reload):
+        from . import wms
+        reload(wms)
+        from . import location
+        reload(location)
+        from . import operation
+        reload(operation)
+        operation.reload_declarations(reload)
+        from . import goods
+        reload(goods)
+        goods.reload_declarations(reload)

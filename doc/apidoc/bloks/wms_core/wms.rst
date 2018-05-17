@@ -1,12 +1,12 @@
 wms_core.wms
 ============
 
-.. py:module:: anyblok_wms_base.bloks.wms_core.wms
+.. py:module:: anyblok_wms_base.core.wms
 
 Model.Wms
 ~~~~~~~~~
 
-.. autoclass:: anyblok_wms_base.bloks.wms_core.wms.Wms
+.. autoclass:: anyblok_wms_base.core.wms.Wms
 
    .. raw:: html
 

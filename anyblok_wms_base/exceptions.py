@@ -35,7 +35,7 @@ class OperationInputsError(OperationError):
     """Used in Operations for errors about their inputs.
 
     classmethods, such as :meth:`create
-    <anyblok_wms_base.bloks.wms_core.operation.base.Operation.create>`
+    <anyblok_wms_base.core.operation.base.Operation.create>`
     must pass the ``inputs`` kwarg.
     """
 

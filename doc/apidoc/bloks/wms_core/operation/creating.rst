@@ -5,7 +5,7 @@ several of them as outcomes.
 
 Model.Wms.Operation.Arrival
 ---------------------------
-.. autoclass:: anyblok_wms_base.bloks.wms_core.operation.arrival.Arrival
+.. autoclass:: anyblok_wms_base.core.operation.arrival.Arrival
 
    .. raw:: html
 

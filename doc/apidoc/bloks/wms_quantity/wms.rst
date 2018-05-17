@@ -1,12 +1,12 @@
 wms_quantity.wms
 ================
 
-.. py:module:: anyblok_wms_base.bloks.wms_quantity.wms
+.. py:module:: anyblok_wms_base.quantity.wms
 
 Model.Wms
 ~~~~~~~~~
 
-.. autoclass:: anyblok_wms_base.bloks.wms_quantity.wms.Wms
+.. autoclass:: anyblok_wms_base.quantity.wms.Wms
 
    .. raw:: html
 

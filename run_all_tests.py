@@ -53,19 +53,19 @@ def run(cr, db_name, nose_additional_opts):
                       ANYBLOK_DATABASE_DRIVER='postgresql')
 
     awb_dir = os.path.join(os.path.dirname(sys.argv[0]), 'anyblok_wms_base')
-    bloks_dir = os.path.join(awb_dir, 'bloks')
+    bloks_dir = awb_dir
     dropdb(cr, db_name)
     createdb('wms-core', 'test-wms-goods-batch-ref')
     nosetests((os.path.join(awb_dir, 'utils.py'),
-               os.path.join(bloks_dir, 'wms_core')),
+               os.path.join(bloks_dir, 'core')),
               nose_additional_opts, cover_erase=True)
     install_bloks('wms-reservation')
-    nosetests((os.path.join(bloks_dir, 'wms_reservation'),
+    nosetests((os.path.join(bloks_dir, 'reservation'),
                ),
               nose_additional_opts)
     dropdb(cr, db_name)
     createdb('wms-quantity')
-    nosetests((os.path.join(bloks_dir, 'wms_quantity'),
+    nosetests((os.path.join(bloks_dir, 'quantity'),
                ),
               nose_additional_opts)
 

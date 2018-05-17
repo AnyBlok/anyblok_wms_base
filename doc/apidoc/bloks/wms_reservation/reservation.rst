@@ -1,12 +1,12 @@
 wms_reservation.reservation
 ===========================
 
-.. py:module:: anyblok_wms_base.bloks.wms_reservation.request
+.. py:module:: anyblok_wms_base.reservation.request
 
 Model.Wms.Reservation
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. autoclass:: anyblok_wms_base.bloks.wms_reservation.reservation.Reservation
+.. autoclass:: anyblok_wms_base.reservation.reservation.Reservation
 
    .. raw:: html
 

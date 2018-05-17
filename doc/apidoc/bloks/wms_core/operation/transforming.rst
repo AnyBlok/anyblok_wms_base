@@ -1,14 +1,14 @@
 Transforming Operations
 ~~~~~~~~~~~~~~~~~~~~~~~
-.. py:currentmodule:: anyblok_wms_base.bloks.wms_core.operation
+.. py:currentmodule:: anyblok_wms_base.core.operation
 
 ModelWms.Operation.Move
 -----------------------
 
 This Operation Model inherits from :class:`Mixin.WmsSingleInput
-<anyblok_wms_base.bloks.wms_core.operation.single_input.WmsSingleInputOperation>`
+<anyblok_wms_base.core.operation.single_input.WmsSingleInputOperation>`
 
-.. autoclass:: anyblok_wms_base.bloks.wms_core.operation.move.Move
+.. autoclass:: anyblok_wms_base.core.operation.move.Move
 
    .. raw:: html
 
@@ -37,10 +37,10 @@ This Operation Model inherits from :class:`Mixin.WmsSingleInput
 Model.Wms.Operation.Unpack
 --------------------------
 This Operation Model inherits from :class:`Mixin.WmsSingleInput
-<anyblok_wms_base.bloks.wms_core.operation.single_input.WmsSingleInputOperation>`
+<anyblok_wms_base.core.operation.single_input.WmsSingleInputOperation>`
 
 
-.. autoclass:: anyblok_wms_base.bloks.wms_core.operation.unpack.Unpack
+.. autoclass:: anyblok_wms_base.core.operation.unpack.Unpack
 
    .. raw:: html
 
@@ -73,9 +73,9 @@ This Operation Model inherits from :class:`Mixin.WmsSingleInput
 Model.Wms.Operation.Assembly
 ----------------------------
 
-.. py:currentmodule:: anyblok_wms_base.bloks.wms_core.operation.assembly
+.. py:currentmodule:: anyblok_wms_base.core.operation.assembly
 
-.. autoclass:: anyblok_wms_base.bloks.wms_core.operation.assembly.Assembly
+.. autoclass:: anyblok_wms_base.core.operation.assembly.Assembly
 
    .. raw:: html
 

@@ -27,7 +27,7 @@ GOODS_STATES = dict(past="wms_goods_states_past",
                     future="wms_goods_states_future"
                     )
 """This is the enumeration of possible values of the ``state`` column of
-the :class:`Wms.Goods <anyblok_wms_base.bloks.wms_core.goods.Goods>` Model.
+the :class:`Wms.Goods <anyblok_wms_base.core.goods.Goods>` Model.
 
 - ``present``:
         means that the represented goods are (supposed to be) actually
@@ -50,7 +50,7 @@ OPERATION_STATES = dict(planned="wms_op_states_planned",
                         )
 """This is the enumeration of possible values of the ``state`` field of
 the :class:`Wms.Operation
-<anyblok_wms_base.bloks.wms_core.operation.base.Operation>` Model and its
+<anyblok_wms_base.core.operation.base.Operation>` Model and its
 subclasses.
 
 See :ref:`op_states` for a full discussion of these values.
@@ -66,7 +66,7 @@ OPERATION_TYPES = dict(wms_move="wms_op_types_move",
                        )
 """The keys of this :class:`dict` are used for the polymorphism of
 the :class:`Wms.Operation
-<anyblok_wms_base.bloks.wms_core.operation.base.Operation>` Model.
+<anyblok_wms_base.core.operation.base.Operation>` Model.
 
 As these keys
 supposed to be unique among all polymorphic cases in the whole application,
@@ -88,5 +88,5 @@ DEFAULT_ASSEMBLY_NAME = 'default'
 """The default name to use for assemblies.
 
 See :class:`Wms.Operation.Assembly
-<anyblok_wms_base.bloks.wms_core.operation.assembly>` for more detail.
+<anyblok_wms_base.core.operation.assembly>` for more detail.
 """

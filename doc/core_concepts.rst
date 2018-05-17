@@ -31,7 +31,7 @@ Goods
 .. versionchanged:: 0.6.0
 
 .. note:: This is an overview, see :class:`the code documentation
-          <anyblok_wms_base.bloks.wms_core.goods.Goods>` for more
+          <anyblok_wms_base.core.goods.goods.Goods>` for more
           details, notably for the API of properties.
 
 Records of Goods represent the physicality of the goods, they have a
@@ -123,7 +123,7 @@ expectations on each Goods Type.
 Goods Properties
 ----------------
 .. note:: see :class:`the code documentation
-          <anyblok_wms_base.bloks.wms_core.goods.Goods>` for technical
+          <anyblok_wms_base.core.goods.goods.Goods>` for technical
           details. Notably, properties have to be handled through a
           dedicated API.
 
@@ -189,7 +189,7 @@ too volatile.
              <improvement_avatars>`, for more on the intended
              purposes, especially with reservation systems in mind,
              and :class:`the code documentation
-             <anyblok_wms_base.bloks.wms_core.goods.Avatar>` for a
+             <anyblok_wms_base.core.goods.goods.Avatar>` for a
              detailed description of their fields, with full semantics.
 
 .. _location:
@@ -197,11 +197,11 @@ too volatile.
 Location
 ~~~~~~~~
 .. note:: This is an overview, see :class:`the code documentation
-          <anyblok_wms_base.bloks.wms_core.location.Location>`
+          <anyblok_wms_base.core.location.Location>`
           for more details.
 
 Quickly said, the :class:`Location
-<anyblok_wms_base.bloks.wms_core.location.Location>` Model represents
+<anyblok_wms_base.core.location.Location>` Model represents
 where the Goods are. It provides methods to sum up Goods quantities.
 
 Locations form a hierarchical structure (a forest, to be pedantic):
@@ -220,7 +220,7 @@ logical grouping (see also :ref:`improvement_location_name`).
 Operation
 ~~~~~~~~~
 .. note:: This is an overview, see :class:`the code documentation
-          <anyblok_wms_base.bloks.wms_core.operation.base.Operation>`
+          <anyblok_wms_base.core.operation.base.Operation>`
           for more details.
 
 In Anyblok / WMS Base, what happens to the Goods is represented by the
@@ -233,7 +233,7 @@ Operations only.
 
 Operations are polymorphic Models, which means that as Python classes,
 they inherit from the base :class:`Operation
-<anyblok_wms_base.bloks.wms_core.operation.base.Operation>` class,
+<anyblok_wms_base.core.operation.base.Operation>` class,
 while they are persisted as two tables in the database: ``wms_operation``
 for the common data and a specific one, such as ``wms_operation_arrival``.
 
@@ -265,22 +265,22 @@ and more (see :ref:`op_cancel_revert_obliviate`).
 Lifecycle of operations
 -----------------------
 Operations start their lifecycle with the :meth:`create()
-<anyblok_wms_base.bloks.wms_core.operation.base.Operation.create>`
+<anyblok_wms_base.core.operation.base.Operation.create>`
 classmethod, which calls ``insert()`` internally. The initial value of
 state *must* be passed to :meth:`create()
-<anyblok_wms_base.bloks.wms_core.operation.base.Operation.create>`
+<anyblok_wms_base.core.operation.base.Operation.create>`
 
 .. warning:: downstream libraries and applications should never call
              ``insert()`` nor update the :attr:`state
-             <anyblok_wms_base.bloks.wms_core.operation.base.Operation.state>`
+             <anyblok_wms_base.core.operation.base.Operation.state>`
              field directly, except for bug reproduction and
              automated testing scenarios.
 
 Here are the detailed semantics of Operation states, and their
 interactions with :meth:`create()
-<anyblok_wms_base.bloks.wms_core.operation.base.Operation.create>`
+<anyblok_wms_base.core.operation.base.Operation.create>`
 and :meth:`execute()
-<anyblok_wms_base.bloks.wms_core.operation.base.Operation.create>`
+<anyblok_wms_base.core.operation.base.Operation.create>`
 
 - ``planned``:
        this means that the operation is considered for the future. Upon
@@ -291,11 +291,11 @@ and :meth:`execute()
 
        For this reason, it is necessary to provide a value for the
        :attr:`date and time of execution
-       <anyblok_wms_base.bloks.wms_core.operation.base.Operation.dt_execution>`,
+       <anyblok_wms_base.core.operation.base.Operation.dt_execution>`,
        even if it is a very wrong estimate.
 
        Planned Operations can be either :meth:`executed
-       <anyblok_wms_base.bloks.wms_core.operation.base.Operation.execute>`
+       <anyblok_wms_base.core.operation.base.Operation.execute>`
        or :ref:`cancelled <op_cancel_revert_obliviate>`.
 
 - ``started``:
@@ -334,7 +334,7 @@ and :meth:`execute()
 
 - ``done``:
      The :meth:`execute()
-     <anyblok_wms_base.bloks.wms_core.operation.base.Operation.execute>`
+     <anyblok_wms_base.core.operation.base.Operation.execute>`
      method brings a planned Operation in this state, provided the
      needed conditions are met.
 
@@ -344,13 +344,13 @@ and :meth:`execute()
      provided the needed conditions are met.
 
      In this case, the consequences are enforced by the :meth:`create()
-     <anyblok_wms_base.bloks.wms_core.operation.base.Operation.create>`
+     <anyblok_wms_base.core.operation.base.Operation.create>`
      method directly.
 
      .. note:: Typically, creating directly in the ``done`` state is much less
                expensive that creating in the ``planned`` state, followed by a
                call to :meth:`execute()
-               <anyblok_wms_base.bloks.wms_core.operation.base.Operation.execute>`
+               <anyblok_wms_base.core.operation.base.Operation.execute>`
 
 
 .. _op_cancel_revert_obliviate:
@@ -363,13 +363,13 @@ the operational history and working on it.
 
 Planned operations can be cancelled, this is provided by the
 :meth:`cancel()
-<anyblok_wms_base.bloks.wms_core.operation.base.Operation.cancel>`
+<anyblok_wms_base.core.operation.base.Operation.cancel>`
 method. Canceling an Operation removes it, its outcomes *and all the
 dependent operations* from the future history.
 
 Operations that have already been done may be reverted: the
 :meth:`plan_revert()
-<anyblok_wms_base.bloks.wms_core.operation.base.Operation.plan_revert>`
+<anyblok_wms_base.core.operation.base.Operation.plan_revert>`
 will issue a bunch of new planned Operations to bring back the Goods
 as they were before execution (and planning). These new Operations
 will take place in real life, and as such, will take time, can go
@@ -380,7 +380,7 @@ It is possible to completely forget about an Operation, to express
 that *it never happened in reality*, despite what the data says.
 This is again a recursion over the dependents, and is provided by the
 :meth:`obliviate()
-<anyblok_wms_base.bloks.wms_core.operation.base.Operation.obliviate>` method
+<anyblok_wms_base.core.operation.base.Operation.obliviate>` method
 
 More sophisticated history manipulation primitives are being currently
 thought of, see :ref:`improvement_operation_superseding`.
@@ -390,7 +390,7 @@ thought of, see :ref:`improvement_operation_superseding`.
 Arrival
 -------
 .. note:: This is an overview, see :class:`the code documentation
-          <anyblok_wms_base.bloks.wms_core.operation.arrival.Arrival>`
+          <anyblok_wms_base.core.operation.arrival.Arrival>`
           for more details.
 
 Arrivals represent the physical arrival of goods that were not
@@ -412,7 +412,7 @@ Arrivals are irreversible in the sense of :ref:`op_cancel_revert_obliviate`.
 Departure
 ---------
 .. note:: This is an overview, see :class:`the code documentation
-          <anyblok_wms_base.bloks.wms_core.operation.departure.Departure>`
+          <anyblok_wms_base.core.operation.departure.Departure>`
           for more details.
 
 Departure represent goods physically leaving the system.
@@ -429,7 +429,7 @@ Departures are irreversible in the sense of :ref:`op_cancel_revert_obliviate`.
 Move
 ----
 .. note:: This is an overview, see :class:`the code documentation
-          <anyblok_wms_base.bloks.wms_core.operation.move.Move>`
+          <anyblok_wms_base.core.operation.move.Move>`
           for more details.
 
 Moves represent goods being carried over from one :ref:`location` to
@@ -441,7 +441,7 @@ the sense of :ref:`op_cancel_revert_obliviate`.
 Unpack
 ------
 .. note:: This is an overview, see :class:`the code documentation
-          <anyblok_wms_base.bloks.wms_core.operation.unpack.Unpack>`
+          <anyblok_wms_base.core.operation.unpack.Unpack>`
           for more details.
 
 Unpacks replace some Goods (packs) with their contents.
@@ -454,7 +454,7 @@ of the packs, and in the packs properties. They can be entirely fixed
 by the behaviour, be entirely dependent on the specific
 packs being considered or a bit of both. See the documentation of
 :meth:`this method
-<anyblok_wms_base.bloks.wms_core.operation.unpack.Unpack.get_outcome_specs>`
+<anyblok_wms_base.core.operation.unpack.Unpack.get_outcome_specs>`
 for a full discussion with concrete use cases.
 
 Unpacks can be reverted by an :ref:`op_assembly` of the proper name
@@ -473,7 +473,7 @@ Assembly
 --------
 
 .. note:: This is an overview, see :class:`the code documentation
-          <anyblok_wms_base.bloks.wms_core.operation.assembly.Assembly>`
+          <anyblok_wms_base.core.operation.assembly.Assembly>`
           for more details.
 
 Packing and simple manufacturing needs are covered by the Assembly

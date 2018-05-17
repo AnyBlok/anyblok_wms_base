@@ -1,14 +1,14 @@
 Abstract classes
 ================
 
-.. py:module:: anyblok_wms_base.bloks.wms_core.operation
+.. py:module:: anyblok_wms_base.core.operation
 
 Fundamental Models
 ~~~~~~~~~~~~~~~~~~
 
 Model.Wms.Operation
 -------------------
-.. autoclass:: anyblok_wms_base.bloks.wms_core.operation.base.Operation
+.. autoclass:: anyblok_wms_base.core.operation.base.Operation
 
    .. raw:: html
 
@@ -69,7 +69,7 @@ Model.Wms.Operation
 Model.Wms.Operation.HistoryInput
 --------------------------------
 
-.. autoclass:: anyblok_wms_base.bloks.wms_core.operation.base.HistoryInput
+.. autoclass:: anyblok_wms_base.core.operation.base.HistoryInput
 
 
    .. raw:: html
@@ -99,7 +99,7 @@ applications, but this is not recommended except for quick bug fixing.
 Mixin.WmsSingleInputOperation: working on a single Goods record
 ---------------------------------------------------------------
 
-.. autoclass:: anyblok_wms_base.bloks.wms_core.operation.single_input.WmsSingleInputOperation
+.. autoclass:: anyblok_wms_base.core.operation.single_input.WmsSingleInputOperation
 
 
    .. raw:: html

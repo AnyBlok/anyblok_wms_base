@@ -65,7 +65,7 @@ class HistoryInput:
     aspects of Operations, as is exposed in the :attr:`Operation.follows`
     and :attr:`Operation.followers` attributes and, on the other hand, the
     preservation of :attr:`reason
-    <anyblok_wms_base.bloks.wms_core.goods.Avatar.reason>` for restore if
+    <anyblok_wms_base.core.goods.Avatar.reason>` for restore if
     needed, even after the :attr:`current operation <operation>` is done.
     """
 
@@ -206,12 +206,12 @@ class Operation:
     For Operations in states ``planned`` and ``started``,
     this represents the time at which the execution is supposed to complete.
     This has consequences on the :attr:`dt_from
-    <anyblok_wms_base.bloks.wms_core.goods.Avatar.dt_from>` and :attr:`dt_until
-    <anyblok_wms_base.bloks.wms_core.goods.Avatar.dt_until>` fields of
+    <anyblok_wms_base.core.goods.Avatar.dt_from>` and :attr:`dt_until
+    <anyblok_wms_base.core.goods.Avatar.dt_until>` fields of
     the :ref:`Goods Avatars <goods_avatar>` affected by this Operation, to
     avoid summing up several :ref:`Avatars <goods_avatar>` of the same
     physical goods while :meth:`peeking at quantities in the future
-    <anyblok_wms_base.bloks.wms_core.location.Location.quantity>`,
+    <anyblok_wms_base.core.location.Location.quantity>`,
     but has no other strong meaning within
     ``wms-core``: if the end application does some serious time prediction,
     it can use it about freely. The actual execution can
@@ -232,7 +232,7 @@ class Operation:
 
     .. note:: We will probably later on make use of this field in
               destructive Operations to update the :attr:`dt_until
-              <anyblok_wms_base.bloks.wms_core.goods.Avatar.dt_until>` field
+              <anyblok_wms_base.core.goods.Avatar.dt_until>` field
               of their inputs, meaning that they won't appear in
               present quantity queries anymore.
 
@@ -749,7 +749,7 @@ class Operation:
            the Operations that the reversal will have to follow. In other
            words, these are the reversals of ``self.followers`` (can be empty).
         :type follows: list(:class:`Operation
-                            <anyblok_wms_base.bloks.wms_core.base.Operation>`)
+                            <anyblok_wms_base.core.base.Operation>`)
         :return: the planned reversal
         :rtype: ``Operation``
 

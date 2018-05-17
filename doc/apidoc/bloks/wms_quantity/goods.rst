@@ -1,12 +1,12 @@
 wms_quantity.goods
 ==================
 
-.. py:module:: anyblok_wms_base.bloks.wms_quantity.goods
+.. py:module:: anyblok_wms_base.quantity.goods
 
 Model.Wms.Goods
 ~~~~~~~~~~~~~~~
 
-.. autoclass:: anyblok_wms_base.bloks.wms_quantity.goods.Goods
+.. autoclass:: anyblok_wms_base.quantity.goods.Goods
 
    .. raw:: html
 
@@ -18,7 +18,7 @@ Model.Wms.Goods
 Model.Wms.Goods.Type
 ~~~~~~~~~~~~~~~~~~~~
 
-.. autoclass:: anyblok_wms_base.bloks.wms_quantity.goods.Type
+.. autoclass:: anyblok_wms_base.quantity.goods.Type
 
    .. raw:: html
 

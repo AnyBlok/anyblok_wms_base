@@ -61,7 +61,7 @@ class Assembly(Operation):
 
     outcome_type = Many2One(model='Model.Wms.Goods.Type', nullable=False)
     """The :class:`Goods Type
-    <anyblok_wms_base.bloks.wms_core.goods.Type>` to produce.
+    <anyblok_wms_base.core.goods.Type>` to produce.
     """
 
     name = Text(nullable=False, default=DEFAULT_ASSEMBLY_NAME)
@@ -253,7 +253,7 @@ class Assembly(Operation):
         """Method responsible for initial properties on the outcome.
 
         :rtype: :class:`Model.Wms.Goods.Properties
-                <anyblok_wms_base.bloks.wms_core.goods.Properties>`
+                <anyblok_wms_base.core.goods.Properties>`
         :raises: :class:`AssemblyInputNotMatched` if one of the
                  :attr:`input specifications <specification>` is not
                  matched by ``self.inputs``,
@@ -322,7 +322,7 @@ class Assembly(Operation):
 
         The outcome also bears the special ``unpack_outcomes`` property (
         used by :class:`Operation.Unpack
-        <anyblok_wms_base.bloks.wms_core.operation.unpack.Unpack>`).
+        <anyblok_wms_base.core.operation.unpack.Unpack>`).
 
         This is controlled by the
         ``for_unpack_outcomes`` part of the assembly specification, which
@@ -393,7 +393,7 @@ class Assembly(Operation):
         :param dict assembled_props:
            a :class:`dict` of already built Properties, or a
            :class:`Properties
-           <anyblok_wms_base.bloks.wms_core.goods.Properties>` instance.
+           <anyblok_wms_base.core.goods.Properties>` instance.
         :param bool for_exec:
           ``False`` during Operation creation in the ``planned`` state,
           ``True`` during Operation execution or creation in the ``done``
