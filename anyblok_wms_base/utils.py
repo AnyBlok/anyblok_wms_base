@@ -8,6 +8,9 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 import itertools
 
+_missing = object()
+"""A marker to use as default value in get-like functions/methods."""
+
 
 def min_upper_bounds(inputs):
     """Return the smallest of the given inputs, each thought as an upper bound.
@@ -29,6 +32,59 @@ def min_upper_bounds(inputs):
     for inp in itertools.filterfalse(lambda i: i is None, inputs):
         if res is None or inp < res:
             res = inp
+    return res
+
+
+def dict_merge(first, second):
+    """Deep merging of two Python objects
+
+    :param first: the one having precedence.
+
+    if both parameters are :class:`dict` instances, they get recursively
+    merged. Otherwise the value of ``first`` is returned.
+
+    No attempt is made to merge lists and tuples (would be hard to specify).
+
+    Merging sets could be implemented but is currently not.
+
+    *Examples and tests*
+
+    We'll need pretty printing to compare dicts::
+
+      >>> from pprint import pprint
+
+    First order merging:
+
+      >>> pprint(dict_merge(dict(a=1), dict(b=2)))
+      {'a': 1, 'b': 2}
+
+    Recursion::
+
+      >>> pprint(dict_merge(dict(a=1, deep=dict(k='foo')),
+      ...                   dict(a=2, deep=dict(k='bar', other=3))))
+      {'a': 1, 'deep': {'k': 'foo', 'other': 3}}
+
+    Non dict values::
+
+      >>> dict_merge(1, 2)
+      1
+      >>> dict_merge(dict(a=1), 'foo')
+      {'a': 1}
+      >>> dict_merge('foo', dict(a=1))
+      'foo'
+
+    """
+    if not isinstance(first, dict) or not isinstance(second, dict):
+        return first
+
+    res = second.copy()
+    for k, firstv in first.items():
+        secondv = second.get(k, _missing)
+        if secondv is _missing:
+            res[k] = firstv
+        else:
+            res[k] = dict_merge(firstv, secondv)
+
     return res
 
 

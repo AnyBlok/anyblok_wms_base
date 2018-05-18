@@ -102,6 +102,10 @@ If the application considers service products (such as consulting,
 extensions of warranty, etc.) besides products representing physical
 goods, those services would simply have no Goods Type counterparts.
 
+Goods Types form a hierarchical structure, by means of the ``parent``
+field, which gives the end application and its users the means to
+group them, and also has a functional impact (see :ref:`goods_behaviours`)
+
 .. _goods_behaviours:
 
 Behaviours
@@ -117,6 +121,21 @@ Behaviours are meant to be extended by downstream libraries and
 applications. For instance, a library for quality control and
 verification of Goods would probably add behaviours to describe the
 expectations on each Goods Type.
+
+Behaviours can be any JSON serializable value, and they are themselves
+often :class:`dicts <dict>`.
+
+If a given Type has a parent, then its behaviours are merged
+recursively with its parent.
+This allows to set common parameter values for a whole family of
+Types.
+
+For instance, to have different :ref:`Assemblies
+<op_assembly>` on some Types, each setting a serial number
+:ref:`Property <goods_properties>`
+by means of a shared sequence, one may specify the serial :ref:`Property
+<goods_properties>` in the ``assembly`` behaviour of some
+common ancestor Type.
 
 .. _goods_properties:
 

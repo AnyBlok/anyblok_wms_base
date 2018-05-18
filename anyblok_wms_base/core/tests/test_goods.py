@@ -277,22 +277,3 @@ class TestGoodsProperties(BlokTestCase):
         dup.get('history').append('b')
         self.assertEqual(dup.get('history'), ['a', 'b'])
         self.assertEqual(props.get('history'), ['a'])
-
-
-class TestGoodsType(BlokTestCase):
-
-    def setUp(self):
-        self.Type = self.registry.Wms.Goods.Type
-
-    def test_get_behaviour(self):
-        gt = self.Type.insert(code='gtc')
-        # there's no 'default_loc' behaviour considered in wms-core
-        # at the time being, but that's something applicative code may
-        # want to introduce
-        self.assertIsNone(gt.get_behaviour('default_loc'))
-        self.assertEqual(gt.get_behaviour('default_loc', default='stock'),
-                         'stock')
-        gt.behaviours = dict(default_loc='AB/1/2')
-        self.assertEqual(gt.get_behaviour('default_loc'), 'AB/1/2')
-        self.assertIsNone(gt.get_behaviour('other'))
-        self.assertEqual(gt.get_behaviour('other', default=1), 1)
