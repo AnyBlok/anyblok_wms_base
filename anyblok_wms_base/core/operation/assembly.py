@@ -185,14 +185,24 @@ class Assembly(Operation):
         # factors that are random wrt the specification.
         inputs = set(self.inputs)
 
+        GoodsType = self.registry.Wms.Goods.Type
+        types_by_code = dict()
+
         for i, expected in enumerate(spec['inputs']):
             req_props = expected.get('required_properties', ())
             req_prop_values = expected.get('required_property_values', {})
             fwd_props = expected.get('forward_properties', ())
+
+            type_code = expected['type']
+            gtype = types_by_code.get(type_code)
+            if gtype is None:
+                gtype = GoodsType.query().filter_by(
+                    code=type_code).one()
+                types_by_code[type_code] = gtype
+
             for _ in range(expected['quantity']):
                 for candidate in inputs:
-                    # TODO replace with has_type() once it's there
-                    if candidate.goods.type.code != expected['type']:
+                    if not candidate.goods.has_type(gtype):
                         continue
                     if self.check_extract_input_props(
                             candidate, outcome_props,

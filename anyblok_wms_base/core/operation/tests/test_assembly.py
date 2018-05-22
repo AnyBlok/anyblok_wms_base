@@ -90,6 +90,38 @@ class TestAssembly(WmsTestCase):
                                quantity=1),
                           ])
 
+    def test_create_done_fixed_generic_type(self):
+        parent = self.Goods.Type.insert(code='parent')
+        gt1 = self.Goods.Type.insert(code='GT1', parent=parent)
+        gt2 = self.Goods.Type.insert(code='GT2', parent=parent)
+        self.create_outcome_type(dict(default={
+            'inputs': [
+                {'type': 'parent', 'quantity': 2},
+            ],
+            'for_unpack_outcomes': ['all', 'descriptions'],
+        }))
+        avatars = self.create_goods(((gt1, 1), (gt2, 1)))
+        avatars[0].goods.set_property('expiration_date', '2010-01-02')
+
+        assembly = self.Assembly.create(inputs=avatars,
+                                        outcome_type=self.outcome_type,
+                                        name='default',
+                                        state='done')
+
+        outcome = self.assert_singleton(assembly.outcomes)
+        self.assertEqual(outcome.goods.type, self.outcome_type)
+        self.assertEqual(outcome.state, 'present')
+        for av in avatars:
+            self.assertEqual(av.state, 'past')
+        self.assertEqual(outcome.goods.get_property('unpack_outcomes'),
+                         [dict(properties=dict(batch=None,
+                                               expiration_date='2010-01-02'),
+                               type=gt1.id,
+                               quantity=1),
+                          dict(type=gt2.id,
+                               quantity=1),
+                          ])
+
     def test_create_done_required_props_match(self):
         """required_properties should be a matching rule, not an aftercheck.
 
