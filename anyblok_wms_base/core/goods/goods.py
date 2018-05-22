@@ -100,6 +100,9 @@ class Goods:
     def __repr__(self):
         return "Wms.Goods(id={self.id}, type={self.type!r})".format(self=self)
 
+    def has_type(self, gt):
+        return self.type.is_sub_type(gt)
+
     def get_property(self, k, default=None):
         """Property getter, works like :meth:`dict.get`.
 

@@ -102,3 +102,17 @@ class Type:
         if parent_beh is _missing:
             return beh
         return dict_merge(beh, parent_beh)
+
+    def is_sub_type(self, gt):
+        """True if ``self``  is a sub type of ``gt``, inclusively.
+
+        TODO PERF the current implementation recurses over ancestors.
+        A subsequent implementation could add caching and/or recursive SQL
+        queries.
+        """
+        if self == gt:
+            return True
+        parent = self.parent
+        if parent is None:
+            return False
+        return parent.is_sub_type(gt)

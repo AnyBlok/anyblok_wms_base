@@ -100,3 +100,18 @@ class TestGoodsType(BlokTestCase):
                          dict(screwing=dict(
                              inputs=[dict(type='material2', quantity=3)],
                          )))
+
+    def test_is_subtype(self):
+        grand = self.Type.insert(code='grand')
+        parent = self.Type.insert(code='parent', parent=grand)
+        child = self.Type.insert(code='child', parent=parent)
+        sibling = self.Type.insert(code='other', parent=parent)
+        stranger = self.Type.insert(code='stranger')
+
+        self.assertTrue(child.is_sub_type(parent))
+        self.assertTrue(child.is_sub_type(grand))
+        self.assertFalse(parent.is_sub_type(child))
+        self.assertFalse(child.is_sub_type(sibling))
+        self.assertFalse(child.is_sub_type(stranger))
+        self.assertFalse(stranger.is_sub_type(grand))
+        self.assertFalse(stranger.is_sub_type(parent))

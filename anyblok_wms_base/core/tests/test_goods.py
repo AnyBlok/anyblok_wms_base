@@ -28,6 +28,16 @@ class TestGoods(WmsTestCase):
             dt_execution=self.dt_test1,
             state='done')
 
+    def test_has_type(self):
+        parent = self.Goods.Type.insert(code='parent')
+        goods = self.Goods.insert(type=self.goods_type)
+
+        self.assertTrue(goods.has_type(self.goods_type))
+        self.assertFalse(goods.has_type(parent))
+
+        self.goods_type.parent = parent
+        self.assertTrue(goods.has_type(parent))
+
     def test_prop_api(self):
         goods = self.Goods.insert(type=self.goods_type)
         self.assertIsNone(goods.get_property('foo'))
