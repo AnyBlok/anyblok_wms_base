@@ -115,3 +115,27 @@ class TestGoodsType(BlokTestCase):
         self.assertFalse(child.is_sub_type(stranger))
         self.assertFalse(stranger.is_sub_type(grand))
         self.assertFalse(stranger.is_sub_type(parent))
+
+    def test_properties(self):
+        parent = self.Type.insert(code='parent')
+
+        self.assertFalse(parent.has_property('foo'))
+        self.assertFalse(parent.has_properties(['foo', 'qa']))
+        self.assertTrue(parent.has_properties([]))
+        parent.properties = dict(foo=1, qa='nok')
+
+        self.assertTrue(parent.has_property('foo'))
+        self.assertTrue(parent.has_property_values(dict(foo=1)))
+        self.assertTrue(parent.has_properties(['foo', 'qa']))
+        self.assertFalse(parent.has_property_values(dict(foo=1, qa='ok')))
+
+        child = self.Type.insert(code='child', parent=parent)
+        self.assertTrue(child.has_property('foo'))
+        self.assertTrue(child.has_property_values(dict(foo=1)))
+        self.assertTrue(child.has_properties(['foo', 'qa']))
+        self.assertFalse(child.has_property_values(dict(foo=1, qa='ok')))
+
+        child.properties = dict(bar=True)
+        self.assertTrue(child.has_property('foo'))
+        self.assertTrue(child.has_property_values(dict(foo=1, bar=True)))
+        self.assertTrue(child.has_properties(['foo', 'qa', 'bar']))

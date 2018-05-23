@@ -62,6 +62,16 @@ class Type:
     using constants from an autodocumented module)
     """
 
+    properties = Jsonb(label="Properties")
+    """Goods Types also have flexible properties.
+
+    These are usually read from the Goods themselves (where they act as
+    default values if not defined on the Goods), and are useful with
+    generic Types, i.e., those that have children. Operations that handle
+    Properties can do interesting things by using properties that actually
+    come from Type information.
+    """
+
     parent = Many2One(model='Model.Wms.Goods.Type')
     """This field expresses the hierarchy of Goods Types."""
 
@@ -116,3 +126,47 @@ class Type:
         if parent is None:
             return False
         return parent.is_sub_type(gt)
+
+    def get_property(self, k, default=None):
+        """Read a property value recursively.
+
+        If the current Type does not have the wished property key, but has a
+        parent, then the lookup continues on the parent.
+        """
+        props = self.properties
+        val = _missing if props is None else props.get(k, _missing)
+        if val is _missing:
+            parent = self.parent
+            if parent is None:
+                return default
+            return parent.get_property(k, default=default)
+        return val
+
+    def has_property_values(self, mapping):
+        return all(self.get_property(k, default=_missing) == v
+                   for k, v in mapping.items())
+
+    def has_property(self, name):
+        if self.properties is not None and name in self.properties:
+            return True
+        parent = self.parent
+        if parent is not None:
+            return parent.has_property(name)
+        return False
+
+    def has_properties(self, wanted_props):
+        if not wanted_props:
+            return True
+
+        properties = self.properties
+        if properties is None:
+            missing = wanted_props
+        else:
+            missing = (p for p in wanted_props if p not in properties)
+
+        parent = self.parent
+        if parent is None:
+            for x in missing:  # could be a generator, a list etc.
+                return False
+            return True
+        return parent.has_properties(missing)

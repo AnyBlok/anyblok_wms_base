@@ -100,8 +100,15 @@ class Goods:
     def __repr__(self):
         return "Wms.Goods(id={self.id}, type={self.type!r})".format(self=self)
 
-    def has_type(self, gt):
-        return self.type.is_sub_type(gt)
+    def has_type(self, goods_type):
+        """Tell whether ``self`` has the given type.
+
+        :param .type.Type goods_type:
+        :return: ``True`` if the :attr:`type` attribute is ``goods_type``
+
+        :rtype bool:
+        """
+        return self.type.is_sub_type(goods_type)
 
     def get_property(self, k, default=None):
         """Property getter, works like :meth:`dict.get`.
@@ -110,10 +117,11 @@ class Goods:
         direcly inherit from UserDict yet. This is good enough to provide
         the abstraction needed for current internal wms_core calls.
         """
-        if self.properties is None:
-            return default
-
-        return self.properties.get(k, default)
+        props = self.properties
+        val = _missing if props is None else props.get(k, _missing)
+        if val is _missing:
+            return self.type.get_property(k, default=default)
+        return val
 
     def _maybe_duplicate_props(self):
         """Internal method to duplicate Properties
@@ -182,9 +190,9 @@ class Goods:
     def has_property(self, name):
         """Check if a Property with given name is present."""
         props = self.properties
-        if props is None:
-            return False
-        return name in props
+        if props is not None and name in props:
+            return True
+        return self.type.has_property(name)
 
     def has_properties(self, names):
         """Check in one shot if Properties with given names are present."""
@@ -192,8 +200,8 @@ class Goods:
             return True
         props = self.properties
         if props is None:
-            return False
-        return all(n in props for n in names)
+            return self.type.has_properties(names)
+        return self.type.has_properties(n for n in names if n not in props)
 
     def has_property_values(self, mapping):
         """Check that all key/value pairs of mapping are in properties."""
@@ -201,8 +209,10 @@ class Goods:
             return True
         props = self.properties
         if props is None:
-            return False
-        return all(props.get(k, _missing) == v for k, v in mapping.items())
+            return self.type.has_property_values(mapping)
+
+        return all(self.get_property(k, default=_missing) == v
+                   for k, v in mapping.items())
 
 
 @register(Model.Wms.Goods)
