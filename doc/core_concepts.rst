@@ -28,7 +28,7 @@ Goods represent the physical objects the system is meant to manage.
 
 Goods
 -----
-.. versionchanged:: 0.6.0
+.. versionchanged:: 0.7.0
 
 .. note:: This is an overview, see :class:`the code documentation
           <anyblok_wms_base.core.goods.goods.Goods>` for more
@@ -36,7 +36,8 @@ Goods
 
 Records of Goods represent the physicality of the goods, they have a
 certain :ref:`Type <goods_type>` and :ref:`flexible properties
-<goods_properties>`, whose purpose is to to represent the variability
+<goods_properties>`, whose purpose is to carry useful information
+about the Goods, including in particular the variability
 among Goods of a given Type (e.g, serial numbers, expiry dates).
 
 The journey of the Goods through the system is represented by their
@@ -102,6 +103,19 @@ If the application considers service products (such as consulting,
 extensions of warranty, etc.) besides products representing physical
 goods, those services would simply have no Goods Type counterparts.
 
+Goods Types form a hierarchical structure, by means of the ``parent``
+field, which gives the end application and its users the means to
+group them, and also has a functional impact (see :ref:`goods_behaviours`)
+
+Goods Type have a ``properties`` flexible field. Reading the property
+values is done through a dedicated API, which implements defaulting to
+the ``parent``, if there's one.
+
+See the section about :ref:`Goods Properties <goods_properties>` for
+a full description of Properties, including the interplay between Type
+and Goods Properties.
+
+
 .. _goods_behaviours:
 
 Behaviours
@@ -118,6 +132,21 @@ applications. For instance, a library for quality control and
 verification of Goods would probably add behaviours to describe the
 expectations on each Goods Type.
 
+Behaviours can be any JSON serializable value, and they are themselves
+often :class:`dicts <dict>`.
+
+If a given Type has a parent, then its behaviours are merged
+recursively with its parent.
+This allows to set common parameter values for a whole family of
+Types.
+
+For instance, to have different :ref:`Assemblies
+<op_assembly>` on some Types, each setting a serial number
+:ref:`Property <goods_properties>`
+by means of a shared sequence, one may specify the serial :ref:`Property
+<goods_properties>` in the ``assembly`` behaviour of some
+common ancestor Type.
+
 .. _goods_properties:
 
 Goods Properties
@@ -126,6 +155,10 @@ Goods Properties
           <anyblok_wms_base.core.goods.goods.Goods>` for technical
           details. Notably, properties have to be handled through a
           dedicated API.
+
+Goods Properties allow to store and retrieve information about the
+Goods. A given Property can come from the Goods record itself, or be
+inherited from its Type: it won't make any difference for applicative code.
 
 While it's necessary to categorize the Goods as we've done with Goods
 Types, there is some variability to represent for Goods of the same
@@ -137,18 +170,29 @@ production batches of the Goods or of their critical parts…
 
 As usual, WMS Base doesn't impose anything on property values.
 Some :ref:`Operations <operation>`, such as :ref:`op_move`, won't
-touch properties at all, while some other, such as :ref:`op_unpack`
+touch properties at all, while some others, such as :ref:`op_unpack`
 will manipulate them, according to behaviours on the :ref:`goods_type`.
 
 There's a fine line between what should be encoded as Properties, and
-what should be deduced from the :ref:`goods_type`. For an example of
+what should be *deduced* from the :ref:`goods_type`. For an example of
 this, imagine that the application cares about the weight of the
 Goods: in many cases, that depends only on the Goods Type, but in some
 other it might actually be different among Goods of the same Type.
 
-The Properties model can be enriched to make true Anyblok fields out
-of some properties (typically ending up as columns in the database),
-which can improve querying capabilities, and make for an easier and
+In order to accomodate both cases in the same application, and also to
+bring uniformity between different characteristics of the Goods, and
+therefore how applicative code handles them, Goods Properties are
+automatically merged with the Type properties. To follow on the weight
+example, the code that takes care of an actual shipping doesn't have
+to worry whether a ``weight`` Property is carried by the Goods or if
+it has to implement special logic based on the knowledge of some
+Types: it's enough to define a ``weight`` on the Types for which it's
+fixed, and simply read it from the Goods record in all cases.
+
+The Properties stored on the Goods records form a Model of
+their own, which can be enriched to make true Anyblok fields out
+of some properties (typically ending up as columns in the database).
+This can improve querying capabilities, and make for an easier and
 safer programming experience.
 
 .. _goods_avatar:

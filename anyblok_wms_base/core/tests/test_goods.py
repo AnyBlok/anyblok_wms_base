@@ -28,6 +28,16 @@ class TestGoods(WmsTestCase):
             dt_execution=self.dt_test1,
             state='done')
 
+    def test_has_type(self):
+        parent = self.Goods.Type.insert(code='parent')
+        goods = self.Goods.insert(type=self.goods_type)
+
+        self.assertTrue(goods.has_type(self.goods_type))
+        self.assertFalse(goods.has_type(parent))
+
+        self.goods_type.parent = parent
+        self.assertTrue(goods.has_type(parent))
+
     def test_prop_api(self):
         goods = self.Goods.insert(type=self.goods_type)
         self.assertIsNone(goods.get_property('foo'))
@@ -277,22 +287,3 @@ class TestGoodsProperties(BlokTestCase):
         dup.get('history').append('b')
         self.assertEqual(dup.get('history'), ['a', 'b'])
         self.assertEqual(props.get('history'), ['a'])
-
-
-class TestGoodsType(BlokTestCase):
-
-    def setUp(self):
-        self.Type = self.registry.Wms.Goods.Type
-
-    def test_get_behaviour(self):
-        gt = self.Type.insert(code='gtc')
-        # there's no 'default_loc' behaviour considered in wms-core
-        # at the time being, but that's something applicative code may
-        # want to introduce
-        self.assertIsNone(gt.get_behaviour('default_loc'))
-        self.assertEqual(gt.get_behaviour('default_loc', default='stock'),
-                         'stock')
-        gt.behaviours = dict(default_loc='AB/1/2')
-        self.assertEqual(gt.get_behaviour('default_loc'), 'AB/1/2')
-        self.assertIsNone(gt.get_behaviour('other'))
-        self.assertEqual(gt.get_behaviour('other', default=1), 1)

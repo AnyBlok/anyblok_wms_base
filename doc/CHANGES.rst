@@ -20,6 +20,9 @@ Release history
   completely, i.e, no partial reservation is possible.
 * Location tags and recursive stock computations (now a transversal
   method on the Wms model).
+* Goods Type hierarchy and merging of behaviours
+* Properties on Goods types and defaulting rules from the Goods and
+  across the hierarchy
 
 0.6.0
 ~~~~~
