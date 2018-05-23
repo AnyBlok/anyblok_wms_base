@@ -311,10 +311,15 @@ Well, yeah, this page should be superseded. How ?
   Maybe that's too formal, but keeping somehow in the docs allows to
   cross-reference, like we did already in :ref:`goal_stubborn_reality`
 
+Implemented
+~~~~~~~~~~~
+
 .. _improvement_goods_type_hierarchy:
 
 Goods Type hierarchy and behaviour inheritance
 ----------------------------------------------
+
+.. versionadded:: 0.7.0
 
 Some applications will have many of :ref:`Goods Types <goods_type>`,
 which will be often mere variations of each other, for example clothes
@@ -366,11 +371,12 @@ possibilities:
     + have the :meth:`set_property()
       <anyblok_wms_base.core.goods.goods.Goods.set_property>` method
       set the proper Goods Type automatically on changes of that
-      Property.
+      Property. *(Not done for 0.7.0)*
     + have the :meth:`get_property()
       <anyblok_wms_base.core.goods.goods.Goods.get_property>` method
       return the proper value for that Property, inferred from the
-      actual Goods Type
+      actual Goods Type. *(This is actually a consequence of the Type
+      Properties, also done for 0.7.0)*
 
     This transparency would also simplify configuration of Assembly
     Operations when faced with generic types: no need for even more
@@ -382,8 +388,7 @@ possibilities:
     recognize that they need to represent it as a full Goods Type.
 
 
-Implemented
-~~~~~~~~~~~
+
 .. _improvement_stock_levels:
 
 Location hierarchical structure and stock levels
