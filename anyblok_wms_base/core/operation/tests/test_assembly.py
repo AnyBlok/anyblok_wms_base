@@ -188,6 +188,30 @@ class TestAssembly(WmsTestCase):
             # for next run in the loop
             assembly.obliviate()
 
+    def test_create_done_fwd_unpack_outcomes(self):
+        """Forwarding unpack_outcomes should be possible."""
+        gt1 = self.Goods.Type.insert(code='GT1')
+        self.create_outcome_type(dict(default={
+            'inputs': [
+                {'type': 'GT1', 'quantity': 1},
+            ],
+            'forward_properties': ['unpack_outcomes'],
+        }))
+        avatars = self.create_goods([(gt1, 1)])
+
+        gt2 = self.Goods.Type.insert(code='GT2')
+        avatars[0].goods.set_property('unpack_outcomes',
+                                      dict(type=gt2.id, quantity=4))
+
+        assembly = self.Assembly.create(inputs=avatars,
+                                        outcome_type=self.outcome_type,
+                                        name='default',
+                                        state='done')
+
+        outcome = self.assert_singleton(assembly.outcomes)
+        self.assertEqual(outcome.goods.get_property('unpack_outcomes'),
+                         dict(type=gt2.id, quantity=4))
+
     def test_create_done_forward_props_per_inputs_spec_revert(self):
         gt1 = self.Goods.Type.insert(code='GT1')
         gt2 = self.Goods.Type.insert(code='GT2')
