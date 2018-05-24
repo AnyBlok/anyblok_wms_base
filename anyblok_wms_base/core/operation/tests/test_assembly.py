@@ -598,9 +598,6 @@ class TestAssembly(WmsTestCase):
         self.create_outcome_type(dict(default={
             'inputs': [{'type': 'GT1', 'quantity': 2}],
         }))
-        self.create_outcome_type(dict(default={
-            'inputs': [{'type': 'GT1', 'quantity': 2}],
-        }))
 
         avatars = self.create_goods(((gt1, 2), (gt2, 1)))
 
@@ -617,14 +614,11 @@ class TestAssembly(WmsTestCase):
     def test_create_done_extra_allowed(self):
         gt1 = self.Goods.Type.insert(code='GT1')
         gt2 = self.Goods.Type.insert(code='GT2')
+
         self.create_outcome_type(dict(default={
             'inputs': [{'type': 'GT1', 'quantity': 2}],
             'allow_extra_inputs': True,
         }))
-        self.create_outcome_type(
-            dict(default=dict(
-                inputs=[dict(type='GT1', quantity=2)],
-                allow_extra_inputs=True)))
         avatars = self.create_goods(((gt1, 2), (gt2, 1)))
 
         assembly = self.Assembly.create(inputs=avatars,

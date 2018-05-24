@@ -20,7 +20,8 @@ class TestLocation(WmsTestCase):
 
         self.Goods = Wms.Goods
         self.Avatar = Wms.Goods.Avatar
-        self.goods_type = self.Goods.Type.insert(label="My goods")
+        self.goods_type = self.Goods.Type.insert(label="My goods",
+                                                 code='MyGT')
         self.stock = Wms.Location.insert(label="Stock", code='STK')
         self.arrival = Wms.Operation.Arrival.insert(
             goods_type=self.goods_type,

@@ -27,6 +27,7 @@ class TestUnpack(WmsTestCase):
     def create_packs(self, type_behaviours=None, properties=None):
         self.packed_goods_type = self.Goods.Type.insert(
             label="Pack",
+            code='PACK',
             behaviours=type_behaviours)
         self.arrival = self.Operation.Arrival.create(
             goods_type=self.packed_goods_type,

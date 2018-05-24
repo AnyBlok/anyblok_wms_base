@@ -93,7 +93,8 @@ class WmsTestCaseWithGoods(WmsTestCase):
 
         Wms = self.registry.Wms
         Operation = Wms.Operation
-        self.goods_type = Wms.Goods.Type.insert(label="My good type")
+        self.goods_type = Wms.Goods.Type.insert(label="My good type",
+                                                code='MyGT')
         self.incoming_loc = Wms.Location.insert(label="Incoming location")
         self.stock = Wms.Location.insert(label="Stock")
 

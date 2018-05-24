@@ -21,7 +21,8 @@ class TestLocation(WmsTestCase):
 
         self.Goods = Wms.Goods
         self.Avatar = Wms.Goods.Avatar
-        self.goods_type = self.Goods.Type.insert(label="My goods")
+        self.goods_type = self.Goods.Type.insert(label="My goods",
+                                                 code='MyGT')
 
         self.Location = Wms.Location
         self.stock = Wms.Location.insert(label="Stock", code='STK')
