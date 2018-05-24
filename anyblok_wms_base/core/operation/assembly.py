@@ -437,7 +437,7 @@ class Assembly(Operation):
             goods = avatar.goods
             props = goods.properties
             unpack_outcome = dict(
-                type=goods.type.id,
+                type=goods.type.code,
                 quantity=1,  # TODO hook for wms_quantity
                 )
             if props is not None:

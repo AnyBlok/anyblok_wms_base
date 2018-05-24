@@ -39,11 +39,11 @@ class TestUnpack(WmsTestCase):
         self.packs = self.assert_singleton(self.arrival.outcomes)
 
     def test_whole_done_one_unpacked_type_props(self):
-        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        unpacked_type = self.Goods.Type.insert(code='Unpacked')
         self.create_packs(
             type_behaviours=dict(unpack=dict(
                 outcomes=[
-                    dict(type=unpacked_type.id,
+                    dict(type=unpacked_type.code,
                          quantity=3,
                          forward_properties=['foo', 'bar'],
                          required_properties=['foo'],
@@ -67,18 +67,20 @@ class TestUnpack(WmsTestCase):
 
     def test_whole_done_one_clone_one_not_clone(self):
         unpacked_clone_type = self.Goods.Type.insert(
+            code='clone',
             label="Unpacked, clone props")
         unpacked_fwd_type = self.Goods.Type.insert(
+            code='fwd',
             label="Unpacked, fwd one prop")
         self.create_packs(
             type_behaviours=dict(unpack=dict(
                 outcomes=[
-                    dict(type=unpacked_fwd_type.id,
+                    dict(type='fwd',
                          quantity=3,
                          forward_properties=['foo', 'bar'],
                          required_properties=['foo'],
                          ),
-                    dict(type=unpacked_clone_type.id,
+                    dict(type='clone',
                          quantity=2,
                          forward_properties='clone'
                          )
@@ -108,12 +110,12 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(unpacked_goods_fwd_props.get_property('foo'), 3)
 
     def test_whole_done_one_unpacked_unform(self):
-        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        unpacked_type = self.Goods.Type.insert(code='Unpacked')
         self.create_packs(
             type_behaviours=dict(unpack=dict(
                 uniform_outcomes=True,
                 outcomes=[
-                    dict(type=unpacked_type.id,
+                    dict(type=unpacked_type.code,
                          quantity=3,
                          )
                 ],
@@ -141,7 +143,7 @@ class TestUnpack(WmsTestCase):
         Properties after unpack are forwarded according to configuration
         on the packs' Goods Type and on the packs' properties.
         """
-        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        unpacked_type = self.Goods.Type.insert(code='Unpacked')
         self.create_packs(
             type_behaviours=dict(unpack=dict(
                 forward_properties=['foo', 'bar'],
@@ -150,7 +152,7 @@ class TestUnpack(WmsTestCase):
             properties=dict(foo=3,
                             baz='second hand',
                             unpack_outcomes=[
-                                dict(type=unpacked_type.id,
+                                dict(type=unpacked_type.code,
                                      quantity=2,
                                      forward_properties=['bar', 'baz']
                                      )
@@ -178,7 +180,7 @@ class TestUnpack(WmsTestCase):
         Properties after unpack are forwarded according to configuration
         on the packs' Goods Type and on the packs' properties.
         """
-        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        unpacked_type = self.Goods.Type.insert(code='Unpacked')
         existing = self.Goods.insert(type=unpacked_type, quantity=2)
         existing.set_property('grade', 'best')
         self.create_packs(
@@ -190,7 +192,7 @@ class TestUnpack(WmsTestCase):
             properties=dict(foo=3,
                             baz='yes',
                             unpack_outcomes=[
-                                dict(type=unpacked_type.id,
+                                dict(type=unpacked_type.code,
                                      quantity=2,
                                      local_goods_ids=[existing.id],
                                      forward_properties=['bar', 'baz']
@@ -219,7 +221,7 @@ class TestUnpack(WmsTestCase):
         Properties after unpack are forwarded according to configuration
         on the packs' Goods Type and on the packs' properties.
         """
-        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        unpacked_type = self.Goods.Type.insert(code='Unpacked')
         existing = self.Goods.insert(type=unpacked_type, quantity=2)
         existing.set_property('grade', 'best')
         self.create_packs(
@@ -231,7 +233,7 @@ class TestUnpack(WmsTestCase):
             properties=dict(foo=3,
                             baz='yes',
                             unpack_outcomes=[
-                                dict(type=unpacked_type.id,
+                                dict(type=unpacked_type.code,
                                      quantity=2,
                                      local_goods_ids=[existing.id],
                                      forward_properties=['bar', 'baz']
@@ -246,18 +248,18 @@ class TestUnpack(WmsTestCase):
         exckw = arc.exception.kwargs
         self.assertEqual(exckw.get('target_qty'), 4)
         self.assertEqual(exckw.get('spec'),
-                         dict(type=unpacked_type.id,
+                         dict(type=unpacked_type.code,
                               quantity=2,
                               local_goods_ids=[existing.id],
                               forward_properties=['bar', 'baz', 'foo'],
                               required_properties=['foo']))
 
     def test_whole_done_one_unpacked_type_missing_props(self):
-        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        unpacked_type = self.Goods.Type.insert(code='Unpacked')
         self.create_packs(
             type_behaviours=dict(unpack=dict(
                 outcomes=[
-                    dict(type=unpacked_type.id,
+                    dict(type=unpacked_type.code,
                          quantity=3,
                          forward_properties=['foo', 'bar'],
                          required_properties=['foo'],
@@ -300,10 +302,10 @@ class TestUnpack(WmsTestCase):
 
     def test_whole_done_one_unpacked_type_no_props(self):
         """Unpacking operation, forwarding no properties."""
-        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        unpacked_type = self.Goods.Type.insert(code='Unpacked')
         self.create_packs(type_behaviours=dict(unpack=dict(
                 outcomes=[
-                    dict(type=unpacked_type.id,
+                    dict(type=unpacked_type.code,
                          quantity=3,
                          )
                 ]
@@ -327,7 +329,7 @@ class TestUnpack(WmsTestCase):
     def test_whole_plan_execute(self):
         """Plan an Unpack (non uniform scenario), then execute it
         """
-        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        unpacked_type = self.Goods.Type.insert(code='Unpacked')
         self.create_packs(
             type_behaviours=dict(unpack=dict(
                 forward_properties=['foo', 'bar'],
@@ -336,7 +338,7 @@ class TestUnpack(WmsTestCase):
             properties=dict(foo=3,
                             baz='second hand',
                             unpack_outcomes=[
-                                dict(type=unpacked_type.id,
+                                dict(type=unpacked_type.code,
                                      quantity=2,
                                      forward_properties=['bar', 'baz']
                                      )
@@ -387,12 +389,12 @@ class TestUnpack(WmsTestCase):
     def test_partial_plan_execute(self):
         """Plan a partial Unpack (uniform scenario), then execute it
         """
-        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        unpacked_type = self.Goods.Type.insert(code='Unpacked')
         self.create_packs(
             type_behaviours=dict(unpack=dict(
                 uniform_outcomes=True,
                 outcomes=[
-                    dict(type=unpacked_type.id,
+                    dict(type=unpacked_type.code,
                          quantity=6,
                          ),
                 ],
@@ -452,12 +454,12 @@ class TestUnpack(WmsTestCase):
     def test_partial_cancel(self):
         """Plan a partial Unpack (uniform scenario), then cancel it
         """
-        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        unpacked_type = self.Goods.Type.insert(code='Unpacked')
         self.create_packs(
             type_behaviours=dict(unpack=dict(
                 uniform_outcomes=True,
                 outcomes=[
-                    dict(type=unpacked_type.id,
+                    dict(type=unpacked_type.code,
                          quantity=6,
                          ),
                 ],
@@ -522,12 +524,12 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(list(exc_kwargs.get('inputs')), [self.packs])
 
     def test_repr(self):
-        unpacked_type = self.Goods.Type.insert(label="Unpacked")
+        unpacked_type = self.Goods.Type.insert(code='Unpacked')
         self.create_packs(
             type_behaviours=dict(unpack=dict(
                 uniform_outcomes=True,
                 outcomes=[
-                    dict(type=unpacked_type.id,
+                    dict(type=unpacked_type.code,
                          quantity=6,
                          ),
                 ]),

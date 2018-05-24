@@ -112,9 +112,9 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         packs = self.input
         dt_execution = self.dt_execution
         spec = self.get_outcome_specs()
-        type_ids = set(outcome['type'] for outcome in spec)
-        outcome_types = {gt.id: gt for gt in GoodsType.query().filter(
-            GoodsType.id.in_(type_ids)).all()}
+        type_codes = set(outcome['type'] for outcome in spec)
+        outcome_types = {gt.code: gt for gt in GoodsType.query().filter(
+            GoodsType.code.in_(type_codes)).all()}
 
         outcome_state = 'present' if self.state == 'done' else 'future'
         if self.state == 'done':
