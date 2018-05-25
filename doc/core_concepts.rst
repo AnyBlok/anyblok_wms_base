@@ -516,6 +516,11 @@ This means that either
 Assembly
 --------
 
+.. versionadded:: 0.7.0
+
+.. warning:: the specification format of Property handling will
+             probably change a lot in subsequent versions.
+
 .. note:: This is an overview, see :class:`the code documentation
           <anyblok_wms_base.core.operation.assembly.Assembly>`
           for more details.

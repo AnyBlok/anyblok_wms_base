@@ -13,7 +13,7 @@ from . import type as gtype
 # even with 'import as', there is masking of the builtin
 # (at least on Python 3.5). Let's remove it if it's there
 # to avoid leaving a trap here
-globals().pop('type')
+globals().pop('type', None)
 
 
 def reload_declarations(reload):
