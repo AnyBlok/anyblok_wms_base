@@ -312,6 +312,11 @@ class TestAssembly(WmsTestCase):
                                 quantity=1),
                            ]))
 
+        self.assertEqual(len(assembly.match), 2)
+        self.assertEqual(set(assembly.match[0]),
+                         set(av.id for av in avatars[:2]))
+        self.assertEqual(assembly.match[1], [avatars[2].id])
+
         # before reversal, it's possible that the pack Properties have
         # changed. That is legitimate
         pack.goods.set_property('bar', 18)
@@ -456,6 +461,10 @@ class TestAssembly(WmsTestCase):
             self.assertEqual(assembled.get('bar'), 3)
             self.assertEqual(assembled.get('done'), True)
             self.assertEqual(assembled.get('foo'), 12)  # forwarded
+            # demonstrates that we know the precise matching of inputs
+            self.assertEqual(len(op.match), 2)
+            self.assertEqual(len(op.match[0]), 1)
+            self.assertEqual(len(op.match[1]), 2)
             # op would be called 'self' if the method would be
             # defined by normal subclassing
             return [('by_hook', min(inp.goods.get_property('expiry')
@@ -634,6 +643,9 @@ class TestAssembly(WmsTestCase):
                          [dict(type='GT2',
                                quantity=1,
                                local_goods_ids=[avatars[-1].goods.id])])
+        self.assertEqual(len(assembly.match), 1)
+        self.assertEqual(set(assembly.match[0]),
+                         set(av.id for av in avatars[:2]))
 
     def test_create_basic_errors(self):
         gt = self.Goods.Type.insert(code='GT1')

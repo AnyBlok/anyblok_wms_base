@@ -10,6 +10,7 @@
 from anyblok import Declarations
 from anyblok.column import Integer
 from anyblok.column import Text
+from anyblok_postgres.column import Jsonb
 from anyblok.relationship import Many2One
 
 from anyblok_wms_base.exceptions import (OperationInputsError,
@@ -76,6 +77,21 @@ class Assembly(Operation):
               prove out to be really inconvenient for downstream code.
               TODO apply the default value in :meth:`check_create_conditions`
               for convenience ?
+    """
+
+    match = Jsonb()
+    """Field use to store the result of inputs matching
+
+    Assembly Operations match their actual inputs (set at creation)
+    with the ``inputs`` part of :attr:`specification`.
+    This field is used to store the
+    result, so that it's available for further logic (for instance in
+    the :meth:`property setting hooks
+    <specific_build_outcome_properties>`).
+
+    This field's value is either ``None`` (before matching) or a list
+    of lists: for each of the inputs specification, respecting
+    ordering, the list of ids of the matching Avatars.
     """
 
     def specific_repr(self):
@@ -186,11 +202,15 @@ class Assembly(Operation):
         # it come from the will of a caller. In reality, it'll be due to
         # factors that are random wrt the specification.
         inputs = set(self.inputs)
+        match = self.match = []
 
         GoodsType = self.registry.Wms.Goods.Type
         types_by_code = dict()
 
         for i, expected in enumerate(spec['inputs']):
+            match_item = []
+            match.append(match_item)
+
             req_props = expected.get('required_properties', ())
             req_prop_values = expected.get('required_property_values', {})
             fwd_props = expected.get('forward_properties', ())
@@ -213,6 +233,7 @@ class Assembly(Operation):
                             required_prop_values=req_prop_values,
                             forwarded_props=fwd_props):
                         inputs.discard(candidate)
+                        match_item.append(candidate.id)
                         break
                 else:
                     raise AssemblyInputNotMatched(self, (expected, i))
