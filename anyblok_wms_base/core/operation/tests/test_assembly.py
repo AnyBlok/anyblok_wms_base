@@ -683,7 +683,7 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(exc.kwargs.get('locations'),
                          {self.stock, other_loc})
 
-    def test_unmatched_input_spec(self):
+    def test_unmatched_required_properties(self):
         gt1 = self.Goods.Type.insert(code='GT1')
 
         self.create_outcome_type(dict(default={
@@ -718,6 +718,38 @@ class TestAssembly(WmsTestCase):
                          dict(type='GT1',
                               quantity=1,
                               required_properties=['qa']))
+
+    def test_unmatched_required_property_value(self):
+        gt1 = self.Goods.Type.insert(code='GT1')
+
+        self.create_outcome_type(dict(default={
+            'inputs': [
+                # note how the most precise is first, this is what
+                # applications are expected to do, since the criteria
+                # are evaluated in order
+                {'type': 'GT1',
+                 'quantity': 1,
+                 'required_property_values': {'qa': 'ok'},
+                 },
+            ],
+        }))
+        avatars = self.create_goods(((gt1, 1), ))
+        avatars[0].goods.set_property('qa', 'broken')
+
+        with self.assertRaises(AssemblyInputNotMatched) as arc:
+            self.Assembly.create(inputs=avatars,
+                                 outcome_type=self.outcome_type,
+                                 name='default',
+                                 state='done')
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs['spec_nr'], 1)
+        self.assertEqual(exc.kwargs['spec_index'], 0)
+        self.assertEqual(exc.kwargs['spec_detail'],
+                         dict(type='GT1',
+                              quantity=1,
+                              required_property_values=dict(qa='ok')))
 
     def test_inconsistent_forwarding_one_spec(self):
         gt1 = self.Goods.Type.insert(code='GT1')
