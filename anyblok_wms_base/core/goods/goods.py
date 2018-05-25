@@ -254,7 +254,7 @@ class Properties:
     while being indifferent of the values.
 
     .. note:: the core also makes use of a few special properties, such as
-              ``unpack_outcomes``. TODO make a list, in the form of
+              ``contents``. TODO make a list, in the form of
               constants in a module
     """
 

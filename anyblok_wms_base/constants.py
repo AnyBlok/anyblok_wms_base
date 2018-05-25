@@ -90,3 +90,14 @@ DEFAULT_ASSEMBLY_NAME = 'default'
 See :class:`Wms.Operation.Assembly
 <anyblok_wms_base.core.operation.assembly>` for more detail.
 """
+
+CONTENTS_PROPERTY = 'contents'
+"""Standard property used for containing Goods.
+
+This is used in :ref:`Unpack Operation <op_unpack>` to specify variable
+expected outcomes, i.e., those that aren't specified by the
+:ref:`Type behaviour <goods_behaviours>`.
+
+This is also used in the :ref:`Assembly Operation <op_assembly>` to record the
+components of the outcome.
+"""

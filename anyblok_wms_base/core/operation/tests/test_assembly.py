@@ -10,6 +10,7 @@ from datetime import datetime
 
 from anyblok_wms_base.testing import BlokTestCase
 from anyblok_wms_base.testing import WmsTestCase
+from anyblok_wms_base.constants import CONTENTS_PROPERTY
 from anyblok_wms_base.exceptions import (
     OperationError,
     OperationInputsError,
@@ -64,7 +65,7 @@ class TestAssembly(WmsTestCase):
                 {'type': 'GT1', 'quantity': 2},
                 {'type': 'GT2', 'quantity': 1},
             ],
-            'for_unpack_outcomes': ['all', 'descriptions'],
+            'for_contents': ['all', 'descriptions'],
         }))
         avatars = self.create_goods(((gt1, 2), (gt2, 1)))
         avatars[0].goods.set_property('expiration_date', '2010-01-01')
@@ -79,7 +80,7 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(outcome.state, 'present')
         for av in avatars:
             self.assertEqual(av.state, 'past')
-        self.assertEqual(outcome.goods.get_property('unpack_outcomes'),
+        self.assertEqual(outcome.goods.get_property(CONTENTS_PROPERTY),
                          [dict(properties=dict(batch=None,
                                                expiration_date='2010-01-01'),
                                type='GT1',
@@ -109,7 +110,7 @@ class TestAssembly(WmsTestCase):
                  'forward_properties': ['foo'],
                  }
             ],
-            'for_unpack_outcomes': ['all', 'descriptions'],
+            'for_contents': ['all', 'descriptions'],
         }))
         avatars = self.create_goods(((gt1, 1), (gt2, 1)))
         avatars[0].goods.set_property('main', True)
@@ -125,7 +126,7 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(outcome.state, 'present')
         for av in avatars:
             self.assertEqual(av.state, 'past')
-        self.assertEqual(outcome.goods.get_property('unpack_outcomes'),
+        self.assertEqual(outcome.goods.get_property(CONTENTS_PROPERTY),
                          [dict(forward_properties=['bar'],
                                properties=dict(batch=None, main=True),
                                type='GT1',
@@ -235,19 +236,19 @@ class TestAssembly(WmsTestCase):
             # for next run in the loop
             assembly.obliviate()
 
-    def test_create_done_fwd_unpack_outcomes(self):
-        """Forwarding unpack_outcomes should be possible."""
+    def test_create_done_fwd_contents(self):
+        """Forwarding contents should be possible."""
         gt1 = self.Goods.Type.insert(code='GT1')
         self.create_outcome_type(dict(default={
             'inputs': [
                 {'type': 'GT1', 'quantity': 1},
             ],
-            'forward_properties': ['unpack_outcomes'],
+            'forward_properties': [CONTENTS_PROPERTY],
         }))
         avatars = self.create_goods([(gt1, 1)])
 
         self.Goods.Type.insert(code='GT2')
-        avatars[0].goods.set_property('unpack_outcomes',
+        avatars[0].goods.set_property(CONTENTS_PROPERTY,
                                       dict(type='GT2', quantity=4))
 
         assembly = self.Assembly.create(inputs=avatars,
@@ -256,7 +257,7 @@ class TestAssembly(WmsTestCase):
                                         state='done')
 
         outcome = self.assert_singleton(assembly.outcomes)
-        self.assertEqual(outcome.goods.get_property('unpack_outcomes'),
+        self.assertEqual(outcome.goods.get_property(CONTENTS_PROPERTY),
                          dict(type='GT2', quantity=4))
 
     def test_create_done_forward_props_per_inputs_spec_revert(self):
@@ -272,7 +273,7 @@ class TestAssembly(WmsTestCase):
                  'forward_properties': ['foo', 'bar'],
                  },
             ],
-            'for_unpack_outcomes': ['all', 'descriptions'],
+            'for_contents': ['all', 'descriptions'],
         }))
         self.outcome_type.behaviours['unpack'] = {}
         avatars = self.create_goods(((gt1, 2), (gt2, 1)))
@@ -297,19 +298,19 @@ class TestAssembly(WmsTestCase):
                  # because it's a field property installed by a test blok
                  # hence it always is at least None.
                  batch=None,
-                 unpack_outcomes=[dict(properties=dict(batch=None, qa='ok'),
-                                       type='GT1',
-                                       forward_properties=['foo'],
-                                       quantity=1),
-                                  dict(properties=dict(batch=None, qa='ok'),
-                                       type='GT1',
-                                       forward_properties=['foo'],
-                                       quantity=1),
-                                  dict(properties=dict(batch=None),
-                                       type='GT2',
-                                       forward_properties=['bar', 'foo'],
-                                       quantity=1),
-                                  ]))
+                 contents=[dict(properties=dict(batch=None, qa='ok'),
+                                type='GT1',
+                                forward_properties=['foo'],
+                                quantity=1),
+                           dict(properties=dict(batch=None, qa='ok'),
+                                type='GT1',
+                                forward_properties=['foo'],
+                                quantity=1),
+                           dict(properties=dict(batch=None),
+                                type='GT2',
+                                forward_properties=['bar', 'foo'],
+                                quantity=1),
+                           ]))
 
         # before reversal, it's possible that the pack Properties have
         # changed. That is legitimate
@@ -348,7 +349,7 @@ class TestAssembly(WmsTestCase):
                  'forward_properties': ['foo', 'bar'],
                  },
             ],
-            'for_unpack_outcomes': ['all', 'records'],
+            'for_contents': ['all', 'records'],
         }))
         self.outcome_type.behaviours['unpack'] = {}
         avatars = self.create_goods(((gt1, 2), (gt2, 1)))
@@ -381,7 +382,7 @@ class TestAssembly(WmsTestCase):
         for av in new_avatars:
             self.assertEqual(av.state, 'present')
 
-        # since we used the 'all' option in for_unpack_outcomes,
+        # since we used the 'all' option in for_contents,
         # the new Avatars are for the existing Goods records
         self.assertEqual(set(av.goods for av in new_avatars),
                          set(av.goods for av in avatars))
@@ -405,7 +406,7 @@ class TestAssembly(WmsTestCase):
                 {'type': 'GT1', 'quantity': 1},
                 {'type': 'GT2', 'quantity': 2},
             ],
-            'for_unpack_outcomes': ['all', 'descriptions'],
+            'for_contents': ['all', 'descriptions'],
         }))
         avatars = self.create_goods(((gt1, 1), (gt2, 2)))
         common_props = self.Goods.Properties.create(foo=12, qa='ok')
@@ -428,18 +429,18 @@ class TestAssembly(WmsTestCase):
                  batch=None,
                  done=True,
                  bar=3,
-                 unpack_outcomes=[dict(properties=dict(batch=None, qa='ok'),
-                                       type='GT1',
-                                       forward_properties=['foo'],
-                                       quantity=1),
-                                  dict(properties=dict(batch=None, qa='ok'),
-                                       type='GT2',
-                                       forward_properties=['foo'],
-                                       quantity=1),
-                                  dict(properties=dict(batch=None, qa='ok'),
-                                       type='GT2',
-                                       quantity=1),
-                                  ]))
+                 contents=[dict(properties=dict(batch=None, qa='ok'),
+                                type='GT1',
+                                forward_properties=['foo'],
+                                quantity=1),
+                           dict(properties=dict(batch=None, qa='ok'),
+                                type='GT2',
+                                forward_properties=['foo'],
+                                quantity=1),
+                           dict(properties=dict(batch=None, qa='ok'),
+                                type='GT2',
+                                quantity=1),
+                           ]))
 
     def test_create_done_forward_props_hook(self):
         """Test hook for properties
@@ -470,7 +471,7 @@ class TestAssembly(WmsTestCase):
                 {'type': 'GT1', 'quantity': 1},
                 {'type': 'GT2', 'quantity': 2},
             ],
-            'for_unpack_outcomes': ['all', 'descriptions'],
+            'for_contents': ['all', 'descriptions'],
         }))
         avatars = self.create_goods(((gt1, 1), (gt2, 2)))
         common_props = self.Goods.Properties.create(foo=12, qa='ok')
@@ -499,24 +500,24 @@ class TestAssembly(WmsTestCase):
                  done=True,
                  bar=3,
                  by_hook=2015,
-                 unpack_outcomes=[dict(properties=dict(batch=None,
-                                                       qa='ok',
-                                                       expiry=2015),
-                                       type='GT1',
-                                       forward_properties=['foo'],
-                                       quantity=1),
-                                  dict(properties=dict(batch=None,
-                                                       qa='ok',
-                                                       expiry=2016),
-                                       type='GT2',
-                                       forward_properties=['foo'],
-                                       quantity=1),
-                                  dict(properties=dict(batch=None,
-                                                       qa='ok',
-                                                       expiry=2017),
-                                       type='GT2',
-                                       quantity=1),
-                                  ]))
+                 contents=[dict(properties=dict(batch=None,
+                                                qa='ok',
+                                                expiry=2015),
+                                type='GT1',
+                                forward_properties=['foo'],
+                                quantity=1),
+                           dict(properties=dict(batch=None,
+                                                qa='ok',
+                                                expiry=2016),
+                                type='GT2',
+                                forward_properties=['foo'],
+                                quantity=1),
+                           dict(properties=dict(batch=None,
+                                                qa='ok',
+                                                expiry=2017),
+                                type='GT2',
+                                quantity=1),
+                           ]))
 
     def test_create_planned_execute_fixed(self):
         gt1 = self.Goods.Type.insert(code='GT1')
@@ -629,7 +630,7 @@ class TestAssembly(WmsTestCase):
         outcome = self.assert_singleton(assembly.outcomes)
         self.assertEqual(outcome.goods.type, self.outcome_type)
         self.assertEqual(outcome.state, 'present')
-        self.assertEqual(outcome.goods.get_property('unpack_outcomes'),
+        self.assertEqual(outcome.goods.get_property(CONTENTS_PROPERTY),
                          [dict(type='GT2',
                                quantity=1,
                                local_goods_ids=[avatars[-1].goods.id])])

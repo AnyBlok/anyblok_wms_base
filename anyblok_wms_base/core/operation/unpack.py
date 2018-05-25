@@ -10,6 +10,7 @@
 from anyblok import Declarations
 from anyblok.column import Integer
 
+from anyblok_wms_base.constants import CONTENTS_PROPERTY
 from anyblok_wms_base.exceptions import OperationInputsError
 
 register = Declarations.register
@@ -29,7 +30,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
 
     Which Goods will get created and which Properties they will bear is
     specified in the ``unpack`` behaviour of the Type of the Goods being
-    unpacked, together with their ``unpack_outcomes`` optional Properties.
+    unpacked, together with their ``contents`` optional Properties.
     See :meth:`get_outcome_specs` and :meth:`forward_props` for details
     about these and how to achieve the wished functionality.
 
@@ -159,7 +160,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
             present or future Avatar for these Goods, and therefore the
             Properties of outcome should not have diverged from the contents
             of ``properties`` since the spec (which must itself not come from
-            the behaviour, but instead from ``unpack_outcomes``) has been
+            the behaviour, but instead from ``contents``) has been
             created (typically by an Assembly).
         * ``required_properties``:
             list (or iterable) of properties that are required on
@@ -214,7 +215,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         Unless ``uniform_outcomes`` is set to ``True`` in the behaviour,
         the outcomes of the Unpack are obtained by merging those defined in
         the behaviour (under the ``outcomes`` key) and in the
-        packs (``self.input``) ``unpack_outcomes`` Property.
+        packs (``self.input``) ``contents`` Property.
 
         This accomodates various use cases:
 
@@ -242,7 +243,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
 
         - at toplevel of the behaviour (``uniform_outcomes=True``)
         - in each outcome of the behaviour (``outcomes`` key)
-        - in each outcome of the Goods record (``unpack_outcomes`` property)
+        - in each outcome of the Goods record (``contents`` property)
 
         Here's a use-case: imagine the some purchase order reference is
         tracked as property ``po_ref`` (could be important for accounting).
@@ -271,7 +272,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
                 outcome['forward_properties'] = 'clone'
             return specs
 
-        specific_outcomes = packs.get_property('unpack_outcomes', ())
+        specific_outcomes = packs.get_property(CONTENTS_PROPERTY, ())
         specs.extend(specific_outcomes)
         if not specs:
             raise OperationInputsError(

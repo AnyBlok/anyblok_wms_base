@@ -19,7 +19,9 @@ from anyblok_wms_base.exceptions import (OperationInputsError,
                                          UnknownExpressionType,
                                          OperationError,
                                          )
-from anyblok_wms_base.constants import DEFAULT_ASSEMBLY_NAME
+from anyblok_wms_base.constants import (DEFAULT_ASSEMBLY_NAME,
+                                        CONTENTS_PROPERTY,
+                                        )
 
 register = Declarations.register
 Mixin = Declarations.Mixin
@@ -253,8 +255,8 @@ class Assembly(Operation):
         """
         return self.outcome_type.behaviours['assembly'][self.name]
 
-    DEFAULT_FOR_UNPACK_OUTCOMES = ('extra', 'records')
-    """Default value of the ``for_unpack_outcomes`` part of specification.
+    DEFAULT_FOR_CONTENTS = ('extra', 'records')
+    """Default value of the ``for_contents`` part of specification.
 
     See :meth:`build_outcome_properties` for the meaning of the values.
     """
@@ -328,19 +330,20 @@ class Assembly(Operation):
         properties.
 
 
-        **The unpack_outcomes Property**
+        **The contents Property**
 
-        The outcome also bears the special ``unpack_outcomes`` property (
+        The outcome also bears the special :data:`contents property
+        <anyblok_wms_base.constants.CONTENTS_PROPERTY>` (
         used by :class:`Operation.Unpack
         <anyblok_wms_base.core.operation.unpack.Unpack>`).
 
         This is controlled by the
-        ``for_unpack_outcomes`` part of the assembly specification, which
+        ``for_contents`` part of the assembly specification, which
         itself is a pair, whose first element indicates which inputs to list,
         and the second how to list them. Its default value is
-        :attr:`DEFAULT_FOR_UNPACK_OUTCOMES`.
+        :attr:`DEFAULT_FOR_CONTENTS`.
 
-        *for_unpack_outcomes: possible values of first element:*
+        *for_contents: possible values of first element:*
 
         * ``'all'``:
              all inputs will be listed
@@ -351,7 +354,7 @@ class Assembly(Operation):
             account. Hence, the variable parts of Assembly and Unpack are
             consistent.
 
-        *for_unpack_outcomes: possible values of second element:*
+        *for_contents: possible values of second element:*
 
         * ``'descriptions'``:
             include Goods' Types, those Properties that aren't recoverable by
@@ -368,10 +371,9 @@ class Assembly(Operation):
         spec = self.specification
         extra, assembled_props = self.analyse_inputs()
 
-        unpack_outcomes = self.build_unpack_outcomes(spec, extra,
-                                                     assembled_props)
-        if unpack_outcomes:
-            assembled_props['unpack_outcomes'] = unpack_outcomes
+        contents = self.build_contents(spec, extra, assembled_props)
+        if contents:
+            assembled_props[CONTENTS_PROPERTY] = contents
 
         spec_props = spec.get('properties')
         if spec_props is not None:
@@ -417,19 +419,18 @@ class Assembly(Operation):
             return ()
         return meth(assembled_props, for_exec=for_exec)
 
-    def build_unpack_outcomes(self, spec, extra, forwarded_props):
-        """Construction of the ``unpack_outcomes`` property
+    def build_contents(self, spec, extra, forwarded_props):
+        """Construction of the ``contents`` property
 
         This is part of :meth`build_outcome_properties`
         """
-        what, how = spec.get('for_unpack_outcomes',
-                             self.DEFAULT_FOR_UNPACK_OUTCOMES)
+        what, how = spec.get('for_contents', self.DEFAULT_FOR_CONTENTS)
         if what == 'extra':
             for_unpack = extra
         elif what == 'all':
             for_unpack = self.inputs
 
-        unpack_outcomes = []
+        contents = []
 
         # sorting here and later is for tests reproducibility
         for avatar in sorted(for_unpack, key=lambda av: av.id):
@@ -451,7 +452,7 @@ class Assembly(Operation):
                 if unpack_outcome_fwd:
                     unpack_outcome['forward_properties'] = unpack_outcome_fwd
 
-            unpack_outcomes.append(unpack_outcome)
+            contents.append(unpack_outcome)
             if how == 'records':
                 # Adding local goods id so that a forthcoming unpack
                 # would produce the very same goods.
@@ -460,7 +461,7 @@ class Assembly(Operation):
                 # efficiently ?
                 unpack_outcome['local_goods_ids'] = [goods.id]
 
-        return unpack_outcomes
+        return contents
 
     def after_insert(self):
         outcome_state = 'present' if self.state == 'done' else 'future'

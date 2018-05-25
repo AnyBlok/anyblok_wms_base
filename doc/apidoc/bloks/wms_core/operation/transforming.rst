@@ -90,7 +90,7 @@ Model.Wms.Operation.Assembly
       <h3>Specific members</h3>
 
    .. autoattribute:: specification
-   .. autoattribute:: DEFAULT_FOR_UNPACK_OUTCOMES
+   .. autoattribute:: DEFAULT_FOR_CONTENTS
    .. automethod:: build_outcome_properties
    .. automethod:: eval_typed_expr
    .. automethod:: eval_spec_exprs

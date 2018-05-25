@@ -151,7 +151,7 @@ class TestUnpack(WmsTestCase):
             )),
             properties=dict(foo=3,
                             baz='second hand',
-                            unpack_outcomes=[
+                            contents=[
                                 dict(type=unpacked_type.code,
                                      quantity=2,
                                      properties=dict(direct='hop',
@@ -195,7 +195,7 @@ class TestUnpack(WmsTestCase):
             )),
             properties=dict(foo=3,
                             bar='yes',
-                            unpack_outcomes=[
+                            contents=[
                                 dict(type=unpacked_type.code,
                                      quantity=1,
                                      local_goods_ids=[outcome1.id],
@@ -238,7 +238,7 @@ class TestUnpack(WmsTestCase):
             )),
             properties=dict(foo=3,
                             bar='yes',
-                            unpack_outcomes=[
+                            contents=[
                                 dict(type=unpacked_type.code,
                                      quantity=2,
                                      local_goods_ids=[outcome1.id],
@@ -340,7 +340,7 @@ class TestUnpack(WmsTestCase):
             )),
             properties=dict(foo=3,
                             baz='second hand',
-                            unpack_outcomes=[
+                            contents=[
                                 dict(type=unpacked_type.code,
                                      quantity=2,
                                      forward_properties=['bar', 'baz']
