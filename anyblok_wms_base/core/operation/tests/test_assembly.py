@@ -82,11 +82,11 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(outcome.goods.get_property('unpack_outcomes'),
                          [dict(properties=dict(batch=None,
                                                expiration_date='2010-01-01'),
-                               type=gt1.id,
+                               type='GT1',
                                quantity=1),
-                          dict(type=gt1.id,
+                          dict(type='GT1',
                                quantity=1),
-                          dict(type=gt2.id,
+                          dict(type='GT2',
                                quantity=1),
                           ])
 
@@ -128,9 +128,9 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(outcome.goods.get_property('unpack_outcomes'),
                          [dict(forward_properties=['bar'],
                                properties=dict(batch=None, main=True),
-                               type=gt1.id,
+                               type='GT1',
                                quantity=1),
-                          dict(type=gt2.id,
+                          dict(type='GT2',
                                quantity=1),
                           ])
         self.assertEqual(outcome.goods.get_property('colour'), 'blue')
@@ -246,9 +246,9 @@ class TestAssembly(WmsTestCase):
         }))
         avatars = self.create_goods([(gt1, 1)])
 
-        gt2 = self.Goods.Type.insert(code='GT2')
+        self.Goods.Type.insert(code='GT2')
         avatars[0].goods.set_property('unpack_outcomes',
-                                      dict(type=gt2.id, quantity=4))
+                                      dict(type='GT2', quantity=4))
 
         assembly = self.Assembly.create(inputs=avatars,
                                         outcome_type=self.outcome_type,
@@ -257,7 +257,7 @@ class TestAssembly(WmsTestCase):
 
         outcome = self.assert_singleton(assembly.outcomes)
         self.assertEqual(outcome.goods.get_property('unpack_outcomes'),
-                         dict(type=gt2.id, quantity=4))
+                         dict(type='GT2', quantity=4))
 
     def test_create_done_forward_props_per_inputs_spec_revert(self):
         gt1 = self.Goods.Type.insert(code='GT1')
@@ -298,15 +298,15 @@ class TestAssembly(WmsTestCase):
                  # hence it always is at least None.
                  batch=None,
                  unpack_outcomes=[dict(properties=dict(batch=None, qa='ok'),
-                                       type=gt1.id,
+                                       type='GT1',
                                        forward_properties=['foo'],
                                        quantity=1),
                                   dict(properties=dict(batch=None, qa='ok'),
-                                       type=gt1.id,
+                                       type='GT1',
                                        forward_properties=['foo'],
                                        quantity=1),
                                   dict(properties=dict(batch=None),
-                                       type=gt2.id,
+                                       type='GT2',
                                        forward_properties=['bar', 'foo'],
                                        quantity=1),
                                   ]))
@@ -429,15 +429,15 @@ class TestAssembly(WmsTestCase):
                  done=True,
                  bar=3,
                  unpack_outcomes=[dict(properties=dict(batch=None, qa='ok'),
-                                       type=gt1.id,
+                                       type='GT1',
                                        forward_properties=['foo'],
                                        quantity=1),
                                   dict(properties=dict(batch=None, qa='ok'),
-                                       type=gt2.id,
+                                       type='GT2',
                                        forward_properties=['foo'],
                                        quantity=1),
                                   dict(properties=dict(batch=None, qa='ok'),
-                                       type=gt2.id,
+                                       type='GT2',
                                        quantity=1),
                                   ]))
 
@@ -502,19 +502,19 @@ class TestAssembly(WmsTestCase):
                  unpack_outcomes=[dict(properties=dict(batch=None,
                                                        qa='ok',
                                                        expiry=2015),
-                                       type=gt1.id,
+                                       type='GT1',
                                        forward_properties=['foo'],
                                        quantity=1),
                                   dict(properties=dict(batch=None,
                                                        qa='ok',
                                                        expiry=2016),
-                                       type=gt2.id,
+                                       type='GT2',
                                        forward_properties=['foo'],
                                        quantity=1),
                                   dict(properties=dict(batch=None,
                                                        qa='ok',
                                                        expiry=2017),
-                                       type=gt2.id,
+                                       type='GT2',
                                        quantity=1),
                                   ]))
 
@@ -598,9 +598,6 @@ class TestAssembly(WmsTestCase):
         self.create_outcome_type(dict(default={
             'inputs': [{'type': 'GT1', 'quantity': 2}],
         }))
-        self.create_outcome_type(dict(default={
-            'inputs': [{'type': 'GT1', 'quantity': 2}],
-        }))
 
         avatars = self.create_goods(((gt1, 2), (gt2, 1)))
 
@@ -617,14 +614,11 @@ class TestAssembly(WmsTestCase):
     def test_create_done_extra_allowed(self):
         gt1 = self.Goods.Type.insert(code='GT1')
         gt2 = self.Goods.Type.insert(code='GT2')
+
         self.create_outcome_type(dict(default={
             'inputs': [{'type': 'GT1', 'quantity': 2}],
             'allow_extra_inputs': True,
         }))
-        self.create_outcome_type(
-            dict(default=dict(
-                inputs=[dict(type='GT1', quantity=2)],
-                allow_extra_inputs=True)))
         avatars = self.create_goods(((gt1, 2), (gt2, 1)))
 
         assembly = self.Assembly.create(inputs=avatars,
@@ -636,7 +630,7 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(outcome.goods.type, self.outcome_type)
         self.assertEqual(outcome.state, 'present')
         self.assertEqual(outcome.goods.get_property('unpack_outcomes'),
-                         [dict(type=gt2.id,
+                         [dict(type='GT2',
                                quantity=1,
                                local_goods_ids=[avatars[-1].goods.id])])
 

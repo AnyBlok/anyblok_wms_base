@@ -14,7 +14,8 @@ class TestArrival(WmsTestCase):
     def setUp(self):
         super(TestArrival, self).setUp()
         Wms = self.registry.Wms
-        self.goods_type = Wms.Goods.Type.insert(label="My good type")
+        self.goods_type = Wms.Goods.Type.insert(label="My good type",
+                                                code='MGT')
         self.incoming_loc = Wms.Location.insert(label="Incoming location")
         self.stock = Wms.Location.insert(label="Stock")
         self.Arrival = Wms.Operation.Arrival
@@ -112,7 +113,8 @@ class TestOperationBase(WmsTestCase):
     def setUp(self):
         super(TestOperationBase, self).setUp()
         Wms = self.registry.Wms
-        self.goods_type = Wms.Goods.Type.insert(label="My good type")
+        self.goods_type = Wms.Goods.Type.insert(label="My good type",
+                                                code='MGT')
         self.incoming_loc = Wms.Location.insert(label="Incoming location")
         self.stock = Wms.Location.insert(label="Stock")
         self.Arrival = Wms.Operation.Arrival

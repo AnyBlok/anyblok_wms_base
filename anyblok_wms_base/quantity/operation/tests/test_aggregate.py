@@ -24,7 +24,8 @@ class TestAggregate(WmsTestCase):
         super(TestAggregate, self).setUp()
         Wms = self.registry.Wms
         Operation = Wms.Operation
-        self.goods_type = Wms.Goods.Type.insert(label="My good type")
+        self.goods_type = Wms.Goods.Type.insert(label="My good type",
+                                                code="MyGT")
         self.loc = Wms.Location.insert(label="Incoming location")
 
         # The arrival fields doesn't matter, we'll insert goods directly

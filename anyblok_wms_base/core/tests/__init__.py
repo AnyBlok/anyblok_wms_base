@@ -15,7 +15,8 @@ class TestCore(BlokTestCase):
 
     def test_minimal(self):
         Wms = self.registry.Wms
-        goods_type = Wms.Goods.Type.insert(label="My good type")
+        goods_type = Wms.Goods.Type.insert(label="My good type",
+                                           code='MyGT')
         self.assertEqual(goods_type.label, "My good type")
 
         loc = Wms.Location.insert(label="Root location")
