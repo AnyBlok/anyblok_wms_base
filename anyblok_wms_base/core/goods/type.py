@@ -31,7 +31,8 @@ class Type:
     id = Integer(label="Identifier", primary_key=True)
     """Primary key"""
 
-    code = String(label=u"Identifying code", index=True)
+    code = String(label=u"Identifying code", index=True,
+                  unique=True, nullable=False)
     """Uniquely identifying code.
 
     As a convenience, and for sharing with other applications.

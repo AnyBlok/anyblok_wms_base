@@ -25,7 +25,8 @@ class TestOperation(WmsTestCase):
         self.Goods = Wms.Goods
         self.incoming_loc = Wms.Location.insert(label="Incoming location")
         self.stock = Wms.Location.insert(label="Stock")
-        self.goods_type = self.Goods.Type.insert(label="My good type")
+        self.goods_type = self.Goods.Type.insert(label="My good type",
+                                                 code='MyGT')
 
     def test_history(self):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
