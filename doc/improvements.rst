@@ -187,7 +187,7 @@ to substitute a planned operation with a chain of operations.
   are Goods in 'future' state in the unpacking area.
 * Upon actual delivery, say of three parcels (each with a list of its
   contents), the system would issue three Arrivals (id=``2,3,4``) with
-  ``unpack_outcomes`` storing the theoretical contents, and
+  ``contents`` storing the theoretical contents, and
   link them to the Purchase Order
 * The system would recognize that this Purchase Order is already
   linked to the first planned Arrival (``id=1``), and it would
