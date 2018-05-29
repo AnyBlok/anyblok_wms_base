@@ -15,6 +15,11 @@ import anyblok.registry
 from anyblok.config import Configuration
 from anyblok.tests.testcase import BlokTestCase
 
+try:
+    from anyblok.tests.testcase import SharedDataTestCase
+except ImportError:
+    from .sdtestcase import SharedDataTestCase
+
 
 class WmsTestCase(BlokTestCase):
     """Provide some common utilities.
@@ -70,7 +75,7 @@ class WmsTestCase(BlokTestCase):
         return tuple(sorted(goods.properties.as_dict().items()))
 
 
-class WmsTestCaseWithGoods(WmsTestCase):
+class WmsTestCaseWithGoods(SharedDataTestCase, WmsTestCase):
     """Same as WmsTestCase with a prebaked Goods and Avatar.
 
     Creating an Avatar requires a reason, a location, so we have actually
@@ -88,25 +93,31 @@ class WmsTestCaseWithGoods(WmsTestCase):
 
     arrival_kwargs = {}
 
-    def setUp(self):
-        super(WmsTestCaseWithGoods, self).setUp()
+    @classmethod
+    def setUpSharedData(cls):
+        tz = cls.tz = FixedOffsetTimezone(0)
+        cls.dt_test1 = datetime(2018, 1, 1, tzinfo=tz)
+        cls.dt_test2 = datetime(2018, 1, 2, tzinfo=tz)
+        cls.dt_test3 = datetime(2018, 1, 3, tzinfo=tz)
 
-        Wms = self.registry.Wms
-        Operation = Wms.Operation
-        self.goods_type = Wms.Goods.Type.insert(label="My good type",
-                                                code='MyGT')
-        self.incoming_loc = Wms.Location.insert(label="Incoming location")
-        self.stock = Wms.Location.insert(label="Stock")
+        Wms = cls.registry.Wms
+        Operation = cls.Operation = Wms.Operation
+        cls.goods_type = Wms.Goods.Type.insert(label="My good type",
+                                               code='MyGT')
+        cls.incoming_loc = Wms.Location.insert(label="Incoming location")
+        cls.stock = Wms.Location.insert(label="Stock")
 
-        self.arrival = Operation.Arrival.create(goods_type=self.goods_type,
-                                                location=self.incoming_loc,
-                                                state='planned',
-                                                dt_execution=self.dt_test1,
-                                                **self.arrival_kwargs)
+        cls.arrival = Operation.Arrival.create(goods_type=cls.goods_type,
+                                               location=cls.incoming_loc,
+                                               state='planned',
+                                               dt_execution=cls.dt_test1,
+                                               **cls.arrival_kwargs)
 
-        self.avatar = self.assert_singleton(self.arrival.outcomes)
-        self.Goods = Wms.Goods
-        self.Avatar = Wms.Goods.Avatar
+        assert len(cls.arrival.outcomes) == 1
+        cls.avatar = cls.arrival.outcomes[0]
+        cls.goods = cls.avatar.goods
+        cls.Goods = Wms.Goods
+        cls.Avatar = Wms.Goods.Avatar
 
 
 class ConcurrencyBlokTestCase(BlokTestCase):

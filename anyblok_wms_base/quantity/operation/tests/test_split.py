@@ -6,7 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok_wms_base.testing import WmsTestCase
+from anyblok_wms_base.testing import WmsTestCaseWithGoods
 
 from anyblok_wms_base.constants import (
     SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR
@@ -17,7 +17,7 @@ from anyblok_wms_base.exceptions import (
     )
 
 
-class TestSplit(WmsTestCase):
+class TestSplit(WmsTestCaseWithGoods):
     """Specific testing of Wms.Operation.Split
 
     This may look very partial, but most of the testing of Split is
@@ -28,23 +28,12 @@ class TestSplit(WmsTestCase):
     testcase so that Split can have an independent development life.
     """
 
+    arrival_kwargs = dict(quantity=3)
+    """Used in setUpSharedData()."""
+
     def setUp(self):
         super(TestSplit, self).setUp()
-        Wms = self.registry.Wms
-        self.Operation = Operation = Wms.Operation
-        self.Goods = Wms.Goods
-        self.goods_type = Wms.Goods.Type.insert(label="My good type",
-                                                code='MyGT')
-        self.incoming_loc = Wms.Location.insert(label="Incoming location")
-        self.stock = Wms.Location.insert(label="Stock")
-
-        self.arrival = Operation.Arrival.create(goods_type=self.goods_type,
-                                                location=self.incoming_loc,
-                                                state='planned',
-                                                dt_execution=self.dt_test1,
-                                                quantity=3)
-        self.avatar = self.assert_singleton(self.arrival.outcomes)
-        self.goods = self.avatar.goods
+        self.Operation = self.registry.Wms.Operation
 
     def test_create_done(self):
         self.avatar.state = 'present'
@@ -247,3 +236,6 @@ class TestSplit(WmsTestCase):
         self.assertEqual(restored_goods.type, self.goods.type)
         self.assertEqual(restored_goods.quantity, 3)
         self.assertEqual(restored_goods.properties, self.goods.properties)
+
+
+del WmsTestCaseWithGoods

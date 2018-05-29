@@ -19,7 +19,6 @@ class TestMove(WmsTestCaseWithGoods):
         Operation = Wms.Operation
         self.stock = Wms.Location.insert(label="Stock")
 
-        # avatars, actually
         self.avatar.dt_until = self.dt_test3
         self.Move = Operation.Move
 
@@ -80,3 +79,6 @@ class TestMove(WmsTestCaseWithGoods):
         self.assertEqual(after_move.dt_until, self.dt_test3)
         self.assertEqual(after_move.reason, move)
         self.assertEqual(after_move.state, 'present')
+
+
+del WmsTestCaseWithGoods

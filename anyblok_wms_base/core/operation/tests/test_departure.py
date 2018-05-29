@@ -119,3 +119,6 @@ class TestDeparture(WmsTestCaseWithGoods):
                                     input=self.avatar)
         repr(dep)
         str(dep)
+
+
+del WmsTestCaseWithGoods

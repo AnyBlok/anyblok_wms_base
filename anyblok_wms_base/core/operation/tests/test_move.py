@@ -83,3 +83,6 @@ class TestMove(WmsTestCaseWithGoods):
         move.execute()  # result already tested
         move.obliviate()
         self.assertBackToBeginning()
+
+
+del WmsTestCaseWithGoods
