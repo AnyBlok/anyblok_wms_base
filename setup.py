@@ -27,7 +27,7 @@ anyblok_init = [
 ]
 
 requirements = [
-    'anyblok>=0.16.3',
+    'anyblok>=0.18.0',
     'anyblok_postgres',
     'psycopg2'
 ]
