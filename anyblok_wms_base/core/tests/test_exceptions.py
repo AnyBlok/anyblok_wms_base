@@ -58,3 +58,6 @@ class TestOperationError(WmsTestCaseWithGoods):
 
         repr(err)
         str(err)
+
+
+del WmsTestCaseWithGoods

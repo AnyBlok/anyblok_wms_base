@@ -15,10 +15,7 @@ class TestDeparture(WmsTestCaseWithGoods):
 
     def setUp(self):
         super(TestDeparture, self).setUp()
-        Wms = self.registry.Wms
-        Operation = Wms.Operation
-        self.stock = Wms.Location.insert(label="Stock")
-        self.Departure = Operation.Departure
+        self.Departure = self.Operation.Departure
 
     def assertQuantities(self, loc=None, **quantities):
         if loc is None:
@@ -95,3 +92,6 @@ class TestDeparture(WmsTestCaseWithGoods):
                                     input=self.avatar)
         repr(dep)
         str(dep)
+
+
+del WmsTestCaseWithGoods

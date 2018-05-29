@@ -6,39 +6,25 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok_wms_base.testing import WmsTestCase
+from anyblok_wms_base.testing import WmsTestCaseWithGoods
 from anyblok_wms_base.exceptions import (
     OperationQuantityError,
     OperationMissingQuantityError,
 )
 
 
-class TestSplitterOperation(WmsTestCase):
+class TestSplitterOperation(WmsTestCaseWithGoods):
     """Test the WmsSingleGoodOperation mixin
 
     In these test cases, Operation.Move is considered the canonical example of
     the mixin.
     """
+    arrival_kwargs = dict(quantity=3)
+    """Used in setUpSharedData()."""
+
     def setUp(self):
         super(TestSplitterOperation, self).setUp()
-        Wms = self.registry.Wms
-        Operation = Wms.Operation
-        self.goods_type = Wms.Goods.Type.insert(label="My good type",
-                                                code='MyGT')
-        self.incoming_loc = Wms.Location.insert(label="Incoming location")
-        self.stock = Wms.Location.insert(label="Stock")
-
-        self.arrival = Operation.Arrival.create(goods_type=self.goods_type,
-                                                location=self.incoming_loc,
-                                                state='planned',
-                                                dt_execution=self.dt_test1,
-                                                quantity=3)
-
-        self.avatar = self.assert_singleton(self.arrival.outcomes)
-        self.goods = self.avatar.goods
-
-        self.Move = Operation.Move
-        self.Goods = Wms.Goods
+        self.Move = self.Operation.Move
         self.op_model_name = 'Model.Wms.Operation.Move'
 
     def test_missing_quantity(self):
@@ -137,3 +123,6 @@ class TestSplitterOperation(WmsTestCase):
                                 input=self.avatar)
         repr(move)
         str(move)
+
+
+del WmsTestCaseWithGoods

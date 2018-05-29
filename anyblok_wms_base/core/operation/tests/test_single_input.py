@@ -89,3 +89,6 @@ class TestSingleInputOperation(WmsTestCaseWithGoods):
         self.assertEqual(exc.model_name, self.op_model_name)
         self.assertEqual(list(exc.kwargs.get('inputs')), [self.avatar])
         self.assertEqual(exc.kwargs.get('record'), self.avatar)
+
+
+del WmsTestCaseWithGoods

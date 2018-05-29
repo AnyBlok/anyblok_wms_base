@@ -23,3 +23,6 @@ class TestWmsTestCase(WmsTestCaseWithGoods):
                              (('a', 3), ('batch', None), ('c', 'ok')))
         with self.assertRaises(self.failureException):
             self.sorted_props(goods.type)
+
+
+del WmsTestCaseWithGoods
