@@ -407,7 +407,11 @@ class TestAssembly(WmsTestCase):
             'properties': {'bar': ('const', 3)},
             'properties_at_execution': {'done': ('const', True)},
             'forward_properties': ['foo'],
-            'required_property_values': {'qa': 'ok'},
+            'input_properties': {
+                'started': {
+                    'required_values': {'qa': 'ok'},
+                },
+            },
             'inputs': [
                 {'type': 'GT1', 'quantity': 1},
                 {'type': 'GT2', 'quantity': 2},
@@ -793,7 +797,11 @@ class TestAssembly(WmsTestCase):
         gt1 = self.Goods.Type.insert(code='GT1')
 
         self.create_outcome_type(dict(default={
-            'required_property_values': {'qa': 'ok'},
+            'input_properties': {
+                'started': {
+                    'required_values': {'qa': 'ok'},
+                },
+            },
             'inputs': [
                 {'type': 'GT1',
                  'quantity': 1,
@@ -803,15 +811,18 @@ class TestAssembly(WmsTestCase):
         avatars = self.create_goods(((gt1, 1), ))
         avatars[0].goods.set_property('qa', 'broken')
 
+        assembly = self.Assembly.create(inputs=avatars,
+                                        outcome_type=self.outcome_type,
+                                        name='default',
+                                        dt_execution=self.dt_test1,
+                                        state='planned')
         with self.assertRaises(AssemblyWrongInputProperties) as arc:
-            self.Assembly.create(inputs=avatars,
-                                 outcome_type=self.outcome_type,
-                                 name='default',
-                                 state='done')
+            assembly.execute()
+
         exc = arc.exception
         str(exc)
         repr(exc)
-        self.assertEqual(exc.kwargs['required_props'], ())
+        self.assertEqual(exc.kwargs['required_props'], set())
         self.assertEqual(exc.kwargs['required_prop_values'], dict(qa='ok'))
         self.assertEqual(exc.kwargs['avatar'], avatars[0])
 

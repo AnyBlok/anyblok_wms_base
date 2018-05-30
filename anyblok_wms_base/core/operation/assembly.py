@@ -34,6 +34,44 @@ _missing = object()
 """A marker to use as default value in get-like functions/methods."""
 
 
+OPERATION_STATES = ('planned', 'started', 'done')
+
+
+def merge_state_parameters(spec, from_state, to_state, **subkeys):
+    """Utility method to merge sets or dict parameters for state jumps.
+    """
+    if from_state is None:
+        from_state_idx = 0
+    else:
+        from_state_idx = OPERATION_STATES.index(from_state) + 1
+
+    steps = OPERATION_STATES[from_state_idx:
+                             OPERATION_STATES.index(to_state) + 1]
+
+    res = []
+    for subkey, subtype in subkeys.items():
+        if subtype == 'set':
+            res.append(set())
+        elif subtype == 'dict':
+            res.append({})
+        else:
+            raise ValueError(
+                "Unknown subkey type %r for subkey %r" % (subkey, subtype))
+
+    for step in steps:
+        step_spec = spec.get(step)
+        if step_spec is None:
+            continue
+        for i, (k, _) in enumerate(subkeys.items()):
+            # could later actually depend on type, and we are already
+            # depending on items() ordering being reproducible, let's not
+            # bet it's always the same as the one of keys(), although that's
+            # very believable.
+            res[i].update(step_spec.get(k, ()))
+
+    return res
+
+
 @register(Operation)
 class Assembly(Operation):
     """Assembly/Pack Operation.
@@ -191,6 +229,37 @@ class Assembly(Operation):
 
         return forwarded
 
+    def check_inputs_properties(self, state, for_creation=False):
+        """Apply global and per input Property requirements according to state.
+
+        All property requirements between the current state (or None if we
+        are at creation) and the wished state are checked.
+
+        :param state: the state that the Assembly is about to reach
+        :param for_creation: if True, the current value of the :attr:`state`
+                             field is ignored, and all states up to the wished
+                             state are considered.
+        :raises: :class:`AssemblyWrongInputProperties`
+        """
+        spec = self.specification
+        global_props_spec = spec.get('input_properties')
+        if global_props_spec is None:
+            return
+
+        req_props, req_prop_values = merge_state_parameters(
+            global_props_spec,
+            None if for_creation else self.state,
+            state,
+            required='set',
+            required_values='dict')
+
+        for avatar in self.inputs:
+            goods = avatar.goods
+            if (not goods.has_properties(req_props) or
+                    not goods.has_property_values(req_prop_values)):
+                raise AssemblyWrongInputProperties(
+                    self, avatar, req_props, req_prop_values)
+
     def match_inputs(self, state):
         """Compare input Avatars to specification and apply Properties rules.
 
@@ -201,26 +270,17 @@ class Assembly(Operation):
                  :class:`anyblok_wms_base.exceptions.AssemblyForbiddenExtraInputs`
 
         """
-        spec = self.specification
-        # TODO change here to apply new specification
-        req_props = spec.get('required_properties', ())
-        req_prop_values = spec.get('required_property_values', {})
-        for avatar in self.inputs:
-            goods = avatar.goods
-            if (not goods.has_properties(req_props) or
-                    not goods.has_property_values(req_prop_values)):
-                raise AssemblyWrongInputProperties(
-                    self, avatar, req_props, req_prop_values)
-
         # let' stress that the incoming ordering shouldn't matter
         # from this method's point of view. And indeed, only in tests can
         # it come from the will of a caller. In reality, it'll be due to
         # factors that are random wrt the specification.
         inputs = set(self.inputs)
-        match = self.match = []
+        spec = self.specification
 
         GoodsType = self.registry.Wms.Goods.Type
         types_by_code = dict()
+
+        match = self.match = []
 
         for i, expected in enumerate(spec['inputs']):
             match_item = []
@@ -606,6 +666,7 @@ class Assembly(Operation):
         for inp in self.inputs:
             inp.update(**input_upd)
 
+        self.check_inputs_properties(state, for_creation=True)
         self.match_inputs(state)
         Goods = self.registry.Wms.Goods
         Goods.Avatar.insert(
@@ -630,6 +691,7 @@ class Assembly(Operation):
         * application of :meth:`specific_build_outcome_properties`
           with ``for_exec=True``
         """
+        self.check_inputs_properties(state='done')
         # TODO PERF direct update query would probably be faster
         for inp in self.inputs:
             inp.state = 'past'
