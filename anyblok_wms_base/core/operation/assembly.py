@@ -374,7 +374,11 @@ class Assembly(Operation):
         ``for_contents`` part of the assembly specification, which
         itself is a pair, whose first element indicates which inputs to list,
         and the second how to list them. Its default value is
-        :attr:`DEFAULT_FOR_CONTENTS`.
+        :attr:`DEFAULT_FOR_CONTENTS`. It can also be explicitely set to
+        ``None``, to tell the Assembly not to set the contents property
+        (use-cases: if it's unnecessary pollution, for instance if it
+        is later custom set by specific hooks, or if no Unpack for disassembly
+        is ever to be wished anyway).
 
         *for_contents: possible values of first element:*
 
@@ -457,7 +461,10 @@ class Assembly(Operation):
 
         This is part of :meth`build_outcome_properties`
         """
-        what, how = spec.get('for_contents', self.DEFAULT_FOR_CONTENTS)
+        contents_spec = spec.get('for_contents', self.DEFAULT_FOR_CONTENTS)
+        if contents_spec is None:
+            return
+        what, how = contents_spec
         if what == 'extra':
             for_unpack = extra
         elif what == 'all':
@@ -467,7 +474,6 @@ class Assembly(Operation):
 
         # sorting here and later is for tests reproducibility
         for avatar in sorted(for_unpack, key=lambda av: av.id):
-            # TODO individual properties aren't supported by Unpack yet
             goods = avatar.goods
             props = goods.properties
             unpack_outcome = dict(
