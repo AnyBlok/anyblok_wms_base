@@ -257,23 +257,48 @@ class Assembly(Operation):
              …
              'assembly': {
                  'soldering': {
-                     'properties': {'built_here': ['const', True]},
-                     'properties_at_execution': {
-                         'serial': ['sequence', 'SOLDERINGS'],
+                     'outcome_properties': {
+                         'planned': {'built_here': ['const', True]},
+                         'started': {'spam': ['const', 'eggs']},
+                         'done': {'serial': ['sequence', 'SOLDERINGS']},
                      },
                      'inputs': [
                          {'type': 'GT1',
                           'quantity': 1,
-                          'forward_properties': ['foo', 'bar'],
-                          'required_properties': ['foo'],
-                          'required_property_values': {'x': True}
+                          'properties': {
+                             'planned': {
+                               'required': ['x'],
+                               'requirements': 'match',  # default for planned
+                             },
+                             'started': {
+                               'required': ['foo'],
+                               'required_values': {'x': True},
+                               'requirements': 'match',  # default is 'check'
+                             },
+                             'done': {
+                               'forward': ['foo', 'bar'],
+                               'requirements': 'check',
+                             }
                           },
-                         {'type': 'GT2', 'quantity': 2},
+                         {'type': 'GT2',
+                          'quantity': 2
+                          },
+                         {'type': 'GT3',
+                          'quantity': 1,
+                          'code': 'ABC',
+                          }
                      ],
                      'for_contents': ['all', 'descriptions'],
-                     'forward_properties': …
-                     'required_properties': …
-                     'required_property_values': …
+                     'allow_extra': True,
+                     'input_properties': {
+                         'planned': {
+                            'required': …
+                            'required_values': …
+                            'forward': …
+                         },
+                         'started': …
+                         'done': …
+                     }
                  }
                  …
               }
@@ -310,40 +335,96 @@ class Assembly(Operation):
         The Assembly :attr:`specification` can have the following
         key/value pairs:
 
-        * ``properties``:
-             a dict of Properties to set on the outcome; the values
-             are pairs ``(TYPE, EXPRESSION)`` evaluated by passing as
+        * ``outcome_properties``:
+             a dict whose keys are Assembly states, and values are
+             dicts of Properties to set on the outcome; the values
+             are pairs ``(TYPE, EXPRESSION)``, evaluated by passing as
              positional arguments to :meth:`eval_typed_expr`.
-        * ``properties_at_execution``:
-             similar to ``properties``, but set during Assembly
-             execution (or at creation in the ``done`` state).
+        * ``input_properties``:
+             a dict whose keys are Assembly states, and values are themselves
+             dicts with key/values:
 
-             use-case: when using ``Model.System.Sequence`` to create
-             a serial number,  or if recording the assembly date in
-             the outcome properties, one probably prefer to evaluate
-             this at execution time.
-        * ``forward_properties``:
-             a list of properties that will be copied from all inputs to
-             the Properties of the outcome.
-        * ``required_properties``:
-             a list of properties that all inputs must have to be valid,
-             whatever the values.
-        * ``required_property_values``:
-             a :class:`dict` describing required Property key/value pairs on
-             all inputs.
+             + required:
+                 list of properties that must be present on all inputs
+                 while reaching the given Assembly state, whatever their
+                 values
+             + required_values:
+                 dict of Property key/value pairs that all inputs must bear
+                 while reaching the given Assembly state.
+             + forward:
+                 list of properties to forward to the outcome while
+                 reaching the given Assembly state.
 
         **Per input specification matching and forwarding**
 
-        The last three configuration parameters can be specified
+        The ``input_properties`` parameters can also be specified
         inside each :class:`dict` that form
         the ``inputs`` list of the :meth:`Assembly specification <spec>`),
-        and in that case, the Property requirements are used as matching
-        criteria on the inputs. They are applied in order, but remember that
+        as the ``properties`` sub parameter.
+
+        In that case, the Property requirements are used either as
+        matching criteria on the inputs, or as a check on already matched
+        Goods, according to the value of the ``requirements`` parameter
+        (default is ``'match'`` in the ``planned`` Assembly state,
+        and ``'check'`` in the other states).
+
+        Example::
+
+          'inputs': [
+              {'type': 'GT1',
+               'quantity': 1,
+               'properties': {
+                   'planned': {'required': ['x']},
+                   'started': {
+                       'required_values': {'x': True},
+                       'requirements': 'match',  # default is 'check'
+                   },
+                   'done': {
+                       'forward': ['foo', 'bar'],
+                   },
+              …
+          ]
+
+        During matching, per input specifications are applied in order,
+        but remember that
         the ordering of ``self.inputs`` itself is to be considered random.
+
+        In case ``requirements`` is ``'check'``, the checking occurs after
+        matching on other, non Property based, criteria in the ``planned``
+        Assembly state; for the ``started`` and ``done`` states, it is done
+        on the Goods matched by previous states.
+
+        It is therefore possible to plan an Assembly with partial information
+        about its inputs (waiting for some Observation, or a previous Assembly
+        to be done), and to
+        refine that information, which can be displayed to operators, or have
+        consequences on the Properties of the outcome, at each state change.
+        In many cases, rematching the inputs for all state changes is
+        unnecessary. That's why, to avoid paying the computational cost
+        three times, the default value is ``'check'`` for the ``done`` and
+        ``started`` states.
+
+        The result of matching is stored in the :attr:`match` field.
 
         In all cases, if a given Property is to be forwarded from several
         inputs to the outcome and its values on these inputs aren't equal,
         :class:`AssemblyPropertyConflict` will be raised.
+
+        **Bypassing states**
+
+        Following the general expectations about states of Operations, if
+        an Assembly is created directly in the ``done`` state, it will apply
+        the ``outcome_properties`` for the ``planned``, ``started`` and
+        ``done`` states.
+        Also, the matching and checks of input Properties for the ``planned``,
+        ``started`` and ``done`` state will be performed, in that order.
+
+        In other words, it behaves exactly as if it had been first planned,
+        then started, and finally executed.
+
+        Similarly, if a planned Assembly is executed (without being started
+        first), then outcome Properties, matches and checks related to the
+        ``started`` state are performed before those of the ``done`` state.
 
         **Specific hooks**
 
