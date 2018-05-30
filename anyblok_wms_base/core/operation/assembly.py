@@ -250,28 +250,40 @@ class Assembly(Operation):
         the behaviour field of :attr:`outcome_type`. Namely, it is, within
         that part, the value associated with :attr:`name`.
 
-        Here's an example, for an Assembly with ``self.name='soldering'``::
+        Here's an example, for an Assembly whose :attr:`name` is
+        ``'soldering'``, also displaying all standard parameters::
 
           behaviours = {
              …
              'assembly': {
                  'soldering': {
-                     inputs: [
+                     'properties': {'built_here': ['const', True]},
+                     'properties_at_execution': {
+                         'serial': ['sequence', 'SOLDERINGS'],
+                     },
+                     'inputs': [
                          {'type': 'GT1',
                           'quantity': 1,
-                          forward_properties: ['foo', 'bar'],
+                          'forward_properties': ['foo', 'bar'],
+                          'required_properties': ['foo'],
+                          'required_property_values': {'x': True}
                           },
                          {'type': 'GT2', 'quantity': 2},
                      ],
-                     forward_properties: …
-                     required_properties: …
+                     'for_contents': ['all', 'descriptions'],
+                     'forward_properties': …
+                     'required_properties': …
+                     'required_property_values': …
                  }
                  …
               }
           }
 
-        The present method (Python property) performs no existence checking,
-        since it is meant to be used only after the protection of
+        .. note:: Non standard parameters can be specified, for use in
+                  :meth:`Specific hooks <specific_build_outcome_properties>`.
+
+        The present Python property performs no checks,
+        since it is meant to be accessed only after the protection of
         :meth:`check_create_conditions`.
         """
         return self.outcome_type.behaviours['assembly'][self.name]
