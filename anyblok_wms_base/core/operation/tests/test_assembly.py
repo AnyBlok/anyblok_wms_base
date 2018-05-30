@@ -15,6 +15,7 @@ from anyblok_wms_base.exceptions import (
     OperationError,
     OperationInputsError,
     AssemblyInputNotMatched,
+    AssemblyWrongInputProperties,
     AssemblyPropertyConflict,
     UnknownExpressionType,
 )
@@ -626,10 +627,12 @@ class TestAssembly(WmsTestCase):
         gt2 = self.Goods.Type.insert(code='GT2')
 
         self.create_outcome_type(dict(default={
+            'forward_properties': ['foo'],
             'inputs': [{'type': 'GT1', 'quantity': 2}],
             'allow_extra_inputs': True,
         }))
         avatars = self.create_goods(((gt1, 2), (gt2, 1)))
+        avatars[-1].goods.set_property('foo', 17)
 
         assembly = self.Assembly.create(inputs=avatars,
                                         outcome_type=self.outcome_type,
@@ -638,9 +641,13 @@ class TestAssembly(WmsTestCase):
 
         outcome = self.assert_singleton(assembly.outcomes)
         self.assertEqual(outcome.goods.type, self.outcome_type)
+        # property has been forwarded from the extra
+        self.assertEqual(outcome.goods.get_property('foo'), 17)
         self.assertEqual(outcome.state, 'present')
         self.assertEqual(outcome.goods.get_property(CONTENTS_PROPERTY),
                          [dict(type='GT2',
+                               forward_properties=['foo'],
+                               properties=dict(batch=None),
                                quantity=1,
                                local_goods_ids=[avatars[-1].goods.id])])
         self.assertEqual(len(assembly.match), 1)
@@ -737,9 +744,6 @@ class TestAssembly(WmsTestCase):
 
         self.create_outcome_type(dict(default={
             'inputs': [
-                # note how the most precise is first, this is what
-                # applications are expected to do, since the criteria
-                # are evaluated in order
                 {'type': 'GT1',
                  'quantity': 1,
                  'required_property_values': {'qa': 'ok'},
@@ -763,6 +767,32 @@ class TestAssembly(WmsTestCase):
                          dict(type='GT1',
                               quantity=1,
                               required_property_values=dict(qa='ok')))
+
+    def test_unmatched_global_required_property_value(self):
+        gt1 = self.Goods.Type.insert(code='GT1')
+
+        self.create_outcome_type(dict(default={
+            'required_property_values': {'qa': 'ok'},
+            'inputs': [
+                {'type': 'GT1',
+                 'quantity': 1,
+                 },
+            ],
+        }))
+        avatars = self.create_goods(((gt1, 1), ))
+        avatars[0].goods.set_property('qa', 'broken')
+
+        with self.assertRaises(AssemblyWrongInputProperties) as arc:
+            self.Assembly.create(inputs=avatars,
+                                 outcome_type=self.outcome_type,
+                                 name='default',
+                                 state='done')
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs['required_props'], ())
+        self.assertEqual(exc.kwargs['required_prop_values'], dict(qa='ok'))
+        self.assertEqual(exc.kwargs['avatar'], avatars[0])
 
     def test_inconsistent_forwarding_one_spec(self):
         gt1 = self.Goods.Type.insert(code='GT1')
@@ -791,6 +821,34 @@ class TestAssembly(WmsTestCase):
                          dict(type='GT1',
                               quantity=2,
                               forward_properties=['bar']))
+
+    def test_inconsistent_forwarding_extra(self):
+        gt1 = self.Goods.Type.insert(code='GT1')
+
+        # This exception raising happens only for extra inputs
+        # as the requirements on the matching ones (global or per input spec)
+        # are tested in one shot, always raising with the input spec details
+        self.create_outcome_type(dict(default=dict(
+            forward_properties=['bar'],
+            inputs=[],
+            allow_extra_inputs=True,
+            )))
+        avatars = self.create_goods([(gt1, 2)])
+        avatars[0].goods.set_property('bar', 1)
+        avatars[1].goods.set_property('bar', 2)
+
+        with self.assertRaises(AssemblyPropertyConflict) as arc:
+            self.Assembly.create(inputs=avatars,
+                                 outcome_type=self.outcome_type,
+                                 name='default',
+                                 state='done')
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs['prop'], 'bar')
+        self.assertEqual(set((exc.kwargs['existing'],
+                              exc.kwargs['candidate'])), {1, 2})
+        self.assertEqual(exc.kwargs['global_extra'], True)
 
     def test_inconsistent_forwarding_two_specs(self):
         """Error raised by conflicting props due to different input specs.

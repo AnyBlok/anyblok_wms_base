@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+import itertools
 
 from anyblok import Declarations
 from anyblok.column import Integer
@@ -17,6 +18,7 @@ from anyblok_wms_base.exceptions import (OperationInputsError,
                                          AssemblyInputNotMatched,
                                          AssemblyExtraInputs,
                                          AssemblyPropertyConflict,
+                                         AssemblyWrongInputProperties,
                                          UnknownExpressionType,
                                          OperationError,
                                          )
@@ -94,6 +96,11 @@ class Assembly(Operation):
     ordering, the list of ids of the matching Avatars.
     """
 
+    @property
+    def extra_inputs(self):
+        matched = set(av_id for m in self.match for av_id in m)
+        return (av for av in self.inputs if av.id not in matched)
+
     def specific_repr(self):
         return ("outcome_type={self.outcome_type!r}, "
                 "name={self.name!r}").format(self=self)
@@ -127,75 +134,83 @@ class Assembly(Operation):
                 # useless overhead
                 locations=set(inp.location for inp in inputs))
 
-    def check_extract_input_props(self, avatar, extracted,
-                                  input_spec=None,
-                                  required_props=None,
-                                  required_prop_values=None,
-                                  forwarded_props=None):
-        """Check and if match, extract for forwarding properties of one input.
+    def extract_property(self, extracted, goods, prop,
+                         exc_details=None):
+        """Extract the wished property from goods, forbidding conflicts.
 
-        :param avatar: the input to consider
-        :param dict extracted: previously done extractions
-        :param input_spec: (index, expected) it is redudant with
-                           required_props etc, but used only
-                           for feedback in exceptions
-        :rtype bool:
-        :return: ``True`` if the avatar matches the criteria
+        :param str prop: Property name
+        :param dict extracted:
+           the specified property value is read from `goods` and stored there,
+           if not already present with a different value
+        :param exc_details: If specified the index and value of the input
+                            specifification this comes from, for exception
+                            raising (the exception will assume that the
+                            conflict arises in the global forward_properties
+                            directive).
+        :raises: AssemblyPropertyConflict
+        """
+        candidate_value = goods.get_property(prop, default=_missing)
+        if candidate_value is _missing:
+            return
+        try:
+            existing = extracted[prop]
+        except KeyError:
+            extracted[prop] = candidate_value
+        else:
+            if existing != candidate_value:
+                raise AssemblyPropertyConflict(self, exc_details, prop,
+                                               existing, candidate_value)
+
+    def forward_properties(self, state):
+        """Forward properties from the inputs to the outcome
+
+        This is done according to the global specification
+
+        :param state: the Assembly state that we are reaching.
         :raises: AssemblyPropertyConflict if forwarding properties
                  changes an already set value.
-
-        The required properties and values are checked, and the forwarded
-        ones are stored in ``extracted``, after it has been checked that
-        they don't change a previous one.
         """
-        goods = avatar.goods
+        spec = self.specification
+        Avatar = self.registry.Wms.Goods.Avatar
+        glob_fwd = spec.get('forward_properties', ())
+        inputs_spec = spec.get('inputs', ())
 
-        # TODO use global exceptions (and define them !)
-        if not goods.has_properties(required_props):
-            return False
-        if not goods.has_property_values(required_prop_values):
-            return False
+        forwarded = {}
 
-        for fp in forwarded_props:
-            candidate_value = goods.get_property(fp, default=_missing)
-            if candidate_value is _missing:
-                continue
-            try:
-                existing = extracted[fp]
-            except KeyError:
-                extracted[fp] = candidate_value
-            else:
-                if existing != candidate_value:
-                    raise AssemblyPropertyConflict(
-                        self, input_spec, fp, existing, candidate_value)
+        for i, (match_item, input_spec) in enumerate(
+                zip(self.match, inputs_spec)):
+            fwd = input_spec.get('forward_properties', ())
+            for av_id in match_item:
+                goods = Avatar.query().get(av_id).goods
+                for fp in itertools.chain(fwd, glob_fwd):
+                    self.extract_property(forwarded, goods, fp,
+                                          exc_details=(i, input_spec))
+        for extra in self.extra_inputs:
+            for fp in glob_fwd:
+                self.extract_property(forwarded, extra.goods, fp)
 
-        return True
+        return forwarded
 
-    def analyse_inputs(self):
+    def match_inputs(self, state):
         """Compare input Avatars to specification and apply Properties rules.
 
-        This is meant to be called after :meth:`check_create_conditions` has
-        performed the checks that don't return anything for further treatment.
-
-        :return: (extra_inputs, forwarded_props), respectively an iterable of
-                 inputs that are left once all input specifications are met,
-                 and a :class:`dict` of property names and values extracted
-                 from the inputs and to be set on the outcome.
+        :param state: the state for which to perform the matching
+        :return: extra_inputs, an iterable of
+                 inputs that are left once all input specifications are met.
         :raises: :class:`anyblok_wms_base.exceptions.AssemblyInputNotMatched`,
                  :class:`anyblok_wms_base.exceptions.AssemblyForbiddenExtraInputs`
 
         """
-        outcome_props = {}
         spec = self.specification
+        # TODO change here to apply new specification
         req_props = spec.get('required_properties', ())
         req_prop_values = spec.get('required_property_values', {})
-        fwd_props = spec.get('forward_properties', ())
-
-        for av in self.inputs:
-            self.check_extract_input_props(av, outcome_props,
-                                           required_props=req_props,
-                                           required_prop_values=req_prop_values,
-                                           forwarded_props=fwd_props)
+        for avatar in self.inputs:
+            goods = avatar.goods
+            if (not goods.has_properties(req_props) or
+                    not goods.has_property_values(req_prop_values)):
+                raise AssemblyWrongInputProperties(
+                    self, avatar, req_props, req_prop_values)
 
         # let' stress that the incoming ordering shouldn't matter
         # from this method's point of view. And indeed, only in tests can
@@ -213,7 +228,6 @@ class Assembly(Operation):
 
             req_props = expected.get('required_properties', ())
             req_prop_values = expected.get('required_property_values', {})
-            fwd_props = expected.get('forward_properties', ())
 
             type_code = expected['type']
             gtype = types_by_code.get(type_code)
@@ -224,23 +238,20 @@ class Assembly(Operation):
 
             for _ in range(expected['quantity']):
                 for candidate in inputs:
-                    if not candidate.goods.has_type(gtype):
+                    goods = candidate.goods
+                    if (not goods.has_type(gtype) or
+                            not goods.has_properties(req_props) or
+                            not goods.has_property_values(req_prop_values)):
                         continue
-                    if self.check_extract_input_props(
-                            candidate, outcome_props,
-                            input_spec=(i, expected),
-                            required_props=req_props,
-                            required_prop_values=req_prop_values,
-                            forwarded_props=fwd_props):
-                        inputs.discard(candidate)
-                        match_item.append(candidate.id)
-                        break
+                    inputs.discard(candidate)
+                    match_item.append(candidate.id)
+                    break
                 else:
                     raise AssemblyInputNotMatched(self, (expected, i))
 
         if inputs and not spec.get('allow_extra_inputs'):
             raise AssemblyExtraInputs(self, inputs)
-        return inputs, outcome_props
+        return inputs
 
     @property
     def specification(self):
@@ -319,9 +330,10 @@ class Assembly(Operation):
     See :meth:`build_outcome_properties` for the meaning of the values.
     """
 
-    def build_outcome_properties(self):
+    def build_outcome_properties(self, state):
         """Method responsible for initial properties on the outcome.
 
+        :param state: The Assembly state that we are reaching.
         :rtype: :class:`Model.Wms.Goods.Properties
                 <anyblok_wms_base.core.goods.Properties>`
         :raises: :class:`AssemblyInputNotMatched` if one of the
@@ -483,9 +495,9 @@ class Assembly(Operation):
             of the physical objects.
         """
         spec = self.specification
-        extra, assembled_props = self.analyse_inputs()
+        assembled_props = self.forward_properties(state)
 
-        contents = self.build_contents(spec, extra, assembled_props)
+        contents = self.build_contents(assembled_props)
         if contents:
             assembled_props[CONTENTS_PROPERTY] = contents
 
@@ -533,22 +545,22 @@ class Assembly(Operation):
             return ()
         return meth(assembled_props, for_exec=for_exec)
 
-    def build_contents(self, spec, extra, forwarded_props):
+    def build_contents(self, forwarded_props):
         """Construction of the ``contents`` property
 
         This is part of :meth`build_outcome_properties`
         """
-        what, how = spec.get('for_contents', self.DEFAULT_FOR_CONTENTS)
+        what, how = self.specification.get('for_contents',
+                                           self.DEFAULT_FOR_CONTENTS)
         if what == 'extra':
-            for_unpack = extra
+            for_unpack = self.extra_inputs
         elif what == 'all':
             for_unpack = self.inputs
-
+        # TODO add 'none'
         contents = []
 
         # sorting here and later is for tests reproducibility
         for avatar in sorted(for_unpack, key=lambda av: av.id):
-            # TODO individual properties aren't supported by Unpack yet
             goods = avatar.goods
             props = goods.properties
             unpack_outcome = dict(
@@ -578,20 +590,22 @@ class Assembly(Operation):
         return contents
 
     def after_insert(self):
-        outcome_state = 'present' if self.state == 'done' else 'future'
+        state = self.state
+        outcome_state = 'present' if state == 'done' else 'future'
         dt_exec = self.dt_execution
         input_upd = dict(dt_until=dt_exec)
-        if self.state == 'done':
+        if state == 'done':
             input_upd.update(state='past', reason=self)
         # TODO PERF bulk update ?
         for inp in self.inputs:
             inp.update(**input_upd)
 
+        self.match_inputs(state)
         Goods = self.registry.Wms.Goods
         Goods.Avatar.insert(
             goods=Goods.insert(
                 type=self.outcome_type,
-                properties=self.build_outcome_properties()),
+                properties=self.build_outcome_properties(state)),
             location=self.inputs[0].location,
             reason=self,
             state=outcome_state,

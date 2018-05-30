@@ -140,23 +140,47 @@ class AssemblyPropertyConflict(OperationInputsError):
         """Initialisation.
 
         :param spec_item: the pair made of the item in inputs specification that
-                          hasn't been matched and its index (first is 0).
+                          hasn't been matched and its index (first is 0),
+                          or None for conflicts arising from the global
+                          ``forward_properties`` parameters.
         """
-        spec_index, spec_detail = spec_item
+        fmt = "{operation}, inconsistent properties. "
+        if spec_item is None:
+            fmt += "In global Properties forwarding for extra inputs, "
+            kwargs['global_extra'] = True
+        else:
+            kwargs['spec_index'], kwargs['spec_detail'] = spec_item
+            kwargs['spec_nr'] = kwargs['spec_index'] + 1
+            fmt += "Input specification item #{spec_nr} {spec_detail} "
 
-        fmt = ("{operation}, inconsistent properties. "
-               "Input specification item #{spec_nr} {spec_detail} "
-               "would override the already set value "
-               "{existing!r} of Property {prop!r} "
-               "with {candidate!r}")
+        fmt += ("would override the already set value "
+                "{existing!r} of Property {prop!r} "
+                "with {candidate!r}")
         OperationInputsError.__init__(
             self, op, fmt,
-            spec_index=spec_index,
             prop=prop,
             candidate=candidate,
             existing=existing,
-            spec_nr=spec_index + 1,
-            spec_detail=spec_detail,
+            **kwargs)
+
+
+class AssemblyWrongInputProperties(OperationInputsError):
+
+    def __init__(self, op, avatar, req_props, req_prop_values,
+                 prelude=None, fmt=None, **kwargs):
+        """Initialisation.
+
+        :param req_props: the properties whose existence was required
+        :param req_prop_values: the property values that were required
+        """
+        OperationInputsError.__init__(
+            self, op,
+            "{operation}, wrong properties on {avatar!r}. "
+            "The existence of {required_props!r} is required, and "
+            "the following values are required: {required_prop_values!r}",
+            avatar=avatar,
+            required_props=req_props,
+            required_prop_values=req_prop_values,
             **kwargs)
 
 
