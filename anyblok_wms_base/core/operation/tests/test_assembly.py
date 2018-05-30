@@ -654,6 +654,27 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(set(assembly.match[0]),
                          set(av.id for av in avatars[:2]))
 
+    def test_create_done_extra_no_contents_prop(self):
+        gt1 = self.Goods.Type.insert(code='GT1')
+        gt2 = self.Goods.Type.insert(code='GT2')
+
+        self.create_outcome_type(dict(default={
+            'inputs': [{'type': 'GT1', 'quantity': 2}],
+            'allow_extra_inputs': True,
+            'for_contents': None,
+        }))
+        avatars = self.create_goods(((gt1, 2), (gt2, 1)))
+
+        assembly = self.Assembly.create(inputs=avatars,
+                                        outcome_type=self.outcome_type,
+                                        name='default',
+                                        state='done')
+
+        outcome = self.assert_singleton(assembly.outcomes)
+        self.assertEqual(outcome.goods.type, self.outcome_type)
+        self.assertEqual(outcome.state, 'present')
+        self.assertIsNone(outcome.goods.get_property(CONTENTS_PROPERTY))
+
     def test_create_basic_errors(self):
         gt = self.Goods.Type.insert(code='GT1')
 
