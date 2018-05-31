@@ -244,7 +244,11 @@ class TestAssembly(WmsTestCase):
             'inputs': [
                 {'type': 'GT1', 'quantity': 1},
             ],
-            'forward_properties': [CONTENTS_PROPERTY],
+            'input_properties': {
+                'done': {
+                    'forward': [CONTENTS_PROPERTY],
+                },
+            },
         }))
         avatars = self.create_goods([(gt1, 1)])
 
@@ -406,10 +410,12 @@ class TestAssembly(WmsTestCase):
         self.create_outcome_type(dict(screwing={
             'properties': {'bar': ('const', 3)},
             'properties_at_execution': {'done': ('const', True)},
-            'forward_properties': ['foo'],
             'input_properties': {
                 'started': {
                     'required_values': {'qa': 'ok'},
+                },
+                'done': {
+                    'forward': ['foo'],
                 },
             },
             'inputs': [
@@ -479,8 +485,12 @@ class TestAssembly(WmsTestCase):
         self.create_outcome_type(dict(pack={
             'properties': {'bar': ('const', 3)},
             'properties_at_execution': {'done': ('const', True)},
-            'forward_properties': ['foo'],
-            'required_property_values': {'qa': 'ok'},
+            'input_properties': {
+                'done': {
+                    'forward': ['foo'],
+                    'required_values': {'qa': 'ok'},
+                },
+            },
             'inputs': [
                 {'type': 'GT1', 'quantity': 1},
                 {'type': 'GT2', 'quantity': 2},
@@ -631,7 +641,11 @@ class TestAssembly(WmsTestCase):
         gt2 = self.Goods.Type.insert(code='GT2')
 
         self.create_outcome_type(dict(default={
-            'forward_properties': ['foo'],
+            'input_properties': {
+                'planned': {
+                    'forward': ['foo'],
+                },
+            },
             'inputs': [{'type': 'GT1', 'quantity': 2}],
             'allow_extra_inputs': True,
         }))
@@ -861,7 +875,9 @@ class TestAssembly(WmsTestCase):
         # as the requirements on the matching ones (global or per input spec)
         # are tested in one shot, always raising with the input spec details
         self.create_outcome_type(dict(default=dict(
-            forward_properties=['bar'],
+            input_properties=dict(
+                planned=dict(forward=['bar'])
+            ),
             inputs=[],
             allow_extra_inputs=True,
             )))
@@ -916,6 +932,54 @@ class TestAssembly(WmsTestCase):
                          dict(type='GT2',
                               quantity=1,
                               forward_properties=['bar']))
+
+    def test_merged_state_parameters(self):
+        # well ok, we'll put it later in a separate utility module
+        # but that requires thinking of a naming that'd be clear out of
+        # the Assembly context
+        from anyblok_wms_base.core.operation.assembly import (
+            merge_state_parameters)
+
+        # unknown type
+        with self.assertRaises(ValueError):
+            merge_state_parameters({}, None, 'done', ('foo', 'int'))
+
+        # normalization in case spec is None
+        self.assertEqual(merge_state_parameters(None, 'planned', 'done',
+                                                ('foo', 'set'),
+                                                ('bar', 'dict')),
+                         [set(), {}])
+
+        # simple display of the state jumps
+        spec = dict(planned=dict(x=['a']),
+                    started=dict(x=['b']),
+                    done=dict(x=['c']))
+        self.assertEqual(
+            merge_state_parameters(
+                spec, None, 'done', ('x', 'set')),
+            {'a', 'b', 'c'})
+        self.assertEqual(
+            merge_state_parameters(
+                spec, 'planned', 'done', ('x', 'set')),
+            {'b', 'c'})
+        self.assertEqual(
+            merge_state_parameters(
+                spec, 'started', 'done', ('x', 'set')),
+            {'c'})
+
+        self.assertEqual(
+            merge_state_parameters(
+                spec, None, 'started', ('x', 'set')),
+            {'a', 'b'})
+        self.assertEqual(
+            merge_state_parameters(
+                spec, 'planned', 'started', ('x', 'set')),
+            {'b'})
+
+        self.assertEqual(
+            merge_state_parameters(
+                spec, None, 'planned', ('x', 'set')),
+            {'a'})
 
 
 class TestTypedExpression(BlokTestCase):

@@ -37,39 +37,52 @@ _missing = object()
 OPERATION_STATES = ('planned', 'started', 'done')
 
 
-def merge_state_parameters(spec, from_state, to_state, **subkeys):
+def merge_state_parameters(spec, from_state, to_state, *subkeys):
     """Utility method to merge sets or dict parameters for state jumps.
+
+    :param spec: a dict whose keys are Operation states
+    :param from_state: the state to start from, or None
+    :param to_state: the state to reach
+    :param subkeys: each one is a pair (subkey, type) where subkey is the
+                    key to consider inside each state subdict of ``spec``
+                    and type is a string representing the type of the
+                    corresponding values (``'set'`` or ``'dict'``)
+    :return: values for the subkeys, in lexical order if there are several
+             or just the value if there's one.
+    :raises: ValueError for unknown types
+
+    Besides doing the aggregation, this normalizes things a bit.
+    For instance, ``spec`` can be ``None``, and in that case,  we'll get
+    empty values for the subkeys.
     """
-    if from_state is None:
-        from_state_idx = 0
-    else:
-        from_state_idx = OPERATION_STATES.index(from_state) + 1
-
-    steps = OPERATION_STATES[from_state_idx:
-                             OPERATION_STATES.index(to_state) + 1]
-
     res = []
-    for subkey, subtype in subkeys.items():
+    for subkey, subtype in subkeys:
         if subtype == 'set':
             res.append(set())
         elif subtype == 'dict':
             res.append({})
         else:
             raise ValueError(
-                "Unknown subkey type %r for subkey %r" % (subkey, subtype))
+                "Unknown subkey type %r for subkey %r" % (subtype, subkey))
+
+    if spec is None:
+        return None if not res else res if len(res) > 1 else res[0]
+
+    if from_state is None:
+        from_state_idx = 0
+    else:
+        from_state_idx = OPERATION_STATES.index(from_state) + 1
+    steps = OPERATION_STATES[from_state_idx:
+                             OPERATION_STATES.index(to_state) + 1]
 
     for step in steps:
         step_spec = spec.get(step)
         if step_spec is None:
             continue
-        for i, (k, _) in enumerate(subkeys.items()):
-            # could later actually depend on type, and we are already
-            # depending on items() ordering being reproducible, let's not
-            # bet it's always the same as the one of keys(), although that's
-            # very believable.
+        for i, (k, _) in enumerate(subkeys):
             res[i].update(step_spec.get(k, ()))
 
-    return res
+    return None if not res else res if len(res) > 1 else res[0]
 
 
 @register(Operation)
@@ -199,18 +212,28 @@ class Assembly(Operation):
                 raise AssemblyPropertyConflict(self, exc_details, prop,
                                                existing, candidate_value)
 
-    def forward_properties(self, state):
+    def forward_properties(self, state, for_creation=False):
         """Forward properties from the inputs to the outcome
 
         This is done according to the global specification
 
         :param state: the Assembly state that we are reaching.
+        :param bool for_creation: if ``True``, means that this is part
+                                  of the creation process, i.e, there's no
+                                  previous state.
         :raises: AssemblyPropertyConflict if forwarding properties
                  changes an already set value.
         """
         spec = self.specification
         Avatar = self.registry.Wms.Goods.Avatar
-        glob_fwd = spec.get('forward_properties', ())
+        global_spec = spec.get('input_properties')
+        glob_fwd = merge_state_parameters(
+            global_spec,
+            None if for_creation else self.state,
+            state,
+            ('forward', 'set')
+            )
+
         inputs_spec = spec.get('inputs', ())
 
         forwarded = {}
@@ -250,8 +273,9 @@ class Assembly(Operation):
             global_props_spec,
             None if for_creation else self.state,
             state,
-            required='set',
-            required_values='dict')
+            ('required', 'set'),
+            ('required_values', 'dict'),
+        )
 
         for avatar in self.inputs:
             goods = avatar.goods
@@ -390,10 +414,13 @@ class Assembly(Operation):
     See :meth:`build_outcome_properties` for the meaning of the values.
     """
 
-    def build_outcome_properties(self, state):
+    def build_outcome_properties(self, state, for_creation=False):
         """Method responsible for initial properties on the outcome.
 
         :param state: The Assembly state that we are reaching.
+        :param bool for_creation: if ``True``, means that this is part
+                                  of the creation process, i.e, there's no
+                                  previous state.
         :rtype: :class:`Model.Wms.Goods.Properties
                 <anyblok_wms_base.core.goods.Properties>`
         :raises: :class:`AssemblyInputNotMatched` if one of the
@@ -550,7 +577,7 @@ class Assembly(Operation):
             include Goods' Types, those Properties that aren't recoverable by
             an Unpack from the Assembly outcome, together with appropriate
             ``forward_properties`` for those who are (TODO except those that
-            come from a global ``forward_properties`` of the assembly)
+            come from a global ``forward`` in the Assembly specification)
         * ``'records'``:
             same as ``descriptions``, but also includes the record ids, so
             that an Unpack following the Assembly would not give rise to new
@@ -559,7 +586,8 @@ class Assembly(Operation):
             of the physical objects.
         """
         spec = self.specification
-        assembled_props = self.forward_properties(state)
+        assembled_props = self.forward_properties(state,
+                                                  for_creation=for_creation)
 
         contents = self.build_contents(assembled_props)
         if contents:
@@ -672,7 +700,8 @@ class Assembly(Operation):
         Goods.Avatar.insert(
             goods=Goods.insert(
                 type=self.outcome_type,
-                properties=self.build_outcome_properties(state)),
+                properties=self.build_outcome_properties(state,
+                                                         for_creation=True)),
             location=self.inputs[0].location,
             reason=self,
             state=outcome_state,
