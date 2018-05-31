@@ -37,7 +37,56 @@ _missing = object()
 OPERATION_STATES = ('planned', 'started', 'done')
 
 
-def merge_state_parameters(spec, from_state, to_state, *subkeys):
+def state_interval(from_state, to_state):
+    """Return a tuple of states to pass in a state jump.
+
+    :param from_state: the state to start from, or None
+    :param to_state: the state to reach
+    """
+    if from_state is None:
+        from_state_idx = 0
+    else:
+        from_state_idx = OPERATION_STATES.index(from_state) + 1
+    return OPERATION_STATES[from_state_idx:
+                            OPERATION_STATES.index(to_state) + 1]
+
+
+def merge_state_parameter(spec, from_state, to_state, param_type):
+    """Utility method to merge sets or dict parameter for state jumps.
+
+    :param spec: a dict whose keys are Operation states and values are the
+                 per-state parameter values
+    :param from_state: the state to start from, or None
+    :param to_state: the state to reach
+    :param str param_type:
+        the type of the parameter (can be ``'set'`` or ``'dict'``)
+    :return: merged value for the parameter
+    :raises: ValueError for unknown types
+
+    Besides doing the aggregation, this normalizes things a bit.
+    For instance, ``spec`` can be ``None``, and in that case,  we'll get
+    an appropriate empty value.
+    """
+    if param_type == 'set':
+        res = set()
+    elif param_type == 'dict':
+        res = {}
+    else:
+        raise ValueError(
+            "Unsupported parameter type for state merging: %r" % param_type)
+
+    if spec is None:
+        return res
+
+    for step in state_interval(from_state, to_state):
+        step_param = spec.get(step)
+        if step_param is None:
+            continue
+        res.update(step_param)
+    return res
+
+
+def merge_state_sub_parameters(spec, from_state, to_state, *subkeys):
     """Utility method to merge sets or dict parameters for state jumps.
 
     :param spec: a dict whose keys are Operation states
@@ -46,7 +95,7 @@ def merge_state_parameters(spec, from_state, to_state, *subkeys):
     :param subkeys: each one is a pair (subkey, type) where subkey is the
                     key to consider inside each state subdict of ``spec``
                     and type is a string representing the type of the
-                    corresponding values (``'set'`` or ``'dict'``)
+                    corresponding values (``'set'`` or ``'dict'``).
     :return: values for the subkeys, in lexical order if there are several
              or just the value if there's one.
     :raises: ValueError for unknown types
@@ -68,14 +117,7 @@ def merge_state_parameters(spec, from_state, to_state, *subkeys):
     if spec is None:
         return None if not res else res if len(res) > 1 else res[0]
 
-    if from_state is None:
-        from_state_idx = 0
-    else:
-        from_state_idx = OPERATION_STATES.index(from_state) + 1
-    steps = OPERATION_STATES[from_state_idx:
-                             OPERATION_STATES.index(to_state) + 1]
-
-    for step in steps:
+    for step in state_interval(from_state, to_state):
         step_spec = spec.get(step)
         if step_spec is None:
             continue
@@ -227,7 +269,7 @@ class Assembly(Operation):
         spec = self.specification
         Avatar = self.registry.Wms.Goods.Avatar
         global_spec = spec.get('input_properties')
-        glob_fwd = merge_state_parameters(
+        glob_fwd = merge_state_sub_parameters(
             global_spec,
             None if for_creation else self.state,
             state,
@@ -269,7 +311,7 @@ class Assembly(Operation):
         if global_props_spec is None:
             return
 
-        req_props, req_prop_values = merge_state_parameters(
+        req_props, req_prop_values = merge_state_sub_parameters(
             global_props_spec,
             None if for_creation else self.state,
             state,
@@ -593,22 +635,22 @@ class Assembly(Operation):
         if contents:
             assembled_props[CONTENTS_PROPERTY] = contents
 
-        spec_props = spec.get('properties')
-        if spec_props is not None:
-            assembled_props.update(self.eval_spec_exprs('properties'))
-        direct_exec = self.state == 'done'
-        if direct_exec:
-            assembled_props.update(
-                self.eval_spec_exprs('properties_at_execution'))
+        prop_exprs = merge_state_parameter(
+            spec.get('outcome_properties'),
+            None if for_creation else self.state,
+            state,
+            'dict')
+        assembled_props.update((k, self.eval_typed_expr(*v))
+                               for k, v in prop_exprs.items())
 
         assembled_props.update(self.specific_build_outcome_properties(
-            assembled_props, for_exec=direct_exec))
+            assembled_props, state, for_creation=for_creation))
         return self.registry.Wms.Goods.Properties.create(**assembled_props)
 
     props_hook_fmt = "build_outcome_properties_{name}"
 
-    def specific_build_outcome_properties(self, assembled_props,
-                                          for_exec=False):
+    def specific_build_outcome_properties(self, assembled_props, state,
+                                          for_creation=False):
         """Hook for per-name specific update of Properties on outcome.
 
         At the time of Operation creation or execution,
@@ -624,10 +666,10 @@ class Assembly(Operation):
            a :class:`dict` of already built Properties, or a
            :class:`Properties
            <anyblok_wms_base.core.goods.Properties>` instance.
-        :param bool for_exec:
-          ``False`` during Operation creation in the ``planned`` state,
-          ``True`` during Operation execution or creation in the ``done``
-          state.
+        :param state: The Assembly state that we are reaching.
+        :param bool for_creation:
+            if ``True``, means that this is part of the creation process,
+            i.e, there's no previous state.
         :return: the properties to set or update
         :rtype: any iterable that can be passed to :meth:`dict.update`.
 
@@ -635,7 +677,7 @@ class Assembly(Operation):
         meth = getattr(self, self.props_hook_fmt.format(name=self.name), None)
         if meth is None:
             return ()
-        return meth(assembled_props, for_exec=for_exec)
+        return meth(assembled_props, state, for_creation=for_creation)
 
     def build_contents(self, forwarded_props):
         """Construction of the ``contents`` property
@@ -728,11 +770,13 @@ class Assembly(Operation):
 
         outcome.state = 'present'
         goods = outcome.goods
+        prop_exprs = merge_state_parameter(
+            self.specification.get('outcome_properties'),
+            self.state, 'done', 'dict')
+        goods.update_properties((k, self.eval_typed_expr(*v))
+                                for k, v in prop_exprs.items())
         goods.update_properties(
-            self.eval_spec_exprs('properties_at_execution'))
-        goods.update_properties(
-            self.specific_build_outcome_properties(goods.properties,
-                                                   for_exec=True))
+            self.specific_build_outcome_properties(goods.properties, 'done'))
 
     def eval_typed_expr(self, etype, expr):
         """Evaluate a typed expression.
@@ -755,16 +799,6 @@ class Assembly(Operation):
         elif etype == 'sequence':
             return self.registry.System.Sequence.nextvalBy(code=expr.strip())
         raise UnknownExpressionType(self, etype, expr)
-
-    def eval_spec_exprs(self, spec_key):
-        """Read typed expressions from :attr:`specification` and evaluate them.
-
-        :rtype: iterator of (key, value) pairs.
-        """
-        props = self.specification.get(spec_key)
-        if props is None:
-            return ()
-        return ((k, self.eval_typed_expr(*v)) for k, v in props.items())
 
     def is_reversible(self):
         """Assembly can be reverted by Unpack.

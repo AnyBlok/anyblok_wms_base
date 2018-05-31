@@ -408,8 +408,10 @@ class TestAssembly(WmsTestCase):
         gt1 = self.Goods.Type.insert(code='GT1')
         gt2 = self.Goods.Type.insert(code='GT2')
         self.create_outcome_type(dict(screwing={
-            'properties': {'bar': ('const', 3)},
-            'properties_at_execution': {'done': ('const', True)},
+            'outcome_properties': {
+                'planned': {'bar': ('const', 3)},
+                'done': {'done': ('const', True)},
+            },
             'input_properties': {
                 'started': {
                     'required_values': {'qa': 'ok'},
@@ -467,7 +469,7 @@ class TestAssembly(WmsTestCase):
         gt1 = self.Goods.Type.insert(code='GT1')
         gt2 = self.Goods.Type.insert(code='GT2')
 
-        def hook(op, assembled, for_exec=False):
+        def hook(op, assembled, state, for_creation=False):
             # demonstrates that this is indeed called last
             self.assertEqual(assembled.get('bar'), 3)
             self.assertEqual(assembled.get('done'), True)
@@ -483,8 +485,10 @@ class TestAssembly(WmsTestCase):
         self.Assembly.build_outcome_properties_pack = hook
 
         self.create_outcome_type(dict(pack={
-            'properties': {'bar': ('const', 3)},
-            'properties_at_execution': {'done': ('const', True)},
+            'outcome_properties': {
+                'planned': {'bar': ('const', 3)},
+                'done': {'done': ('const', True)},
+            },
             'input_properties': {
                 'done': {
                     'forward': ['foo'],
@@ -547,8 +551,10 @@ class TestAssembly(WmsTestCase):
         gt1 = self.Goods.Type.insert(code='GT1')
         gt2 = self.Goods.Type.insert(code='GT2')
         self.create_outcome_type(dict(default={
-            'properties': {'foo': ['const', 'bar']},
-            'properties_at_execution': {'at_exec': ['const', 'it is done']},
+            'outcome_properties': {
+                'planned': {'foo': ('const', 'bar')},
+                'done': {'at_exec': ('const', 'it is done')},
+            },
             'inputs': [
                 {'type': 'GT1', 'quantity': 2},
                 {'type': 'GT2', 'quantity': 1},
@@ -584,18 +590,20 @@ class TestAssembly(WmsTestCase):
         gt1 = self.Goods.Type.insert(code='GT1')
         gt2 = self.Goods.Type.insert(code='GT2')
         self.create_outcome_type(dict(pack={
-            'properties': {'foo': ['const', 'bar']},
-            'properties_at_execution': {'at_exec': ['const', 'it is done']},
+            'outcome_properties': {
+                'planned': {'bar': ('const', 'bar')},
+                'done': {'at_exec': ('const', 'it is done')},
+            },
             'inputs': [
                 {'type': 'GT1', 'quantity': 2},
                 {'type': 'GT2', 'quantity': 1},
             ]
         }))
 
-        def hook(op, assembled, for_exec=False):
+        def hook(op, assembled, state, for_creation=False):
             return [(
                 'by_hook',
-                'at ' + ('execution' if for_exec else 'planification'))]
+                'at %s (for_creation=%r)' % (state, for_creation))]
 
         self.Assembly.build_outcome_properties_pack = hook
 
@@ -609,13 +617,14 @@ class TestAssembly(WmsTestCase):
                                             state='planned')
             outcome = self.assert_singleton(assembly.outcomes)
             props = outcome.goods.properties
-            self.assertEqual(props.get('by_hook'), 'at planification')
+            self.assertEqual(props.get('by_hook'),
+                             'at planned (for_creation=True)')
 
             assembly.execute()
         finally:
             del self.Assembly.build_outcome_properties_pack
 
-        self.assertEqual(props.get('by_hook'), 'at execution')
+        self.assertEqual(props.get('by_hook'), 'at done (for_creation=False)')
 
     def test_create_done_extra_forbidden(self):
         gt1 = self.Goods.Type.insert(code='GT1')
@@ -933,21 +942,62 @@ class TestAssembly(WmsTestCase):
                               quantity=1,
                               forward_properties=['bar']))
 
-    def test_merged_state_parameters(self):
+    def test_merged_state_parameter(self):
         # well ok, we'll put it later in a separate utility module
         # but that requires thinking of a naming that'd be clear out of
         # the Assembly context
         from anyblok_wms_base.core.operation.assembly import (
-            merge_state_parameters)
+            merge_state_parameter)
 
         # unknown type
         with self.assertRaises(ValueError):
-            merge_state_parameters({}, None, 'done', ('foo', 'int'))
+            merge_state_parameter({}, None, 'done', 'int')
 
         # normalization in case spec is None
-        self.assertEqual(merge_state_parameters(None, 'planned', 'done',
-                                                ('foo', 'set'),
-                                                ('bar', 'dict')),
+        self.assertEqual(
+            merge_state_parameter(None, 'planned', 'done', 'set'),
+            set())
+        self.assertEqual(
+            merge_state_parameter(None, 'planned', 'done', 'dict'),
+            {})
+
+        spec = dict(planned=dict(x=1),
+                    started=dict(y=2),
+                    done=dict(z=3))
+        self.assertEqual(
+            merge_state_parameter(spec, None, 'done', 'dict'),
+            dict(x=1, y=2, z=3))
+        self.assertEqual(
+            merge_state_parameter(spec, 'planned', 'done', 'dict'),
+            dict(y=2, z=3))
+        self.assertEqual(
+            merge_state_parameter(spec, 'started', 'done', 'dict'),
+            dict(z=3))
+        self.assertEqual(
+            merge_state_parameter(spec, None, 'started', 'dict'),
+            dict(x=1, y=2))
+        self.assertEqual(
+            merge_state_parameter(spec, 'planned', 'started', 'dict'),
+            dict(y=2))
+        self.assertEqual(
+            merge_state_parameter(spec, None, 'planned', 'dict'),
+            dict(x=1))
+
+    def test_merged_state_sub_parameters(self):
+        # well ok, we'll put it later in a separate utility module
+        # but that requires thinking of a naming that'd be clear out of
+        # the Assembly context
+        from anyblok_wms_base.core.operation.assembly import (
+            merge_state_sub_parameters)
+
+        # unknown type
+        with self.assertRaises(ValueError):
+            merge_state_sub_parameters({}, None, 'done', ('foo', 'int'))
+
+        # normalization in case spec is None
+        self.assertEqual(merge_state_sub_parameters(None, 'planned', 'done',
+                                                    ('foo', 'set'),
+                                                    ('bar', 'dict')),
                          [set(), {}])
 
         # simple display of the state jumps
@@ -955,29 +1005,29 @@ class TestAssembly(WmsTestCase):
                     started=dict(x=['b']),
                     done=dict(x=['c']))
         self.assertEqual(
-            merge_state_parameters(
+            merge_state_sub_parameters(
                 spec, None, 'done', ('x', 'set')),
             {'a', 'b', 'c'})
         self.assertEqual(
-            merge_state_parameters(
+            merge_state_sub_parameters(
                 spec, 'planned', 'done', ('x', 'set')),
             {'b', 'c'})
         self.assertEqual(
-            merge_state_parameters(
+            merge_state_sub_parameters(
                 spec, 'started', 'done', ('x', 'set')),
             {'c'})
 
         self.assertEqual(
-            merge_state_parameters(
+            merge_state_sub_parameters(
                 spec, None, 'started', ('x', 'set')),
             {'a', 'b'})
         self.assertEqual(
-            merge_state_parameters(
+            merge_state_sub_parameters(
                 spec, 'planned', 'started', ('x', 'set')),
             {'b'})
 
         self.assertEqual(
-            merge_state_parameters(
+            merge_state_sub_parameters(
                 spec, None, 'planned', ('x', 'set')),
             {'a'})
 
