@@ -244,7 +244,7 @@ class TestAssembly(WmsTestCase):
             'inputs': [
                 {'type': 'GT1', 'quantity': 1},
             ],
-            'input_properties': {
+            'inputs_properties': {
                 'done': {
                     'forward': [CONTENTS_PROPERTY],
                 },
@@ -412,7 +412,7 @@ class TestAssembly(WmsTestCase):
                 'planned': {'bar': ('const', 3)},
                 'done': {'done': ('const', True)},
             },
-            'input_properties': {
+            'inputs_properties': {
                 'started': {
                     'required_values': {'qa': 'ok'},
                 },
@@ -489,7 +489,7 @@ class TestAssembly(WmsTestCase):
                 'planned': {'bar': ('const', 3)},
                 'done': {'done': ('const', True)},
             },
-            'input_properties': {
+            'inputs_properties': {
                 'done': {
                     'forward': ['foo'],
                     'required_values': {'qa': 'ok'},
@@ -650,7 +650,7 @@ class TestAssembly(WmsTestCase):
         gt2 = self.Goods.Type.insert(code='GT2')
 
         self.create_outcome_type(dict(default={
-            'input_properties': {
+            'inputs_properties': {
                 'planned': {
                     'forward': ['foo'],
                 },
@@ -820,7 +820,7 @@ class TestAssembly(WmsTestCase):
         gt1 = self.Goods.Type.insert(code='GT1')
 
         self.create_outcome_type(dict(default={
-            'input_properties': {
+            'inputs_properties': {
                 'started': {
                     'required_values': {'qa': 'ok'},
                 },
@@ -884,7 +884,7 @@ class TestAssembly(WmsTestCase):
         # as the requirements on the matching ones (global or per input spec)
         # are tested in one shot, always raising with the input spec details
         self.create_outcome_type(dict(default=dict(
-            input_properties=dict(
+            inputs_properties=dict(
                 planned=dict(forward=['bar'])
             ),
             inputs=[],

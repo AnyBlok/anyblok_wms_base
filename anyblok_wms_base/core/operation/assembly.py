@@ -268,7 +268,7 @@ class Assembly(Operation):
         """
         spec = self.specification
         Avatar = self.registry.Wms.Goods.Avatar
-        global_spec = spec.get('input_properties')
+        global_spec = spec.get('inputs_properties')
         glob_fwd = merge_state_sub_parameters(
             global_spec,
             None if for_creation else self.state,
@@ -307,7 +307,7 @@ class Assembly(Operation):
         :raises: :class:`AssemblyWrongInputProperties`
         """
         spec = self.specification
-        global_props_spec = spec.get('input_properties')
+        global_props_spec = spec.get('inputs_properties')
         if global_props_spec is None:
             return
 
@@ -427,7 +427,7 @@ class Assembly(Operation):
                      ],
                      'for_contents': ['all', 'descriptions'],
                      'allow_extra': True,
-                     'input_properties': {
+                     'inputs_properties': {
                          'planned': {
                             'required': …
                             'required_values': …
@@ -481,7 +481,7 @@ class Assembly(Operation):
              dicts of Properties to set on the outcome; the values
              are pairs ``(TYPE, EXPRESSION)``, evaluated by passing as
              positional arguments to :meth:`eval_typed_expr`.
-        * ``input_properties``:
+        * ``inputs_properties``:
              a dict whose keys are Assembly states, and values are themselves
              dicts with key/values:
 
@@ -498,7 +498,7 @@ class Assembly(Operation):
 
         **Per input specification matching and forwarding**
 
-        The ``input_properties`` parameters can also be specified
+        The ``inputs_properties`` parameters can also be specified
         inside each :class:`dict` that form
         the ``inputs`` list of the :meth:`Assembly specification <spec>`),
         as the ``properties`` sub parameter.
