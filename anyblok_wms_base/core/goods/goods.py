@@ -10,7 +10,7 @@ from copy import deepcopy
 from sqlalchemy.orm.attributes import flag_modified
 
 from anyblok import Declarations
-from anyblok.column import String
+from anyblok.column import Text
 from anyblok.column import Selection
 from anyblok.column import Integer
 from anyblok.column import DateTime
@@ -52,8 +52,8 @@ class Goods:
     type = Many2One(model='Model.Wms.Goods.Type', nullable=False, index=True)
     """The :class:`Goods Type <.type.Type>`"""
 
-    code = String(label="Identifying code",
-                  index=True)
+    code = Text(label="Identifying code",
+                index=True)
     """Uniquely identifying code.
 
     This should be about what one is ready to display as a barcode for handling

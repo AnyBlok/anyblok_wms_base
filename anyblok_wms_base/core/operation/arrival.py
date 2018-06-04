@@ -8,7 +8,7 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok import Declarations
 from anyblok.column import Integer
-from anyblok.column import String
+from anyblok.column import Text
 from anyblok_postgres.column import Jsonb
 from anyblok.relationship import Many2One
 
@@ -58,7 +58,7 @@ class Arrival(Operation):
     reality is the concern of separate validation processes, and this
     field can serve for later assessments after the fact.
     """
-    goods_code = String(label="Code to set on arrived Goods")
+    goods_code = Text(label="Code to set on arrived Goods")
     """Expected :attr:`Goods code
     <anyblok_wms_base.core.goods.Goods.code>`.
 
