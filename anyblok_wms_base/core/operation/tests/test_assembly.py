@@ -102,12 +102,20 @@ class TestAssembly(WmsTestCase):
             'inputs': [
                 {'type': 'parent',
                  'quantity': 1,
-                 'required_property_values': {'main': True},
+                 'properties': {
+                     'planned': {
+                         'required_values': {'main': True},
+                     },
+                 },
                  'forward_properties': ['colour', 'bar'],
                  },
                 {'type': 'parent',
                  'quantity': 1,
-                 'required_property_values': {'colour': 'red'},
+                 'properties': {
+                     'planned': {
+                         'required_values': {'colour': 'red'},
+                     },
+                 },
                  'forward_properties': ['foo'],
                  }
             ],
@@ -158,12 +166,20 @@ class TestAssembly(WmsTestCase):
             'inputs': [
                 {'type': 'GT1',
                  'quantity': 1,
-                 'required_properties': ['foo'],
+                 'properties': {
+                     'planned': {
+                         'required': ['foo'],
+                     },
+                 },
                  'forward_properties': ['bar'],
                  },
                 {'type': 'GT1',
                  'quantity': 1,
-                 'required_properties': ['foo2'],
+                 'properties': {
+                     'planned': {
+                         'required': ['foo2'],
+                     },
+                 },
                  'forward_properties': ['bar2'],
                  },
             ],
@@ -201,12 +217,20 @@ class TestAssembly(WmsTestCase):
             'inputs': [
                 {'type': 'GT1',
                  'quantity': 1,
-                 'required_property_values': dict(foo=1),
+                 'properties': {
+                     'planned': {
+                         'required_values': {'foo': 1},
+                     },
+                 },
                  'forward_properties': ['bar'],
                  },
                 {'type': 'GT1',
                  'quantity': 1,
-                 'required_properties': dict(foo=2),
+                 'properties': {
+                     'planned': {
+                         'required_values': {'foo': 2},
+                     },
+                 },
                  'forward_properties': ['bar2'],
                  },
             ],
@@ -272,7 +296,12 @@ class TestAssembly(WmsTestCase):
             'inputs': [
                 {'type': 'GT1', 'quantity': 2,
                  'forward_properties': ['foo'],
-                 'required_property_values': {'qa': 'ok'},
+                 'properties': {
+                     'done': {
+                         'required_values': {'qa': 'ok'},
+                         'requirements': 'match',
+                     },
+                  },
                  },
                 {'type': 'GT2', 'quantity': 1,
                  'forward_properties': ['foo', 'bar'],
@@ -353,7 +382,12 @@ class TestAssembly(WmsTestCase):
             'inputs': [
                 {'type': 'GT1', 'quantity': 2,
                  'forward_properties': ['foo'],
-                 'required_property_values': {'qa': 'ok'},
+                 'properties': {
+                     'done': {
+                         'required_values': {'qa': 'ok'},
+                         'requirements': 'match',
+                     },
+                  },
                  },
                 {'type': 'GT2', 'quantity': 1,
                  'forward_properties': ['foo', 'bar'],
@@ -761,11 +795,19 @@ class TestAssembly(WmsTestCase):
                 # are evaluated in order
                 {'type': 'GT1',
                  'quantity': 1,
-                 'required_property_values': {'qa': 'ok'},
+                 'properties': {
+                     'started': {
+                         'required_values': {'qa': 'ok'},
+                     },
+                  },
                  },
                 {'type': 'GT1',
                  'quantity': 1,
-                 'required_properties': ['qa'],
+                 'properties': {
+                     'started': {
+                         'required': ['qa'],
+                     },
+                  },
                  },
             ],
         }))
@@ -785,7 +827,13 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(exc.kwargs['spec_detail'],
                          dict(type='GT1',
                               quantity=1,
-                              required_properties=['qa']))
+                              properties=dict(
+                                  started=dict(
+                                      required=['qa'],
+                                  )))
+                         )
+        self.assertEqual(exc.kwargs['from_state'], None)
+        self.assertEqual(exc.kwargs['to_state'], 'done')
 
     def test_unmatched_required_property_value(self):
         gt1 = self.Goods.Type.insert(code='GT1')
@@ -794,7 +842,11 @@ class TestAssembly(WmsTestCase):
             'inputs': [
                 {'type': 'GT1',
                  'quantity': 1,
-                 'required_property_values': {'qa': 'ok'},
+                 'properties': {
+                     'started': {
+                         'required_values': {'qa': 'ok'},
+                         },
+                     },
                  },
             ],
         }))
@@ -814,7 +866,13 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(exc.kwargs['spec_detail'],
                          dict(type='GT1',
                               quantity=1,
-                              required_property_values=dict(qa='ok')))
+                              properties=dict(
+                                  started=dict(
+                                      required_values=dict(qa='ok')
+                                  )))
+                         )
+        self.assertEqual(exc.kwargs['from_state'], None)
+        self.assertEqual(exc.kwargs['to_state'], 'done')
 
     def test_unmatched_global_required_property_value(self):
         gt1 = self.Goods.Type.insert(code='GT1')
@@ -848,6 +906,49 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(exc.kwargs['required_props'], set())
         self.assertEqual(exc.kwargs['required_prop_values'], dict(qa='ok'))
         self.assertEqual(exc.kwargs['avatar'], avatars[0])
+
+    def test_unmatched_per_input_required_property_value(self):
+        gt1 = self.Goods.Type.insert(code='GT1')
+
+        self.create_outcome_type(dict(default={
+            'inputs_properties': {
+            },
+            'inputs': [
+                {'type': 'GT1',
+                 'quantity': 1,
+                 'properties': {
+                     'started': {
+                         'required_values': {'qa': 'ok'},
+                     },
+                  },
+                 },
+            ],
+        }))
+        avatars = self.create_goods(((gt1, 1), ))
+        avatars[0].goods.set_property('qa', 'broken')
+
+        assembly = self.Assembly.create(inputs=avatars,
+                                        outcome_type=self.outcome_type,
+                                        name='default',
+                                        dt_execution=self.dt_test1,
+                                        state='planned')
+        with self.assertRaises(AssemblyWrongInputProperties) as arc:
+            assembly.execute()
+
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs['required_props'], set())
+        self.assertEqual(exc.kwargs['required_prop_values'], dict(qa='ok'))
+        self.assertEqual(exc.kwargs['avatar'], avatars[0])
+        self.assertEqual(exc.kwargs['spec_idx'], 0)
+        self.assertEqual(exc.kwargs['spec_nr'], 1)
+        self.assertEqual(exc.kwargs['spec_detail'],
+                         dict(type='GT1',
+                              quantity=1,
+                              properties=dict(
+                                  started=dict(
+                                      required_values=dict(qa='ok')))))
 
     def test_inconsistent_forwarding_one_spec(self):
         gt1 = self.Goods.Type.insert(code='GT1')
@@ -983,6 +1084,49 @@ class TestAssembly(WmsTestCase):
             merge_state_parameter(spec, None, 'planned', 'dict'),
             dict(x=1))
 
+        # using CheckMatch
+
+        spec = dict(planned='check',
+                    started='match',
+                    done='check')
+        self.assertFalse(
+            merge_state_parameter(
+                spec, None, 'planned',
+                'check_match').is_match)
+        self.assertTrue(
+            merge_state_parameter(
+                spec, None, 'started',
+                'check_match').is_match)
+        self.assertTrue(
+            merge_state_parameter(
+                spec, None, 'done',
+                'check_match').is_match)
+
+        # CheckMatch with gaps
+        # not that the wished default 'check' value for 'planned'
+        # is not this function's responsibility, but its caller's
+        spec = dict(started='match')
+        self.assertFalse(
+            merge_state_parameter(
+                spec, None, 'planned',
+                'check_match').is_match)
+        self.assertTrue(
+            merge_state_parameter(
+                spec, None, 'started',
+                'check_match').is_match)
+        self.assertTrue(
+            merge_state_parameter(
+                spec, None, 'done',
+                'check_match').is_match)
+        self.assertTrue(
+            merge_state_parameter(
+                spec, 'planned', 'done',
+                'check_match').is_match)
+        self.assertFalse(
+            merge_state_parameter(
+                spec, 'started', 'done',
+                'check_match').is_match)
+
     def test_merged_state_sub_parameters(self):
         # well ok, we'll put it later in a separate utility module
         # but that requires thinking of a naming that'd be clear out of
@@ -1030,6 +1174,25 @@ class TestAssembly(WmsTestCase):
             merge_state_sub_parameters(
                 spec, None, 'planned', ('x', 'set')),
             {'a'})
+
+    def test_CheckMatch(self):
+        from anyblok_wms_base.core.operation.assembly import CheckMatch
+
+        c = CheckMatch()
+        self.assertFalse(c.is_match)
+
+        c.update('check')
+        self.assertFalse(c.is_match)
+
+        with self.assertRaises(ValueError) as arc:
+            c.update('foo')
+        self.assertEqual(arc.exception.args, ('foo', ))
+
+        c.update('match')
+        self.assertTrue(c.is_match)
+
+        c.update('check')
+        self.assertTrue(c.is_match)
 
 
 class TestTypedExpression(BlokTestCase):

@@ -51,6 +51,23 @@ def state_interval(from_state, to_state):
                             OPERATION_STATES.index(to_state) + 1]
 
 
+class CheckMatch:
+    """Used to store check and match property requirements directive.
+
+    The added value of this class is to make the merging of parameters easier
+    for 'requirements' (whose value is 'check' or 'match'), with the same API
+    as :class:`dict` and :class:`set` implementing the rule that 'match'
+    wins over 'check'.
+    """
+
+    is_match = False
+
+    def update(self, upd):
+        if upd not in ('check', 'match'):
+            raise ValueError(upd)
+        self.is_match = self.is_match or upd == 'match'
+
+
 def merge_state_parameter(spec, from_state, to_state, param_type):
     """Utility method to merge sets or dict parameter for state jumps.
 
@@ -71,6 +88,8 @@ def merge_state_parameter(spec, from_state, to_state, param_type):
         res = set()
     elif param_type == 'dict':
         res = {}
+    elif param_type == 'check_match':
+        res = CheckMatch()
     else:
         raise ValueError(
             "Unsupported parameter type for state merging: %r" % param_type)
@@ -326,7 +345,25 @@ class Assembly(Operation):
                 raise AssemblyWrongInputProperties(
                     self, avatar, req_props, req_prop_values)
 
-    def match_inputs(self, state):
+        Avatar = self.registry.Wms.Goods.Avatar
+        for i, (match_item, input_spec) in enumerate(
+                zip(self.match, spec.get('inputs', ()))):
+            req_props, req_prop_values = merge_state_sub_parameters(
+                input_spec.get('properties'),
+                None if for_creation else self.state,
+                state,
+                ('required', 'set'),
+                ('required_values', 'dict'),
+            )
+            for av_id in match_item:
+                goods = Avatar.query().get(av_id).goods
+                if (not goods.has_properties(req_props) or
+                        not goods.has_property_values(req_prop_values)):
+                    raise AssemblyWrongInputProperties(
+                        self, avatar, req_props, req_prop_values,
+                        spec_item=(i, input_spec))
+
+    def match_inputs(self, state, for_creation=False):
         """Compare input Avatars to specification and apply Properties rules.
 
         :param state: the state for which to perform the matching
@@ -345,6 +382,7 @@ class Assembly(Operation):
 
         GoodsType = self.registry.Wms.Goods.Type
         types_by_code = dict()
+        from_state = None if for_creation else self.state
 
         match = self.match = []
 
@@ -352,8 +390,13 @@ class Assembly(Operation):
             match_item = []
             match.append(match_item)
 
-            req_props = expected.get('required_properties', ())
-            req_prop_values = expected.get('required_property_values', {})
+            req_props, req_prop_values = merge_state_sub_parameters(
+                expected.get('properties'),
+                from_state,
+                state,
+                ('required', 'set'),
+                ('required_values', 'dict'),
+            )
 
             type_code = expected['type']
             gtype = types_by_code.get(type_code)
@@ -361,7 +404,6 @@ class Assembly(Operation):
                 gtype = GoodsType.query().filter_by(
                     code=type_code).one()
                 types_by_code[type_code] = gtype
-
             for _ in range(expected['quantity']):
                 for candidate in inputs:
                     goods = candidate.goods
@@ -373,7 +415,9 @@ class Assembly(Operation):
                     match_item.append(candidate.id)
                     break
                 else:
-                    raise AssemblyInputNotMatched(self, (expected, i))
+                    raise AssemblyInputNotMatched(self, (expected, i),
+                                                  from_state=from_state,
+                                                  to_state=state)
 
         if inputs and not spec.get('allow_extra_inputs'):
             raise AssemblyExtraInputs(self, inputs)
@@ -405,7 +449,6 @@ class Assembly(Operation):
                           'properties': {
                              'planned': {
                                'required': ['x'],
-                               'requirements': 'match',  # default for planned
                              },
                              'started': {
                                'required': ['foo'],
@@ -425,6 +468,11 @@ class Assembly(Operation):
                           'code': 'ABC',
                           }
                      ],
+                     'inputs_spec_type': {
+                         'planned': 'check',  # default is 'match'
+                         'started': 'match',  # default is 'check' for
+                                              # 'started' and 'done' states
+                      },
                      'for_contents': ['all', 'descriptions'],
                      'allow_extra': True,
                      'inputs_properties': {
@@ -505,12 +553,16 @@ class Assembly(Operation):
 
         In that case, the Property requirements are used either as
         matching criteria on the inputs, or as a check on already matched
-        Goods, according to the value of the ``requirements`` parameter
+        Goods, according to the value of the ``inputs_spec_type`` parameter
         (default is ``'match'`` in the ``planned`` Assembly state,
         and ``'check'`` in the other states).
 
         Example::
 
+          'inputs_spec_type': {
+              'started': 'match',  # default is 'check' for
+                                   # 'started' and 'done' states
+          },
           'inputs': [
               {'type': 'GT1',
                'quantity': 1,
@@ -518,7 +570,6 @@ class Assembly(Operation):
                    'planned': {'required': ['x']},
                    'started': {
                        'required_values': {'x': True},
-                       'requirements': 'match',  # default is 'check'
                    },
                    'done': {
                        'forward': ['foo', 'bar'],
@@ -530,10 +581,11 @@ class Assembly(Operation):
         but remember that
         the ordering of ``self.inputs`` itself is to be considered random.
 
-        In case ``requirements`` is ``'check'``, the checking occurs after
-        matching on other, non Property based, criteria in the ``planned``
-        Assembly state; for the ``started`` and ``done`` states, it is done
-        on the Goods matched by previous states.
+        In case ``inputs_spec_type`` is ``'check'``, the checking is done
+        on the Goods matched by previous states, thus avoiding a potentially
+        costly rematching. In the above example, matching will be performed
+        in the ``'planned'`` and ``'started'`` states, but a simple check
+        will be done if going from the ``started`` to the ``done`` state.
 
         It is therefore possible to plan an Assembly with partial information
         about its inputs (waiting for some Observation, or a previous Assembly
@@ -725,6 +777,25 @@ class Assembly(Operation):
 
         return contents
 
+    def check_match_inputs(self, to_state, for_creation=False):
+        """Check or match inputs according to specification.
+
+        :rtype bool:
+        :return: ``True`` iff a match has been performed
+        """
+        spec = self.specification.get('inputs_spec_type')
+        if spec is None:
+            spec = {}
+        spec.setdefault('planned', 'match')
+
+        cm = merge_state_parameter(spec,
+                                   None if for_creation else self.state,
+                                   to_state,
+                                   'check_match')
+        (self.match_inputs if cm.is_match else self.check_inputs_properties)(
+            to_state, for_creation=for_creation)
+        return cm.is_match
+
     def after_insert(self):
         state = self.state
         outcome_state = 'present' if state == 'done' else 'future'
@@ -736,8 +807,7 @@ class Assembly(Operation):
         for inp in self.inputs:
             inp.update(**input_upd)
 
-        self.check_inputs_properties(state, for_creation=True)
-        self.match_inputs(state)
+        self.check_match_inputs(state, for_creation=True)
         Goods = self.registry.Wms.Goods
         Goods.Avatar.insert(
             goods=Goods.insert(
@@ -762,7 +832,7 @@ class Assembly(Operation):
         * application of :meth:`specific_build_outcome_properties`
           with ``for_exec=True``
         """
-        self.check_inputs_properties(state='done')
+        self.check_match_inputs('done')
         # TODO PERF direct update query would probably be faster
         for inp in self.inputs:
             inp.state = 'past'

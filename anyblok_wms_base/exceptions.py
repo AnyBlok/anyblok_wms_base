@@ -111,6 +111,7 @@ class OperationGoodsReserved(OperationError):
 class AssemblyInputNotMatched(OperationInputsError):
 
     def __init__(self, op_model_or_record, spec_item,
+                 from_state=None, to_state=None,
                  prelude=None, fmt=None, **kwargs):
         """Initialisation.
 
@@ -124,12 +125,16 @@ class AssemblyInputNotMatched(OperationInputsError):
                 prelude = "In {operation}"
             fmt = prelude + (", could not satisfy inputs specification item "
                              "#{spec_nr} {spec_detail} "
-                             "(after previous ones have been applied)")
+                             "while going from state {from_state!r} "
+                             "to {to_state!r} "
+                             "(after previous items have been satisfied)")
         OperationInputsError.__init__(
             self, op_model_or_record, fmt,
             spec_index=spec_index,
             spec_nr=spec_index + 1,
             spec_detail=spec_detail,
+            from_state=from_state,
+            to_state=to_state,
             **kwargs)
 
 
@@ -165,20 +170,37 @@ class AssemblyPropertyConflict(OperationInputsError):
 
 
 class AssemblyWrongInputProperties(OperationInputsError):
+    """For inputs properties been checked in Assembly.
 
+    It can be raised either for global or per input requirements.
+    In the latter case, the given input specification can be passed, taking
+    form of the ``spec_idx``, ``spec_nr`` and ``spec_detail``
+    kwargs, similarly to :class:`AssemblyInputNotMatched`.
+    for global requirements, these  kwargs should be set to ``None``
+    """
     def __init__(self, op, avatar, req_props, req_prop_values,
+                 spec_item=None,
                  prelude=None, fmt=None, **kwargs):
         """Initialisation.
 
         :param req_props: the properties whose existence was required
         :param req_prop_values: the property values that were required
         """
+        fmt = ("{operation}, wrong properties on {avatar!r}. "
+               "The existence of {required_props!r} is required, and "
+               "the following values are required: {required_prop_values!r}")
+        if spec_item is None:
+            spec_idx = spec_detail = spec_nr = None
+        else:
+            spec_idx, spec_detail = spec_item
+            spec_nr = spec_idx + 1
+            fmt += " due to input specification #{spec_nr} {spec_detail} "
         OperationInputsError.__init__(
-            self, op,
-            "{operation}, wrong properties on {avatar!r}. "
-            "The existence of {required_props!r} is required, and "
-            "the following values are required: {required_prop_values!r}",
+            self, op, fmt,
             avatar=avatar,
+            spec_idx=spec_idx,
+            spec_detail=spec_detail,
+            spec_nr=spec_nr,
             required_props=req_props,
             required_prop_values=req_prop_values,
             **kwargs)
