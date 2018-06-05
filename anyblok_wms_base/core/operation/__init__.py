@@ -16,7 +16,7 @@ from . import departure
 from . import move
 from . import unpack
 from . import assembly
-
+from . import apparition
 
 def reload_declarations(reload):
     reload(ns)
