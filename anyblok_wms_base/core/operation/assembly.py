@@ -151,23 +151,27 @@ class Assembly(Operation):
     """Assembly/Pack Operation.
 
     This operation covers simple packing and assembly needs : those for which
-    a single outcome is produced from the inputs, which must be in the same
-    Location. More general manufacturing cases fall out of the scope of
-    the ``wms-core`` Blok.
+    a single outcome is produced from the inputs, which must also be in the
+    same Location.
 
     The behaviour is specified on the :attr:`outcome's Goods Type
-    <outcome_type>`, and amounts to describing the expected inputs,
+    <outcome_type>` (see :attr:`Assembly specification <specification>`);
+    it amounts to describe the expected inputs,
     and how to build the Properties of the outcome (see
-    :meth:`outcome_properties`)
+    :meth:`outcome_properties`). All Property related parameters in the
+    specification are bound to the state to be reached or passed through.
 
-    A given Type can be assembled in different ways (TODO use-cases even
-    for simple packing), and this gets specified by the :attr:`name` field.
+    A given Type can be assembled in different ways: the
+    :attr:`Assembly specification <specification>` is chosen within
+    the ``assembly`` Type behaviour according to the value of the :attr:`name`
+    field.
 
-    Besides being the main key for the
-    :attr:`Assembly specification <specification>`,
-    the :attr:`name` is also used to dispatch hooks for specific logic that
-    would be too complicated to describe in configuration (see
-    :meth:`specific_outcome_properties`).
+    :meth:`Specific hooks <specific_outcome_properties>` are available for
+    use-cases that aren't covered by the specification format (example: to
+    forward Properties with non uniform values from the inputs to the
+    outcome).
+    The :attr:`name` is the main dispatch key for these hooks, which don't
+    depend on the :attr:`outcome's Good Type <outcome_type>`.
     """
     TYPE = 'wms_assembly'
 
@@ -433,7 +437,8 @@ class Assembly(Operation):
         that part, the value associated with :attr:`name`.
 
         Here's an example, for an Assembly whose :attr:`name` is
-        ``'soldering'``, also displaying all standard parameters::
+        ``'soldering'``, also displaying most standard parameters.
+        Individual aspects of this is discussed in detail afterwards::
 
           behaviours = {
              …
@@ -475,7 +480,7 @@ class Assembly(Operation):
                                               # 'started' and 'done' states
                       },
                      'for_contents': ['all', 'descriptions'],
-                     'allow_extra': True,
+                     'allow_extra_inputs': True,
                      'inputs_properties': {
                          'planned': {
                             'required': …
@@ -493,37 +498,38 @@ class Assembly(Operation):
         .. note:: Non standard parameters can be specified, for use in
                   :meth:`Specific hooks <specific_outcome_properties>`.
 
-        The present Python property performs no checks,
-        since it is meant to be accessed only after the protection of
-        :meth:`check_create_conditions`.
-        """
-        return self.outcome_type.behaviours['assembly'][self.name]
+        **Inputs**
 
-    DEFAULT_FOR_CONTENTS = ('extra', 'records')
-    """Default value of the ``for_contents`` part of specification.
+        The ``inputs`` part of the specification is primarily a list of
+        expected inputs, with various criteria (Goods Type, quantity,
+        Goods code and Properties).
 
-    See :meth:`outcome_properties` for the meaning of the values.
-    """
+        Besides requiring them in the first place, these criteria are also
+        used to :meth:`qualify (match) the inputs <match_inputs>`
+        (note that Operation inputs are unordered in general,
+        while this ``inputs`` parameter is). This spares the
+        calling code the need to keep track of that qualification after
+        selecting the goods in the first place. The result of that
+        matching is stored in the :attr:`match` field, is kept for later
+        Assembly state changes and can be used by application
+        code, e.g., for operator display purposes.
 
-    def outcome_properties(self, state, for_creation=False):
-        """Method responsible for properties on the outcome.
+        Assemblies can also have extra inputs,
+        according to the value of the ``allow_extra_inputs`` boolean
+        parameter. This is especially useful for generic packing scenarios.
 
-        For the given state that is been reached, this method returns a
-        dict of Properties to apply on the outcome.
+        Having both specified and extra inputs is supported (imagine packing
+        client parcels with specified wrapping, a greetings card plus variable
+        contents).
 
-        :param state: The Assembly state that we are reaching.
-        :param bool for_creation: if ``True``, means that this is part
-                                  of the creation process, i.e, there's no
-                                  previous state.
-        :rtype: :class:`Model.Wms.Goods.Properties
-                <anyblok_wms_base.core.goods.Properties>`
-        :raises: :class:`AssemblyInputNotMatched` if one of the
-                 :attr:`input specifications <specification>` is not
-                 matched by ``self.inputs``,
-                 :class:`AssemblyPropertyConflict` in case of conflicting
-                 values for the outcome.
+        The ``type`` criterion applies the Goods Type hierarchy, hence it's
+        possible to create a generic packing Assembly for a whole family of
+        Goods Types (e.g., adult trekking shoes).
 
-        **Property specifications**
+        Similarly, all Property requirements take the properties inherited
+        from the Goods Types into account.
+
+        **Global Property specifications**
 
         The Assembly :attr:`specification` can have the following
         key/value pairs:
@@ -539,18 +545,18 @@ class Assembly(Operation):
 
              + required:
                  list of properties that must be present on all inputs
-                 while reaching the given Assembly state, whatever their
-                 values
+                 while reaching or passing through the given Assembly state,
+                 whatever their values
              + required_values:
                  dict of Property key/value pairs that all inputs must bear
-                 while reaching the given Assembly state.
+                 while reaching or passing through the given Assembly state.
              + forward:
                  list of properties to forward to the outcome while
-                 reaching the given Assembly state.
+                 reaching or passing through the given Assembly state.
 
-        **Per input specification matching and forwarding**
+        **Per input Property checking, matching and forwarding**
 
-        The ``inputs_properties`` parameters can also be specified
+        The same parameters as in ``inputs_properties`` can also be specified
         inside each :class:`dict` that form
         the ``inputs`` list of the :meth:`Assembly specification <spec>`),
         as the ``properties`` sub parameter.
@@ -607,7 +613,7 @@ class Assembly(Operation):
         inputs to the outcome and its values on these inputs aren't equal,
         :class:`AssemblyPropertyConflict` will be raised.
 
-        **Bypassing states**
+        **Passing through states**
 
         Following the general expectations about states of Operations, if
         an Assembly is created directly in the ``done`` state, it will apply
@@ -623,40 +629,29 @@ class Assembly(Operation):
         first), then outcome Properties, matches and checks related to the
         ``started`` state are performed before those of the ``done`` state.
 
-        **Specific hooks**
+        **for_contents: building the contents Property**
 
-        While already powerful, the Property manipulations described above
-        are not expected to fit all situations, especially the rule about
-        differing values on inputs. On the other hand, trying to accomodate
-        all use cases through configuration would lead to insanity.
-
-        Therefore, the core will stick to these still
-        relatively simple primitives, but will also provide the means
-        to perform custom logic, through :meth:`assembly-specific hooks
-        <specific_outcome_properties>`
-
-        Namely, :meth:`specific_outcome_properties` gets called near
-        the end of the process. and the built Properties are built according
-        to its result, with higher precedence than any other source of
-        properties.
-
-
-        **The contents Property**
-
-        The outcome also bears the special :data:`contents property
-        <anyblok_wms_base.constants.CONTENTS_PROPERTY>` (
+        The outcome of the Assembly bears the special :data:`contents property
+        <anyblok_wms_base.constants.CONTENTS_PROPERTY>`, also
         used by :class:`Operation.Unpack
-        <anyblok_wms_base.core.operation.unpack.Unpack>`).
+        <anyblok_wms_base.core.operation.unpack.Unpack>`.
 
-        This is controlled by the
-        ``for_contents`` part of the assembly specification, which
-        itself is a pair, whose first element indicates which inputs to list,
-        and the second how to list them. Its default value is
-        :attr:`DEFAULT_FOR_CONTENTS`. It can also be explicitely set to
-        ``None``, to tell the Assembly not to set the contents property
-        (use-cases: if it's unnecessary pollution, for instance if it
-        is later custom set by specific hooks, or if no Unpack for disassembly
-        is ever to be wished anyway).
+        This makes the reversal of Assemblies by Unpacks possible (with
+        care in the behaviour specifications), and also can be used by
+        applicative code to use information about the inputs even after the
+        Assembly is done.
+
+        The building of the contents Property is controlled by the
+        ``for_contents`` parameter, which itself is either ``None`` or a
+        pair of strings, whose first element indicates which inputs to list,
+        and the second how to list them.
+
+        The default value of ``for_contents`` is :attr:`DEFAULT_FOR_CONTENTS`.
+
+        If ``for_contents`` is ``None``, no contents Property will be set
+        on the outcome. Use this if it's unnecessary pollution, for instance
+        if it is custom set by specific hooks anyway, or if no Unpack for
+        disassembly is ever to be wished.
 
         *for_contents: possible values of first element:*
 
@@ -682,6 +677,52 @@ class Assembly(Operation):
             Goods records, but would reuse the existing ones, hence keep the
             promise that the Goods records are meant to track the "sameness"
             of the physical objects.
+
+        **Specific hooks**
+
+        While already powerful, the Property manipulations described above
+        are not expected to fit all situations. This is obviously true for
+        the rule forbidding the forwarding of values that aren't equal for
+        all relevant inputs: in some use cases, one would want to take the
+        minimum of theses values, sum them, keep them as a list,
+        or all of these at once… On the other hand, the specification is
+        already complicated enough as it is.
+
+        Therefore, the core will stick to these still
+        relatively simple primitives, but will also provide the means
+        to perform custom logic, through :meth:`assembly-specific hooks
+        <specific_outcome_properties>`
+        """
+        return self.outcome_type.behaviours['assembly'][self.name]
+
+    DEFAULT_FOR_CONTENTS = ('extra', 'records')
+    """Default value of the ``for_contents`` part of specification.
+
+    See :meth:`outcome_properties` for the meaning of the values.
+    """
+
+    def outcome_properties(self, state, for_creation=False):
+        """Method responsible for properties on the outcome.
+
+        For the given state that is been reached, this method returns a
+        dict of Properties to apply on the outcome.
+
+        :param state: The Assembly state that we are reaching.
+        :param bool for_creation: if ``True``, means that this is part
+                                  of the creation process, i.e, there's no
+                                  previous state.
+        :rtype: :class:`Model.Wms.Goods.Properties
+                <anyblok_wms_base.core.goods.Properties>`
+        :raises: :class:`AssemblyInputNotMatched` if one of the
+                 :attr:`input specifications <specification>` is not
+                 matched by ``self.inputs``,
+                 :class:`AssemblyPropertyConflict` in case of conflicting
+                 values for the outcome.
+
+
+        The :meth:`specific hook <specific_outcome_properties>`
+        gets called at the very end of the process, giving it higher
+        precedence than any other source of Properties.
         """
         spec = self.specification
         assembled_props = self.forward_properties(state,
@@ -718,11 +759,9 @@ class Assembly(Operation):
         the specific method. The signature to implement is identical to the
         present one:
 
-        :param dict assembled_props:
-           a :class:`dict` of already built Properties, or a
-           :class:`Properties
-           <anyblok_wms_base.core.goods.Properties>` instance.
         :param state: The Assembly state that we are reaching.
+        :param dict assembled_props:
+           a :class:`dict` of already prepared Properties for this state.
         :param bool for_creation:
             if ``True``, means that this is part of the creation process,
             i.e, there's no previous state.
