@@ -11,7 +11,6 @@ from sqlalchemy import func
 from sqlalchemy import literal
 
 from anyblok import Declarations
-from anyblok.column import String
 from anyblok.column import Text
 from anyblok.column import Integer
 from anyblok.relationship import Many2One
@@ -42,8 +41,8 @@ class Location:
     stuff like size ?)
     """
     id = Integer(label="Identifier", primary_key=True)
-    code = String(label="Identifying code")  # TODO index
-    label = String(label="Label")
+    code = Text(label="Identifying code")  # TODO index
+    label = Text(label="Label")
     parent = Many2One(label="Parent location",
                       model='Model.Wms.Location')
     tag = Text()

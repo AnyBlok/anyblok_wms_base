@@ -8,7 +8,7 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 
 from anyblok import Declarations
-from anyblok.column import String
+from anyblok.column import Text
 from anyblok.column import Integer
 from anyblok.relationship import Many2One
 from anyblok_postgres.column import Jsonb
@@ -31,14 +31,14 @@ class Type:
     id = Integer(label="Identifier", primary_key=True)
     """Primary key"""
 
-    code = String(label=u"Identifying code", index=True,
-                  unique=True, nullable=False)
+    code = Text(label=u"Identifying code", index=True,
+                unique=True, nullable=False)
     """Uniquely identifying code.
 
     As a convenience, and for sharing with other applications.
     """
 
-    label = String(label=u"Label")
+    label = Text(label=u"Label")
 
     behaviours = Jsonb(label="Behaviours in operations")
     """
