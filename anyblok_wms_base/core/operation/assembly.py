@@ -158,7 +158,7 @@ class Assembly(Operation):
     The behaviour is specified on the :attr:`outcome's Goods Type
     <outcome_type>`, and amounts to describing the expected inputs,
     and how to build the Properties of the outcome (see
-    :meth:`build_outcome_properties`)
+    :meth:`outcome_properties`)
 
     A given Type can be assembled in different ways (TODO use-cases even
     for simple packing), and this gets specified by the :attr:`name` field.
@@ -167,7 +167,7 @@ class Assembly(Operation):
     :attr:`Assembly specification <specification>`,
     the :attr:`name` is also used to dispatch hooks for specific logic that
     would be too complicated to describe in configuration (see
-    :meth:`specific_build_outcome_properties`).
+    :meth:`specific_outcome_properties`).
     """
     TYPE = 'wms_assembly'
 
@@ -201,7 +201,7 @@ class Assembly(Operation):
     This field is used to store the
     result, so that it's available for further logic (for instance in
     the :meth:`property setting hooks
-    <specific_build_outcome_properties>`).
+    <specific_outcome_properties>`).
 
     This field's value is either ``None`` (before matching) or a list
     of lists: for each of the inputs specification, respecting
@@ -287,13 +287,11 @@ class Assembly(Operation):
         """
         spec = self.specification
         Avatar = self.registry.Wms.Goods.Avatar
-        global_spec = spec.get('inputs_properties')
-        glob_fwd = merge_state_sub_parameters(
-            global_spec,
-            None if for_creation else self.state,
-            state,
-            ('forward', 'set')
-            )
+        from_state = None if for_creation else self.state
+
+        glob_fwd = merge_state_sub_parameters(spec.get('inputs_properties'),
+                                              from_state, state,
+                                              ('forward', 'set'))
 
         inputs_spec = spec.get('inputs', ())
 
@@ -301,10 +299,13 @@ class Assembly(Operation):
 
         for i, (match_item, input_spec) in enumerate(
                 zip(self.match, inputs_spec)):
-            fwd = input_spec.get('forward_properties', ())
+            input_fwd = merge_state_sub_parameters(
+                input_spec.get('properties'),
+                from_state, state,
+                ('forward', 'set'))
             for av_id in match_item:
                 goods = Avatar.query().get(av_id).goods
-                for fp in itertools.chain(fwd, glob_fwd):
+                for fp in itertools.chain(input_fwd, glob_fwd):
                     self.extract_property(forwarded, goods, fp,
                                           exc_details=(i, input_spec))
         for extra in self.extra_inputs:
@@ -490,7 +491,7 @@ class Assembly(Operation):
           }
 
         .. note:: Non standard parameters can be specified, for use in
-                  :meth:`Specific hooks <specific_build_outcome_properties>`.
+                  :meth:`Specific hooks <specific_outcome_properties>`.
 
         The present Python property performs no checks,
         since it is meant to be accessed only after the protection of
@@ -501,11 +502,14 @@ class Assembly(Operation):
     DEFAULT_FOR_CONTENTS = ('extra', 'records')
     """Default value of the ``for_contents`` part of specification.
 
-    See :meth:`build_outcome_properties` for the meaning of the values.
+    See :meth:`outcome_properties` for the meaning of the values.
     """
 
-    def build_outcome_properties(self, state, for_creation=False):
-        """Method responsible for initial properties on the outcome.
+    def outcome_properties(self, state, for_creation=False):
+        """Method responsible for properties on the outcome.
+
+        For the given state that is been reached, this method returns a
+        dict of Properties to apply on the outcome.
 
         :param state: The Assembly state that we are reaching.
         :param bool for_creation: if ``True``, means that this is part
@@ -629,9 +633,9 @@ class Assembly(Operation):
         Therefore, the core will stick to these still
         relatively simple primitives, but will also provide the means
         to perform custom logic, through :meth:`assembly-specific hooks
-        <specific_build_outcome_properties>`
+        <specific_outcome_properties>`
 
-        Namely, :meth:`specific_build_outcome_properties` gets called near
+        Namely, :meth:`specific_outcome_properties` gets called near
         the end of the process. and the built Properties are built according
         to its result, with higher precedence than any other source of
         properties.
@@ -695,14 +699,14 @@ class Assembly(Operation):
         assembled_props.update((k, self.eval_typed_expr(*v))
                                for k, v in prop_exprs.items())
 
-        assembled_props.update(self.specific_build_outcome_properties(
+        assembled_props.update(self.specific_outcome_properties(
             assembled_props, state, for_creation=for_creation))
-        return self.registry.Wms.Goods.Properties.create(**assembled_props)
+        return assembled_props
 
     props_hook_fmt = "build_outcome_properties_{name}"
 
-    def specific_build_outcome_properties(self, assembled_props, state,
-                                          for_creation=False):
+    def specific_outcome_properties(self, assembled_props, state,
+                                    for_creation=False):
         """Hook for per-name specific update of Properties on outcome.
 
         At the time of Operation creation or execution,
@@ -734,7 +738,7 @@ class Assembly(Operation):
     def build_contents(self, forwarded_props):
         """Construction of the ``contents`` property
 
-        This is part of :meth`build_outcome_properties`
+        This is part of :meth`outcome_properties`
         """
         contents_spec = self.specification.get('for_contents',
                                                self.DEFAULT_FOR_CONTENTS)
@@ -812,8 +816,8 @@ class Assembly(Operation):
         Goods.Avatar.insert(
             goods=Goods.insert(
                 type=self.outcome_type,
-                properties=self.build_outcome_properties(state,
-                                                         for_creation=True)),
+                properties=Goods.Properties.create(
+                    **self.outcome_properties(state, for_creation=True))),
             location=self.inputs[0].location,
             reason=self,
             state=outcome_state,
@@ -821,16 +825,7 @@ class Assembly(Operation):
             dt_until=None)
 
     def execute_planned(self):
-        """Update states and build execution properties.
-
-        Besides the update of state for inputs and outcomes, that all
-        Operations perform, this also performs the final update of
-        Properties on the outcome:
-
-        * application of the ``properties_at_execution`` key of the Assembly
-          :attr:`specification`
-        * application of :meth:`specific_build_outcome_properties`
-          with ``for_exec=True``
+        """Check or rematch inputs, update properties and states.
         """
         self.check_match_inputs('done')
         # TODO PERF direct update query would probably be faster
@@ -838,15 +833,8 @@ class Assembly(Operation):
             inp.state = 'past'
         outcome = self.outcomes[0]
 
+        outcome.goods.update_properties(self.outcome_properties('done'))
         outcome.state = 'present'
-        goods = outcome.goods
-        prop_exprs = merge_state_parameter(
-            self.specification.get('outcome_properties'),
-            self.state, 'done', 'dict')
-        goods.update_properties((k, self.eval_typed_expr(*v))
-                                for k, v in prop_exprs.items())
-        goods.update_properties(
-            self.specific_build_outcome_properties(goods.properties, 'done'))
 
     def eval_typed_expr(self, etype, expr):
         """Evaluate a typed expression.

@@ -92,10 +92,9 @@ Model.Wms.Operation.Assembly
 
    .. autoattribute:: specification
    .. autoattribute:: DEFAULT_FOR_CONTENTS
-   .. automethod:: build_outcome_properties
+   .. automethod:: outcome_properties
    .. automethod:: eval_typed_expr
-   .. automethod:: eval_spec_exprs
-   .. automethod:: specific_build_outcome_properties
+   .. automethod:: specific_outcome_properties
    .. autoattribute:: props_hook_fmt
 
    .. raw:: html

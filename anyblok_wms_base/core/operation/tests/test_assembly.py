@@ -106,18 +106,18 @@ class TestAssembly(WmsTestCase):
                      'planned': {
                          'required_values': {'main': True},
                      },
-                 },
-                 'forward_properties': ['colour', 'bar'],
-                 },
+                     'started': {
+                         'forward': ['colour', 'bar'],
+                     },
+                 }},
                 {'type': 'parent',
                  'quantity': 1,
                  'properties': {
                      'planned': {
                          'required_values': {'colour': 'red'},
+                         'forward': ['foo'],
                      },
-                 },
-                 'forward_properties': ['foo'],
-                 }
+                 }}
             ],
             'for_contents': ['all', 'descriptions'],
         }))
@@ -169,19 +169,17 @@ class TestAssembly(WmsTestCase):
                  'properties': {
                      'planned': {
                          'required': ['foo'],
+                         'forward': ['bar'],
                      },
-                 },
-                 'forward_properties': ['bar'],
-                 },
+                 }},
                 {'type': 'GT1',
                  'quantity': 1,
                  'properties': {
                      'planned': {
                          'required': ['foo2'],
+                         'forward': ['bar2'],
                      },
-                 },
-                 'forward_properties': ['bar2'],
-                 },
+                 }},
             ],
         }))
         avatars = self.create_goods(((gt1, 1), (gt1, 1)))
@@ -220,18 +218,16 @@ class TestAssembly(WmsTestCase):
                  'properties': {
                      'planned': {
                          'required_values': {'foo': 1},
-                     },
-                 },
-                 'forward_properties': ['bar'],
+                         'forward': ['bar'],
+                      }},
                  },
                 {'type': 'GT1',
                  'quantity': 1,
                  'properties': {
                      'planned': {
                          'required_values': {'foo': 2},
-                     },
-                 },
-                 'forward_properties': ['bar2'],
+                         'forward': ['bar2'],
+                      }},
                  },
             ],
         }))
@@ -295,17 +291,20 @@ class TestAssembly(WmsTestCase):
         self.create_outcome_type(dict(default={
             'inputs': [
                 {'type': 'GT1', 'quantity': 2,
-                 'forward_properties': ['foo'],
                  'properties': {
                      'done': {
                          'required_values': {'qa': 'ok'},
                          'requirements': 'match',
+                         'forward': ['foo'],
                      },
                   },
                  },
                 {'type': 'GT2', 'quantity': 1,
-                 'forward_properties': ['foo', 'bar'],
-                 },
+                 'properties': {
+                     'planned': {
+                         'forward': ['foo', 'bar'],
+                     }
+                 }},
             ],
             'for_contents': ['all', 'descriptions'],
         }))
@@ -381,17 +380,20 @@ class TestAssembly(WmsTestCase):
         self.create_outcome_type(dict(default={
             'inputs': [
                 {'type': 'GT1', 'quantity': 2,
-                 'forward_properties': ['foo'],
                  'properties': {
                      'done': {
                          'required_values': {'qa': 'ok'},
                          'requirements': 'match',
+                         'forward': ['foo'],
                      },
                   },
                  },
                 {'type': 'GT2', 'quantity': 1,
-                 'forward_properties': ['foo', 'bar'],
-                 },
+                 'properties': {
+                     'planned': {
+                         'forward': ['foo', 'bar'],
+                     }
+                 }},
             ],
             'for_contents': ['all', 'records'],
         }))
@@ -659,6 +661,49 @@ class TestAssembly(WmsTestCase):
             del self.Assembly.build_outcome_properties_pack
 
         self.assertEqual(props.get('by_hook'), 'at done (for_creation=False)')
+
+    def test_create_planned_inputs_spec_fwd(self):
+        gt1 = self.Goods.Type.insert(code='GT1')
+        gt2 = self.Goods.Type.insert(code='GT2')
+        self.create_outcome_type(dict(default={
+            'inputs': [
+                {'type': 'GT1', 'quantity': 1,
+                 'properties': {'planned': {'forward': ['foo']},
+                                'done': {'forward': ['foo', 'bar']}}
+                 },
+                {'type': 'GT2', 'quantity': 1},
+            ]
+        }))
+        avatars = self.create_goods(((gt1, 1), (gt2, 1)))
+        avatars[0].goods.set_property('foo', 23)
+
+        assembly = self.Assembly.create(inputs=avatars,
+                                        outcome_type=self.outcome_type,
+                                        name='default',
+                                        dt_execution=self.dt_test2,
+                                        state='planned')
+
+        outcome = self.assert_singleton(assembly.outcomes)
+        self.assertEqual(outcome.goods.type, self.outcome_type)
+        self.assertEqual(outcome.state, 'future')
+        props = outcome.goods.properties
+        self.assertEqual(props.get('foo'), 23)
+        self.assertFalse('bar' in props)
+
+        for av in avatars:
+            self.assertEqual(av.state, 'present')
+
+        # foo's value changes before execution (imagine there's
+        # an Observation happening in between)
+        avatars[0].goods.update_properties(dict(foo=-1, bar='ok'))
+
+        assembly.execute()
+        self.assertEqual(outcome.state, 'present')
+        for av in avatars:
+            self.assertEqual(av.state, 'past')
+
+        self.assertEqual(props.get('foo'), -1)
+        self.assertEqual(props.get('bar'), 'ok')
 
     def test_create_done_extra_forbidden(self):
         gt1 = self.Goods.Type.insert(code='GT1')
@@ -954,7 +999,8 @@ class TestAssembly(WmsTestCase):
         gt1 = self.Goods.Type.insert(code='GT1')
 
         self.create_outcome_type(dict(default=dict(
-            inputs=[dict(type='GT1', quantity=2, forward_properties=['bar'])],
+            inputs=[dict(type='GT1', quantity=2,
+                         properties=dict(done=dict(forward=['bar'])))],
             )))
         avatars = self.create_goods([(gt1, 2)])
         avatars[0].goods.set_property('bar', 1)
@@ -976,7 +1022,7 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(exc.kwargs['spec_detail'],
                          dict(type='GT1',
                               quantity=2,
-                              forward_properties=['bar']))
+                              properties=dict(done=dict(forward=['bar']))))
 
     def test_inconsistent_forwarding_extra(self):
         gt1 = self.Goods.Type.insert(code='GT1')
@@ -1018,8 +1064,11 @@ class TestAssembly(WmsTestCase):
         gt2 = self.Goods.Type.insert(code='GT2')
 
         self.create_outcome_type(dict(default=dict(
-            inputs=[dict(type='GT1', quantity=1, forward_properties=['bar']),
-                    dict(type='GT2', quantity=1, forward_properties=['bar'])],
+            inputs=[dict(type='GT1', quantity=1,
+                         properties=dict(done=dict(forward=['bar']))),
+                    dict(type='GT2', quantity=1,
+                         properties=dict(done=dict(forward=['bar']))),
+                    ]
             )))
         avatars = self.create_goods([(gt1, 1), (gt2, 1)])
         avatars[0].goods.set_property('bar', 1)
@@ -1041,7 +1090,7 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(exc.kwargs['spec_detail'],
                          dict(type='GT2',
                               quantity=1,
-                              forward_properties=['bar']))
+                              properties=dict(done=dict(forward=['bar']))))
 
     def test_merged_state_parameter(self):
         # well ok, we'll put it later in a separate utility module
