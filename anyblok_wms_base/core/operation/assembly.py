@@ -703,7 +703,7 @@ class Assembly(Operation):
             assembled_props, state, for_creation=for_creation))
         return assembled_props
 
-    props_hook_fmt = "build_outcome_properties_{name}"
+    props_hook_fmt = "outcome_properties_{name}"
 
     def specific_outcome_properties(self, assembled_props, state,
                                     for_creation=False):

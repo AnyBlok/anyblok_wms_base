@@ -518,7 +518,7 @@ class TestAssembly(WmsTestCase):
             # defined by normal subclassing
             return [('by_hook', min(inp.goods.get_property('expiry')
                                     for inp in op.inputs))]
-        self.Assembly.build_outcome_properties_pack = hook
+        self.Assembly.outcome_properties_pack = hook
 
         self.create_outcome_type(dict(pack={
             'outcome_properties': {
@@ -551,7 +551,7 @@ class TestAssembly(WmsTestCase):
                                             name='pack',
                                             state='done')
         finally:
-            del self.Assembly.build_outcome_properties_pack
+            del self.Assembly.outcome_properties_pack
 
         outprops = self.assert_singleton(assembly.outcomes).goods.properties
         self.assertEqual(
@@ -641,7 +641,7 @@ class TestAssembly(WmsTestCase):
                 'by_hook',
                 'at %s (for_creation=%r)' % (state, for_creation))]
 
-        self.Assembly.build_outcome_properties_pack = hook
+        self.Assembly.outcome_properties_pack = hook
 
         avatars = self.create_goods(((gt1, 2), (gt2, 1)))
 
@@ -658,7 +658,7 @@ class TestAssembly(WmsTestCase):
 
             assembly.execute()
         finally:
-            del self.Assembly.build_outcome_properties_pack
+            del self.Assembly.outcome_properties_pack
 
         self.assertEqual(props.get('by_hook'), 'at done (for_creation=False)')
 
