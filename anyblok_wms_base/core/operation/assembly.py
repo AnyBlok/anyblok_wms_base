@@ -693,7 +693,7 @@ class Assembly(Operation):
         to perform custom logic, through :meth:`assembly-specific hooks
         <specific_outcome_properties>`
         """
-        return self.outcome_type.behaviours['assembly'][self.name]
+        return self.outcome_type.get_behaviour('assembly')[self.name]
 
     DEFAULT_FOR_CONTENTS = ('extra', 'records')
     """Default value of the ``for_contents`` part of specification.
