@@ -93,6 +93,8 @@ def dict_merge(first, second, list_merge=None, path=()):
 
     Lists::
 
+      >>> dict_merge(['a'], ['b'])
+      ['a']
       >>> dict_merge(['a'], ['b'], list_merge={(): 'append'})
       ['b', 'a']
       >>> dict_merge(['a'], ['b'], list_merge={(): 'prepend'})
