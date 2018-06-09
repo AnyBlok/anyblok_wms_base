@@ -84,6 +84,7 @@ Model.Wms.Operation.Assembly
    .. autoattribute:: id
    .. autoattribute:: outcome_type
    .. autoattribute:: name
+   .. autoattribute:: parameters
    .. autoattribute:: match
 
    .. raw:: html

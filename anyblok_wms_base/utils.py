@@ -111,6 +111,14 @@ def dict_merge(first, second, list_merge=None, path=()):
       ...                        (1, 'y'): 'append'})
       [{'x': 'a'}, {'y': [2, 1]}, {'x': 1}]
 
+    List paths can use the '*' wildcard:
+
+      >>> dict_merge([dict(y=['a']), dict(y=[1]), {}],
+      ...            [dict(y=['b']), dict(y=[2]), dict(y=3)],
+      ...            list_merge={(): 'zip',
+      ...                        ('*', 'y'): 'append'})
+      [{'y': ['b', 'a']}, {'y': [2, 1]}, {'y': 3}]
+
     Non dict values::
 
       >>> dict_merge(1, 2)
@@ -153,6 +161,10 @@ def _dict_list_merge(first, second, list_merge=None, path=()):
             return first
 
         lm = list_merge.get(path)
+        if lm is None:  # retry with wildcards instead of list indices
+            path = tuple('*' if isinstance(x, int) else x
+                         for x in path)
+            lm = list_merge.get(path)
         if lm == 'zip':
             return [dict_merge(x, y,
                                list_merge=list_merge,

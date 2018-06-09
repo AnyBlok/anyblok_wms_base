@@ -25,6 +25,7 @@ from anyblok_wms_base.exceptions import (OperationInputsError,
 from anyblok_wms_base.constants import (DEFAULT_ASSEMBLY_NAME,
                                         CONTENTS_PROPERTY,
                                         )
+from anyblok_wms_base.utils import dict_merge
 
 register = Declarations.register
 Mixin = Declarations.Mixin
@@ -195,6 +196,13 @@ class Assembly(Operation):
               prove out to be really inconvenient for downstream code.
               TODO apply the default value in :meth:`check_create_conditions`
               for convenience ?
+    """
+
+    parameters = Jsonb()
+    """Extra parameters specific to this instance.
+
+    This :class:`dict` is merged with the parameters from the
+    :attr:`outcome_type` behaviour to build the final :attr:`specification`.
     """
 
     match = Jsonb()
@@ -404,6 +412,9 @@ class Assembly(Operation):
             )
 
             type_code = expected['type']
+            expected_id = expected.get('id')
+            expected_code = expected.get('code')
+
             gtype = types_by_code.get(type_code)
             if gtype is None:
                 gtype = GoodsType.query().filter_by(
@@ -416,6 +427,13 @@ class Assembly(Operation):
                             not goods.has_properties(req_props) or
                             not goods.has_property_values(req_prop_values)):
                         continue
+
+                    if expected_id is not None and goods.id != expected_id:
+                        continue
+                    if (expected_code is not None and
+                            goods.code != expected_code):
+                        continue
+
                     inputs.discard(candidate)
                     match_item.append(candidate.id)
                     break
@@ -693,7 +711,27 @@ class Assembly(Operation):
         to perform custom logic, through :meth:`assembly-specific hooks
         <specific_outcome_properties>`
         """
-        return self.outcome_type.get_behaviour('assembly')[self.name]
+        type_spec = self.outcome_type.get_behaviour('assembly')[self.name]
+        if self.parameters is None:
+            return type_spec
+        return dict_merge(self.parameters, type_spec,
+                          list_merge=self.SPEC_LIST_MERGE)
+
+    SPEC_LIST_MERGE = {
+        ('inputs_properties', 'planned', 'required'): 'set',
+        ('inputs_properties', 'planned', 'forward'): 'set',
+        ('inputs_properties', 'started', 'required'): 'set',
+        ('inputs_properties', 'started', 'forward'): 'set',
+        ('inputs_properties', 'done', 'required'): 'set',
+        ('inputs_properties', 'done', 'forward'): 'set',
+        ('inputs', ): 'zip',
+        ('inputs', '*', 'properties', 'planned', 'required'): 'set',
+        ('inputs', '*', 'properties', 'planned', 'forward'): 'set',
+        ('inputs', '*', 'properties', 'started', 'required'): 'set',
+        ('inputs', '*', 'properties', 'started', 'forward'): 'set',
+        ('inputs', '*', 'properties', 'done', 'required'): 'set',
+        ('inputs', '*', 'properties', 'done', 'forward'): 'set',
+    }
 
     DEFAULT_FOR_CONTENTS = ('extra', 'records')
     """Default value of the ``for_contents`` part of specification.
