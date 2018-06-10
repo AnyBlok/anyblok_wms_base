@@ -38,7 +38,19 @@ def install_bloks(*bloks):
 
 def nosetests(paths, options, cover_erase=False):
     print("Lauching tests from paths: " + ' '.join(paths))
-    cmd = ['nosetests', '--with-doctest', '--with-anyblok-bloks',
+    cmd = ['nosetests', '--with-anyblok-bloks',
+           '--with-coverage', '--cover-html', '--cover-package',
+           'anyblok_wms_base', '--cover-html-dir', '/tmp/COVER-wms']
+    if cover_erase:
+        cmd.append('--cover-erase')
+    cmd.extend(paths)
+    cmd.extend(options)
+    check_call(cmd)
+
+
+def doctests(paths, options, cover_erase=False):
+    print("Lauching doctests from paths: " + ' '.join(paths))
+    cmd = ['nosetests', '--with-doctest',
            '--with-coverage', '--cover-html', '--cover-package',
            'anyblok_wms_base', '--cover-html-dir', '/tmp/COVER-wms']
     if cover_erase:
@@ -53,12 +65,14 @@ def run(cr, db_name, nose_additional_opts):
                       ANYBLOK_DATABASE_DRIVER='postgresql')
 
     awb_dir = os.path.join(os.path.dirname(sys.argv[0]), 'anyblok_wms_base')
+    doctests([os.path.join(awb_dir, 'utils.py')],
+             nose_additional_opts, cover_erase=True)
     bloks_dir = awb_dir
     dropdb(cr, db_name)
     createdb('wms-core', 'test-wms-goods-batch-ref')
     nosetests((os.path.join(awb_dir, 'utils.py'),
                os.path.join(bloks_dir, 'core')),
-              nose_additional_opts, cover_erase=True)
+              nose_additional_opts)
     install_bloks('wms-reservation')
     nosetests((os.path.join(bloks_dir, 'reservation'),
                ),
