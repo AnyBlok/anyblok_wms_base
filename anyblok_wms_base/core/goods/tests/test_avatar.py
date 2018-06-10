@@ -40,5 +40,11 @@ class TestAvatar(WmsTestCaseWithGoods):
             "dt_range=[2018-01-01 01:00:00+01:00, None)" % (
                 avatar.id, goods.id, gt.id, self.incoming_loc.id))
 
+    def test_get_property(self):
+        avatar = self.avatar
+        self.assertIsNone(avatar.get_property('foo'))
+        self.goods.set_property('foo', [1])
+        self.assertEqual(avatar.get_property('foo'), [1])
+        self.assertEqual(avatar.get_property('bar', default='graal'), 'graal')
 
 del WmsTestCaseWithGoods
