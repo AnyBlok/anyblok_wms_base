@@ -12,8 +12,6 @@ from anyblok.tests.testcase import BlokTestCase
 
 class TestGoods(WmsTestCase):
 
-    blok_entry_points = ('bloks', 'test_bloks')
-
     def setUp(self):
         super(TestGoods, self).setUp()
         Wms = self.registry.Wms
