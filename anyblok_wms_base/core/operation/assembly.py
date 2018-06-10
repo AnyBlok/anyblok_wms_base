@@ -717,21 +717,19 @@ class Assembly(Operation):
         return dict_merge(self.parameters, type_spec,
                           list_merge=self.SPEC_LIST_MERGE)
 
-    SPEC_LIST_MERGE = {
-        ('inputs_properties', 'planned', 'required'): 'set',
-        ('inputs_properties', 'planned', 'forward'): 'set',
-        ('inputs_properties', 'started', 'required'): 'set',
-        ('inputs_properties', 'started', 'forward'): 'set',
-        ('inputs_properties', 'done', 'required'): 'set',
-        ('inputs_properties', 'done', 'forward'): 'set',
-        ('inputs', ): 'zip',
-        ('inputs', '*', 'properties', 'planned', 'required'): 'set',
-        ('inputs', '*', 'properties', 'planned', 'forward'): 'set',
-        ('inputs', '*', 'properties', 'started', 'required'): 'set',
-        ('inputs', '*', 'properties', 'started', 'forward'): 'set',
-        ('inputs', '*', 'properties', 'done', 'required'): 'set',
-        ('inputs', '*', 'properties', 'done', 'forward'): 'set',
-    }
+    SPEC_LIST_MERGE = dict(
+        inputs_properties={'*': dict(required=('set', None),
+                                     forward=('set', None),
+                                     ),
+                           },
+        inputs=('zip',
+                {'*': dict(properties={'*': dict(required=('set', None),
+                                                 forward=('set', None),
+                                                 ),
+                                       },
+                           ),
+                 })
+        )
 
     DEFAULT_FOR_CONTENTS = ('extra', 'records')
     """Default value of the ``for_contents`` part of specification.

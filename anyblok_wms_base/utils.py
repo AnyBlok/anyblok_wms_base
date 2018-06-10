@@ -35,13 +35,19 @@ def min_upper_bounds(inputs):
     return res
 
 
-def dict_merge(first, second, list_merge=None, path=()):
+def dict_merge(first, second, list_merge=None):
     """Deep merging of two Python objects
 
+    if both parameters are :class:`dict` or :class:`set` instances,
+    they get merged, recursively for dicts. Lists can be merged according
+    to the specified ``list_merge``. Otherwise the value of ``first``
+    is returned.
+
     :param first: the one having precedence.
-    :param list_merge: controls list merging. This is a dict
-       whose keys are paths (tuple of keys or indices) from the top and
-       values can be:
+    :param list_merge: controls list merging.
+       If ``first`` and ``second`` are lists, this is a pair whose first
+       element specifies what to do of lists at top level, with possible
+       values:
 
         + None: ``first`` is returned
         + 'zip': return the list obtained by merging elements of
@@ -50,11 +56,15 @@ def dict_merge(first, second, list_merge=None, path=()):
         + 'append': ``first`` elements are added at the beginning of
                     ``second``
         + 'set': a set is built with ``first`` and ``second`` elements.
-    :param path: internal accumulator
 
-    if both parameters are :class:`dict` or :class:`set` instances,
-    they get merged, recursively for dicts. Otherwise the value of ``first``
-    is returned.
+       The second element is then for recursing: a :class:`dict` whose keys
+       are list indexes or the ``'*'`` wildcard and values are to be passed
+       as ``list_merge`` below. The second element can also be ``None``,
+       behaving like an empty :class:`dict`.
+
+       If ``first`` and ``second`` are :class:`dicts <dict>`, then
+       ``list_merge`` is directly the ``dict`` for recursion, and its keys
+       are those of ``first`` and ``second``.
 
     No attempt is made to merge tuples (could be done later)
 
@@ -76,12 +86,18 @@ def dict_merge(first, second, list_merge=None, path=()):
       {'a': 1, 'deep': {'k': 'foo', 'other': 3}}
       >>> pprint(dict_merge([dict(a=1, b=2), dict(a=3)],
       ...                   [dict(b=5), dict(b=6)],
-      ...                   list_merge={(): 'zip'}))
+      ...                   list_merge=('zip', None)))
       [{'a': 1, 'b': 2}, {'a': 3, 'b': 6}]
       >>> pprint(dict_merge(dict(tozip=[dict(a=1, b=2), dict(a=3)], x=[1]),
       ...                   dict(tozip=[dict(b=5), dict(b=6)], x=[2]),
-      ...                   list_merge={('tozip', ): 'zip',}))
+      ...                   list_merge=dict(tozip=('zip', None))))
       {'tozip': [{'a': 1, 'b': 2}, {'a': 3, 'b': 6}], 'x': [1]}
+      >>> pprint(dict_merge(dict(tozip=[dict(a=1, b=2), dict(a=3)], x=[1]),
+      ...                   dict(tozip=[dict(b=5), dict(b=6)], x=[2]),
+      ...                   list_merge={'tozip': ('zip', None),
+      ...                               '*': ('set', None),
+      ...                               }))
+      {'tozip': [{'a': 1, 'b': 2}, {'a': 3, 'b': 6}], 'x': {1, 2}}
 
     Sets::
 
@@ -95,11 +111,13 @@ def dict_merge(first, second, list_merge=None, path=()):
 
       >>> dict_merge(['a'], ['b'])
       ['a']
-      >>> dict_merge(['a'], ['b'], list_merge={(): 'append'})
+      >>> dict_merge(['a'], ['b'], list_merge=(None, None))
+      ['a']
+      >>> dict_merge(['a'], ['b'], list_merge=('append', None))
       ['b', 'a']
-      >>> dict_merge(['a'], ['b'], list_merge={(): 'prepend'})
+      >>> dict_merge(['a'], ['b'], list_merge=('prepend', None))
       ['a', 'b']
-      >>> s = dict_merge(['a', 'b'], ['a', 'c'], list_merge={(): 'set'})
+      >>> s = dict_merge(['a', 'b'], ['a', 'c'], list_merge=('set', None))
       >>> type(s)
       <class 'set'>
       >>> sorted(s)
@@ -109,16 +127,16 @@ def dict_merge(first, second, list_merge=None, path=()):
 
       >>> dict_merge([dict(x='a'), dict(y=[1]), {}],
       ...            [dict(x='b'), dict(y=[2]), dict(x=1)],
-      ...            list_merge={(): 'zip',
-      ...                        (1, 'y'): 'append'})
+      ...            list_merge=('zip',
+      ...                        {1: {'y': ('append', None)}}))
       [{'x': 'a'}, {'y': [2, 1]}, {'x': 1}]
 
-    List paths can use the '*' wildcard:
+    Wildcards in ``list_merge`` for lists::
 
       >>> dict_merge([dict(y=['a']), dict(y=[1]), {}],
       ...            [dict(y=['b']), dict(y=[2]), dict(y=3)],
-      ...            list_merge={(): 'zip',
-      ...                        ('*', 'y'): 'append'})
+      ...            list_merge=('zip',
+      ...                        {'*': {'y': ('append', None)}}))
       [{'y': ['b', 'a']}, {'y': [2, 1]}, {'y': 3}]
 
     Non dict values::
@@ -134,8 +152,7 @@ def dict_merge(first, second, list_merge=None, path=()):
     """
     if isinstance(first, list) and isinstance(second, list):
         return _dict_list_merge(first, second,
-                                list_merge=list_merge,
-                                path=path)
+                                list_merge=list_merge)
 
     if isinstance(first, set) and isinstance(second, set):
         s = second.copy()
@@ -152,25 +169,42 @@ def dict_merge(first, second, list_merge=None, path=()):
             res[k] = firstv
         else:
             res[k] = dict_merge(firstv, secondv,
-                                list_merge=list_merge,
-                                path=path + (k, ))
+                                list_merge=_wild_get(list_merge, k))
 
     return res
 
 
-def _dict_list_merge(first, second, list_merge=None, path=()):
+def _wild_get(spec, k):
+    """Getting a value in a dict, defaulting with the wildcard key.
+
+    Also treats the case where ``spec`` is ``None``
+
+    Examples::
+
+      >>> _wild_get(None, 'foo') is None
+      True
+      >>> d = {'*': 2, 'a': 1}
+      >>> _wild_get(d, 'a')
+      1
+      >>> _wild_get(d, 'foo')
+      2
+    """
+    if spec is None:
+        return None
+    v = spec.get(k)
+    if v is not None:
+        return v
+    return spec.get('*')
+
+
+def _dict_list_merge(first, second, list_merge=None):
         if list_merge is None:
             return first
 
-        lm = list_merge.get(path)
-        if lm is None:  # retry with wildcards instead of list indices
-            path = tuple('*' if isinstance(x, int) else x
-                         for x in path)
-            lm = list_merge.get(path)
+        lm, below = list_merge
         if lm == 'zip':
             return [dict_merge(x, y,
-                               list_merge=list_merge,
-                               path=path + (i, ))
+                               list_merge=_wild_get(below, i))
                     for i, (x, y) in enumerate(zip(first, second))]
         elif lm == 'append':
             return second + first
