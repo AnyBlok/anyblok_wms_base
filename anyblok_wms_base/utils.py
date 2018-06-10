@@ -73,7 +73,17 @@ def dict_merge(first, second):
       >>> dict_merge('foo', dict(a=1))
       'foo'
 
+    If ``first`` is None, second is always returned. This spares the caller
+    a useless empty :class:`dict` creation in many cases.
+
+      >>> dict_merge(None, 1)
+      1
+      >>> dict_merge(None, dict(x=1))
+      {'x': 1}
+
     """
+    if first is None:
+        return second
     if not isinstance(first, dict) or not isinstance(second, dict):
         return first
 

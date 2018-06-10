@@ -17,6 +17,7 @@ from anyblok.column import DateTime
 from anyblok.relationship import Many2One
 from anyblok_postgres.column import Jsonb
 
+from anyblok_wms_base.utils import dict_merge
 from anyblok_wms_base.constants import (
     GOODS_STATES,
 )
@@ -122,6 +123,17 @@ class Goods:
         if val is _missing:
             return self.type.get_property(k, default=default)
         return val
+
+    def merged_properties(self):
+        """Return all Properties, merged with the Type properties.
+
+        :rtype: dict
+
+        To retrieve just one Property, prefer :meth:`get_property`, which
+        is meant to be more efficient.
+        """
+        return dict_merge(self.properties.as_dict(),
+                          self.type.merged_properties())
 
     def _maybe_duplicate_props(self):
         """Internal method to duplicate Properties

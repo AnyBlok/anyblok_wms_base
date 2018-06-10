@@ -143,6 +143,14 @@ class Type:
             return parent.get_property(k, default=default)
         return val
 
+    def merged_properties(self):
+        """Return this Type properties, merged with its parent."""
+        parent = self.parent
+        properties = self.properties
+        if parent is None:
+            return properties if properties is not None else {}
+        return dict_merge(properties, parent.merged_properties())
+
     def has_property_values(self, mapping):
         return all(self.get_property(k, default=_missing) == v
                    for k, v in mapping.items())
