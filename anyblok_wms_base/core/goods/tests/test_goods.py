@@ -6,25 +6,17 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok_wms_base.testing import WmsTestCase
 from anyblok.tests.testcase import BlokTestCase
 
 
-class TestGoods(WmsTestCase):
+class TestGoods(BlokTestCase):
 
     def setUp(self):
         super(TestGoods, self).setUp()
         Wms = self.registry.Wms
 
         self.Goods = Wms.Goods
-        self.Avatar = Wms.Goods.Avatar
         self.goods_type = self.Goods.Type.insert(label="My goods", code="MG")
-        self.stock = Wms.Location.insert(label="Stock")
-        self.arrival = Wms.Operation.Arrival.insert(
-            goods_type=self.goods_type,
-            location=self.stock,
-            dt_execution=self.dt_test1,
-            state='done')
 
     def test_has_type(self):
         parent = self.Goods.Type.insert(code='parent')
@@ -67,10 +59,6 @@ class TestGoods(WmsTestCase):
     def test_str(self):
         gt = self.goods_type
         goods = self.Goods.insert(type=gt)
-        avatar = self.Avatar.insert(goods=goods,
-                                    dt_from=self.dt_test1,
-                                    state='future',
-                                    reason=self.arrival, location=self.stock)
         self.assertEqual(repr(goods),
                          "Wms.Goods(id=%d, type="
                          "Wms.Goods.Type(id=%d, code='MG'))" % (
@@ -78,26 +66,6 @@ class TestGoods(WmsTestCase):
         self.assertEqual(str(goods),
                          "(id=%d, type="
                          "(id=%d, code='MG'))" % (goods.id, gt.id))
-        self.maxDiff = None
-        self.assertEqual(
-            repr(avatar),
-            "Wms.Goods.Avatar(id=%d, "
-            "goods=Wms.Goods(id=%d, type=Wms.Goods.Type(id=%d, code='MG')), "
-            "state='future', "
-            "location=Wms.Location(id=%d, code=None, label='Stock'), "
-            "dt_range=[datetime.datetime(2018, 1, 1, 0, 0, "
-            "tzinfo=psycopg2.tz.FixedOffsetTimezone(offset=0, name=None)), "
-            "None)" % (
-                avatar.id, goods.id, gt.id, self.stock.id))
-
-        self.assertEqual(
-            str(avatar),
-            "(id=%d, "
-            "goods=(id=%d, type=(id=%d, code='MG')), "
-            "state='future', "
-            "location=(id=%d, code=None, label='Stock'), "
-            "dt_range=[2018-01-01 00:00:00+00:00, None)" % (
-                avatar.id, goods.id, gt.id, self.stock.id))
 
     def test_prop_api_column(self):
         goods = self.Goods.insert(type=self.goods_type)
