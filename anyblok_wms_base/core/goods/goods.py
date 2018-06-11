@@ -542,13 +542,14 @@ class Avatar:
     def __str__(self):
         return ("(id={self.id}, goods={self.goods}, state={self.state!r}, "
                 "location={self.location}, "
-                "dt_range=[{self.dt_from}, {self.dt_until})".format(self=self))
+                "dt_range=[{self.dt_from}, "
+                "{self.dt_until}])".format(self=self))
 
     def __repr__(self):
         return ("Wms.Goods.Avatar(id={self.id}, "
                 "goods={self.goods!r}, state={self.state!r}, "
                 "location={self.location!r}, "
-                "dt_range=[{self.dt_from!r}, {self.dt_until!r})").format(
+                "dt_range=[{self.dt_from!r}, {self.dt_until!r}])").format(
                     self=self)
 
     def get_property(self, k, default=None):

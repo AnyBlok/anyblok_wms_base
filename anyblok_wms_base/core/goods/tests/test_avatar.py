@@ -19,17 +19,25 @@ class TestAvatar(WmsTestCaseWithGoods):
         avatar, goods = self.avatar, self.goods
         gt = goods.type
         self.maxDiff = None
+
+        # this below just to make sure. Actually, avatar.dt_from can be
+        # expressed in a different time zone than the original because
+        # of round trip with the database. This changes
+        # repr() and str(), making the test dependent on the server timezone
+        # but doesn't matter in truth.
+        self.assertEqual(avatar.dt_from, self.dt_test1)
+
         self.assertEqual(
             repr(avatar),
             "Wms.Goods.Avatar(id=%d, "
-            "goods=Wms.Goods(id=%d, type=Wms.Goods.Type(id=%d, code='MyGT')), "
+            "goods=Wms.Goods(id=%d, "
+            "type=Wms.Goods.Type(id=%d, code='MyGT')), "
             "state='future', "
             "location=Wms.Location("
             "id=%d, code=None, label='Incoming location'), "
-            "dt_range=[datetime.datetime(2018, 1, 1, 1, 0, "
-            "tzinfo=psycopg2.tz.FixedOffsetTimezone(offset=60, name=None)), "
-            "None)" % (
-                avatar.id, goods.id, gt.id, self.incoming_loc.id))
+            "dt_range=[%r, None])" % (
+                avatar.id, goods.id, gt.id, self.incoming_loc.id,
+                avatar.dt_from))
 
         self.assertEqual(
             str(avatar),
@@ -37,8 +45,9 @@ class TestAvatar(WmsTestCaseWithGoods):
             "goods=(id=%d, type=(id=%d, code='MyGT')), "
             "state='future', "
             "location=(id=%d, code=None, label='Incoming location'), "
-            "dt_range=[2018-01-01 01:00:00+01:00, None)" % (
-                avatar.id, goods.id, gt.id, self.incoming_loc.id))
+            "dt_range=[%s, None])" % (
+                avatar.id, goods.id, gt.id, self.incoming_loc.id,
+                avatar.dt_from))
 
     def test_get_property(self):
         avatar = self.avatar
@@ -46,5 +55,6 @@ class TestAvatar(WmsTestCaseWithGoods):
         self.goods.set_property('foo', [1])
         self.assertEqual(avatar.get_property('foo'), [1])
         self.assertEqual(avatar.get_property('bar', default='graal'), 'graal')
+
 
 del WmsTestCaseWithGoods
