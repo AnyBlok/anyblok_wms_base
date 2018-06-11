@@ -518,15 +518,15 @@ Assembly
 
 .. versionadded:: 0.7.0
 
-.. warning:: the specification format of Property handling will
-             probably change a lot in subsequent versions.
-
 .. note:: This is an overview, see :class:`the code documentation
           <anyblok_wms_base.core.operation.assembly.Assembly>`
-          for more details.
+          for more details, and especially :attr:`specification
+          <anyblok_wms_base.core.operation.assembly.Assembly.specification>`
 
 Packing and simple manufacturing needs are covered by the Assembly
 Operations : several inputs are consumed to produce a single outcome.
+More general manufacturing cases fall out of the scope of
+the ``wms-core`` Blok.
 
 Assemblies have an outcome :ref:`goods_type`, and a name, so that a given
 :ref:`Type <goods_type>` can be assembled in different ways.
@@ -546,6 +546,8 @@ They are useful for checking purposes, as well as to give fine
 control over the forwarding of :ref:`Properties <goods_properties>`.
 Assemblies can have variable inputs, depending on a specification parameter.
 
-Assemblies can be reverted by :ref:`op_unpack`, if the outcome
-:ref:`Type <goods_type>` supports them. In some cases, the
-:ref:`op_unpack` will be able to reuse the input :ref:`Goods <goods_goods>`.
+Assemblies can be reverted by :ref:`Unpacks <op_unpack>`, if the outcome
+:ref:`Type <goods_type>` supports them. If appropriate, it's possible
+to tune the Assembly so that a later
+:ref:`op_unpack` reuses the input :ref:`Goods
+<goods_goods>`, to underline that they are actually unchanged.

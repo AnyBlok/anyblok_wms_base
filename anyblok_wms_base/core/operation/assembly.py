@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+import itertools
 
 from anyblok import Declarations
 from anyblok.column import Integer
@@ -17,6 +18,7 @@ from anyblok_wms_base.exceptions import (OperationInputsError,
                                          AssemblyInputNotMatched,
                                          AssemblyExtraInputs,
                                          AssemblyPropertyConflict,
+                                         AssemblyWrongInputProperties,
                                          UnknownExpressionType,
                                          OperationError,
                                          )
@@ -32,28 +34,144 @@ _missing = object()
 """A marker to use as default value in get-like functions/methods."""
 
 
+OPERATION_STATES = ('planned', 'started', 'done')
+
+
+def state_interval(from_state, to_state):
+    """Return a tuple of states to pass in a state jump.
+
+    :param from_state: the state to start from, or None
+    :param to_state: the state to reach
+    """
+    if from_state is None:
+        from_state_idx = 0
+    else:
+        from_state_idx = OPERATION_STATES.index(from_state) + 1
+    return OPERATION_STATES[from_state_idx:
+                            OPERATION_STATES.index(to_state) + 1]
+
+
+class CheckMatch:
+    """Used to store check and match property requirements directive.
+
+    The added value of this class is to make the merging of parameters easier
+    for 'requirements' (whose value is 'check' or 'match'), with the same API
+    as :class:`dict` and :class:`set` implementing the rule that 'match'
+    wins over 'check'.
+    """
+
+    is_match = False
+
+    def update(self, upd):
+        if upd not in ('check', 'match'):
+            raise ValueError(upd)
+        self.is_match = self.is_match or upd == 'match'
+
+
+def merge_state_parameter(spec, from_state, to_state, param_type):
+    """Utility method to merge sets or dict parameter for state jumps.
+
+    :param spec: a dict whose keys are Operation states and values are the
+                 per-state parameter values
+    :param from_state: the state to start from, or None
+    :param to_state: the state to reach
+    :param str param_type:
+        the type of the parameter (can be ``'set'`` or ``'dict'``)
+    :return: merged value for the parameter
+    :raises: ValueError for unknown types
+
+    Besides doing the aggregation, this normalizes things a bit.
+    For instance, ``spec`` can be ``None``, and in that case,  we'll get
+    an appropriate empty value.
+    """
+    if param_type == 'set':
+        res = set()
+    elif param_type == 'dict':
+        res = {}
+    elif param_type == 'check_match':
+        res = CheckMatch()
+    else:
+        raise ValueError(
+            "Unsupported parameter type for state merging: %r" % param_type)
+
+    if spec is None:
+        return res
+
+    for step in state_interval(from_state, to_state):
+        step_param = spec.get(step)
+        if step_param is None:
+            continue
+        res.update(step_param)
+    return res
+
+
+def merge_state_sub_parameters(spec, from_state, to_state, *subkeys):
+    """Utility method to merge sets or dict parameters for state jumps.
+
+    :param spec: a dict whose keys are Operation states
+    :param from_state: the state to start from, or None
+    :param to_state: the state to reach
+    :param subkeys: each one is a pair (subkey, type) where subkey is the
+                    key to consider inside each state subdict of ``spec``
+                    and type is a string representing the type of the
+                    corresponding values (``'set'`` or ``'dict'``).
+    :return: values for the subkeys, in lexical order if there are several
+             or just the value if there's one.
+    :raises: ValueError for unknown types
+
+    Besides doing the aggregation, this normalizes things a bit.
+    For instance, ``spec`` can be ``None``, and in that case,  we'll get
+    empty values for the subkeys.
+    """
+    res = []
+    for subkey, subtype in subkeys:
+        if subtype == 'set':
+            res.append(set())
+        elif subtype == 'dict':
+            res.append({})
+        else:
+            raise ValueError(
+                "Unknown subkey type %r for subkey %r" % (subtype, subkey))
+
+    if spec is None:
+        return None if not res else res if len(res) > 1 else res[0]
+
+    for step in state_interval(from_state, to_state):
+        step_spec = spec.get(step)
+        if step_spec is None:
+            continue
+        for i, (k, _) in enumerate(subkeys):
+            res[i].update(step_spec.get(k, ()))
+
+    return None if not res else res if len(res) > 1 else res[0]
+
+
 @register(Operation)
 class Assembly(Operation):
     """Assembly/Pack Operation.
 
     This operation covers simple packing and assembly needs : those for which
-    a single outcome is produced from the inputs, which must be in the same
-    Location. More general manufacturing cases fall out of the scope of
-    the ``wms-core`` Blok.
+    a single outcome is produced from the inputs, which must also be in the
+    same Location.
 
     The behaviour is specified on the :attr:`outcome's Goods Type
-    <outcome_type>`, and amounts to describing the expected inputs,
+    <outcome_type>` (see :attr:`Assembly specification <specification>`);
+    it amounts to describe the expected inputs,
     and how to build the Properties of the outcome (see
-    :meth:`build_outcome_properties`)
+    :meth:`outcome_properties`). All Property related parameters in the
+    specification are bound to the state to be reached or passed through.
 
-    A given Type can be assembled in different ways (TODO use-cases even
-    for simple packing), and this gets specified by the :attr:`name` field.
+    A given Type can be assembled in different ways: the
+    :attr:`Assembly specification <specification>` is chosen within
+    the ``assembly`` Type behaviour according to the value of the :attr:`name`
+    field.
 
-    Besides being the main key for the
-    :attr:`Assembly specification <specification>`,
-    the :attr:`name` is also used to dispatch hooks for specific logic that
-    would be too complicated to describe in configuration (see
-    :meth:`specific_build_outcome_properties`).
+    :meth:`Specific hooks <specific_outcome_properties>` are available for
+    use-cases that aren't covered by the specification format (example: to
+    forward Properties with non uniform values from the inputs to the
+    outcome).
+    The :attr:`name` is the main dispatch key for these hooks, which don't
+    depend on the :attr:`outcome's Good Type <outcome_type>`.
     """
     TYPE = 'wms_assembly'
 
@@ -87,12 +205,17 @@ class Assembly(Operation):
     This field is used to store the
     result, so that it's available for further logic (for instance in
     the :meth:`property setting hooks
-    <specific_build_outcome_properties>`).
+    <specific_outcome_properties>`).
 
     This field's value is either ``None`` (before matching) or a list
     of lists: for each of the inputs specification, respecting
     ordering, the list of ids of the matching Avatars.
     """
+
+    @property
+    def extra_inputs(self):
+        matched = set(av_id for m in self.match for av_id in m)
+        return (av for av in self.inputs if av.id not in matched)
 
     def specific_repr(self):
         return ("outcome_type={self.outcome_type!r}, "
@@ -127,93 +250,158 @@ class Assembly(Operation):
                 # useless overhead
                 locations=set(inp.location for inp in inputs))
 
-    def check_extract_input_props(self, avatar, extracted,
-                                  input_spec=None,
-                                  required_props=None,
-                                  required_prop_values=None,
-                                  forwarded_props=None):
-        """Check and if match, extract for forwarding properties of one input.
+    def extract_property(self, extracted, goods, prop,
+                         exc_details=None):
+        """Extract the wished property from goods, forbidding conflicts.
 
-        :param avatar: the input to consider
-        :param dict extracted: previously done extractions
-        :param input_spec: (index, expected) it is redudant with
-                           required_props etc, but used only
-                           for feedback in exceptions
-        :rtype bool:
-        :return: ``True`` if the avatar matches the criteria
+        :param str prop: Property name
+        :param dict extracted:
+           the specified property value is read from `goods` and stored there,
+           if not already present with a different value
+        :param exc_details: If specified the index and value of the input
+                            specifification this comes from, for exception
+                            raising (the exception will assume that the
+                            conflict arises in the global forward_properties
+                            directive).
+        :raises: AssemblyPropertyConflict
+        """
+        candidate_value = goods.get_property(prop, default=_missing)
+        if candidate_value is _missing:
+            return
+        try:
+            existing = extracted[prop]
+        except KeyError:
+            extracted[prop] = candidate_value
+        else:
+            if existing != candidate_value:
+                raise AssemblyPropertyConflict(self, exc_details, prop,
+                                               existing, candidate_value)
+
+    def forward_properties(self, state, for_creation=False):
+        """Forward properties from the inputs to the outcome
+
+        This is done according to the global specification
+
+        :param state: the Assembly state that we are reaching.
+        :param bool for_creation: if ``True``, means that this is part
+                                  of the creation process, i.e, there's no
+                                  previous state.
         :raises: AssemblyPropertyConflict if forwarding properties
                  changes an already set value.
-
-        The required properties and values are checked, and the forwarded
-        ones are stored in ``extracted``, after it has been checked that
-        they don't change a previous one.
         """
-        goods = avatar.goods
+        spec = self.specification
+        Avatar = self.registry.Wms.Goods.Avatar
+        from_state = None if for_creation else self.state
 
-        # TODO use global exceptions (and define them !)
-        if not goods.has_properties(required_props):
-            return False
-        if not goods.has_property_values(required_prop_values):
-            return False
+        glob_fwd = merge_state_sub_parameters(spec.get('inputs_properties'),
+                                              from_state, state,
+                                              ('forward', 'set'))
 
-        for fp in forwarded_props:
-            candidate_value = goods.get_property(fp, default=_missing)
-            if candidate_value is _missing:
-                continue
-            try:
-                existing = extracted[fp]
-            except KeyError:
-                extracted[fp] = candidate_value
-            else:
-                if existing != candidate_value:
-                    raise AssemblyPropertyConflict(
-                        self, input_spec, fp, existing, candidate_value)
+        inputs_spec = spec.get('inputs', ())
 
-        return True
+        forwarded = {}
 
-    def analyse_inputs(self):
+        for i, (match_item, input_spec) in enumerate(
+                zip(self.match, inputs_spec)):
+            input_fwd = merge_state_sub_parameters(
+                input_spec.get('properties'),
+                from_state, state,
+                ('forward', 'set'))
+            for av_id in match_item:
+                goods = Avatar.query().get(av_id).goods
+                for fp in itertools.chain(input_fwd, glob_fwd):
+                    self.extract_property(forwarded, goods, fp,
+                                          exc_details=(i, input_spec))
+        for extra in self.extra_inputs:
+            for fp in glob_fwd:
+                self.extract_property(forwarded, extra.goods, fp)
+
+        return forwarded
+
+    def check_inputs_properties(self, state, for_creation=False):
+        """Apply global and per input Property requirements according to state.
+
+        All property requirements between the current state (or None if we
+        are at creation) and the wished state are checked.
+
+        :param state: the state that the Assembly is about to reach
+        :param for_creation: if True, the current value of the :attr:`state`
+                             field is ignored, and all states up to the wished
+                             state are considered.
+        :raises: :class:`AssemblyWrongInputProperties`
+        """
+        spec = self.specification
+        global_props_spec = spec.get('inputs_properties')
+        if global_props_spec is None:
+            return
+
+        req_props, req_prop_values = merge_state_sub_parameters(
+            global_props_spec,
+            None if for_creation else self.state,
+            state,
+            ('required', 'set'),
+            ('required_values', 'dict'),
+        )
+
+        for avatar in self.inputs:
+            goods = avatar.goods
+            if (not goods.has_properties(req_props) or
+                    not goods.has_property_values(req_prop_values)):
+                raise AssemblyWrongInputProperties(
+                    self, avatar, req_props, req_prop_values)
+
+        Avatar = self.registry.Wms.Goods.Avatar
+        for i, (match_item, input_spec) in enumerate(
+                zip(self.match, spec.get('inputs', ()))):
+            req_props, req_prop_values = merge_state_sub_parameters(
+                input_spec.get('properties'),
+                None if for_creation else self.state,
+                state,
+                ('required', 'set'),
+                ('required_values', 'dict'),
+            )
+            for av_id in match_item:
+                goods = Avatar.query().get(av_id).goods
+                if (not goods.has_properties(req_props) or
+                        not goods.has_property_values(req_prop_values)):
+                    raise AssemblyWrongInputProperties(
+                        self, avatar, req_props, req_prop_values,
+                        spec_item=(i, input_spec))
+
+    def match_inputs(self, state, for_creation=False):
         """Compare input Avatars to specification and apply Properties rules.
 
-        This is meant to be called after :meth:`check_create_conditions` has
-        performed the checks that don't return anything for further treatment.
-
-        :return: (extra_inputs, forwarded_props), respectively an iterable of
-                 inputs that are left once all input specifications are met,
-                 and a :class:`dict` of property names and values extracted
-                 from the inputs and to be set on the outcome.
+        :param state: the state for which to perform the matching
+        :return: extra_inputs, an iterable of
+                 inputs that are left once all input specifications are met.
         :raises: :class:`anyblok_wms_base.exceptions.AssemblyInputNotMatched`,
                  :class:`anyblok_wms_base.exceptions.AssemblyForbiddenExtraInputs`
 
         """
-        outcome_props = {}
-        spec = self.specification
-        req_props = spec.get('required_properties', ())
-        req_prop_values = spec.get('required_property_values', {})
-        fwd_props = spec.get('forward_properties', ())
-
-        for av in self.inputs:
-            self.check_extract_input_props(av, outcome_props,
-                                           required_props=req_props,
-                                           required_prop_values=req_prop_values,
-                                           forwarded_props=fwd_props)
-
         # let' stress that the incoming ordering shouldn't matter
         # from this method's point of view. And indeed, only in tests can
         # it come from the will of a caller. In reality, it'll be due to
         # factors that are random wrt the specification.
         inputs = set(self.inputs)
-        match = self.match = []
+        spec = self.specification
 
         GoodsType = self.registry.Wms.Goods.Type
         types_by_code = dict()
+        from_state = None if for_creation else self.state
+
+        match = self.match = []
 
         for i, expected in enumerate(spec['inputs']):
             match_item = []
             match.append(match_item)
 
-            req_props = expected.get('required_properties', ())
-            req_prop_values = expected.get('required_property_values', {})
-            fwd_props = expected.get('forward_properties', ())
+            req_props, req_prop_values = merge_state_sub_parameters(
+                expected.get('properties'),
+                from_state,
+                state,
+                ('required', 'set'),
+                ('required_values', 'dict'),
+            )
 
             type_code = expected['type']
             gtype = types_by_code.get(type_code)
@@ -221,26 +409,24 @@ class Assembly(Operation):
                 gtype = GoodsType.query().filter_by(
                     code=type_code).one()
                 types_by_code[type_code] = gtype
-
             for _ in range(expected['quantity']):
                 for candidate in inputs:
-                    if not candidate.goods.has_type(gtype):
+                    goods = candidate.goods
+                    if (not goods.has_type(gtype) or
+                            not goods.has_properties(req_props) or
+                            not goods.has_property_values(req_prop_values)):
                         continue
-                    if self.check_extract_input_props(
-                            candidate, outcome_props,
-                            input_spec=(i, expected),
-                            required_props=req_props,
-                            required_prop_values=req_prop_values,
-                            forwarded_props=fwd_props):
-                        inputs.discard(candidate)
-                        match_item.append(candidate.id)
-                        break
+                    inputs.discard(candidate)
+                    match_item.append(candidate.id)
+                    break
                 else:
-                    raise AssemblyInputNotMatched(self, (expected, i))
+                    raise AssemblyInputNotMatched(self, (expected, i),
+                                                  from_state=from_state,
+                                                  to_state=state)
 
         if inputs and not spec.get('allow_extra_inputs'):
             raise AssemblyExtraInputs(self, inputs)
-        return inputs, outcome_props
+        return inputs
 
     @property
     def specification(self):
@@ -251,134 +437,221 @@ class Assembly(Operation):
         that part, the value associated with :attr:`name`.
 
         Here's an example, for an Assembly whose :attr:`name` is
-        ``'soldering'``, also displaying all standard parameters::
+        ``'soldering'``, also displaying most standard parameters.
+        Individual aspects of this is discussed in detail afterwards::
 
           behaviours = {
              …
              'assembly': {
                  'soldering': {
-                     'properties': {'built_here': ['const', True]},
-                     'properties_at_execution': {
-                         'serial': ['sequence', 'SOLDERINGS'],
+                     'outcome_properties': {
+                         'planned': {'built_here': ['const', True]},
+                         'started': {'spam': ['const', 'eggs']},
+                         'done': {'serial': ['sequence', 'SOLDERINGS']},
                      },
                      'inputs': [
                          {'type': 'GT1',
                           'quantity': 1,
-                          'forward_properties': ['foo', 'bar'],
-                          'required_properties': ['foo'],
-                          'required_property_values': {'x': True}
+                          'properties': {
+                             'planned': {
+                               'required': ['x'],
+                             },
+                             'started': {
+                               'required': ['foo'],
+                               'required_values': {'x': True},
+                               'requirements': 'match',  # default is 'check'
+                             },
+                             'done': {
+                               'forward': ['foo', 'bar'],
+                               'requirements': 'check',
+                             }
                           },
-                         {'type': 'GT2', 'quantity': 2},
+                         {'type': 'GT2',
+                          'quantity': 2
+                          },
+                         {'type': 'GT3',
+                          'quantity': 1,
+                          'code': 'ABC',
+                          }
                      ],
+                     'inputs_spec_type': {
+                         'planned': 'check',  # default is 'match'
+                         'started': 'match',  # default is 'check' for
+                                              # 'started' and 'done' states
+                      },
                      'for_contents': ['all', 'descriptions'],
-                     'forward_properties': …
-                     'required_properties': …
-                     'required_property_values': …
+                     'allow_extra_inputs': True,
+                     'inputs_properties': {
+                         'planned': {
+                            'required': …
+                            'required_values': …
+                            'forward': …
+                         },
+                         'started': …
+                         'done': …
+                     }
                  }
                  …
               }
           }
 
         .. note:: Non standard parameters can be specified, for use in
-                  :meth:`Specific hooks <specific_build_outcome_properties>`.
+                  :meth:`Specific hooks <specific_outcome_properties>`.
 
-        The present Python property performs no checks,
-        since it is meant to be accessed only after the protection of
-        :meth:`check_create_conditions`.
-        """
-        return self.outcome_type.behaviours['assembly'][self.name]
+        **Inputs**
 
-    DEFAULT_FOR_CONTENTS = ('extra', 'records')
-    """Default value of the ``for_contents`` part of specification.
+        The ``inputs`` part of the specification is primarily a list of
+        expected inputs, with various criteria (Goods Type, quantity,
+        Goods code and Properties).
 
-    See :meth:`build_outcome_properties` for the meaning of the values.
-    """
+        Besides requiring them in the first place, these criteria are also
+        used to :meth:`qualify (match) the inputs <match_inputs>`
+        (note that Operation inputs are unordered in general,
+        while this ``inputs`` parameter is). This spares the
+        calling code the need to keep track of that qualification after
+        selecting the goods in the first place. The result of that
+        matching is stored in the :attr:`match` field, is kept for later
+        Assembly state changes and can be used by application
+        code, e.g., for operator display purposes.
 
-    def build_outcome_properties(self):
-        """Method responsible for initial properties on the outcome.
+        Assemblies can also have extra inputs,
+        according to the value of the ``allow_extra_inputs`` boolean
+        parameter. This is especially useful for generic packing scenarios.
 
-        :rtype: :class:`Model.Wms.Goods.Properties
-                <anyblok_wms_base.core.goods.Properties>`
-        :raises: :class:`AssemblyInputNotMatched` if one of the
-                 :attr:`input specifications <specification>` is not
-                 matched by ``self.inputs``,
-                 :class:`AssemblyPropertyConflict` in case of conflicting
-                 values for the outcome.
+        Having both specified and extra inputs is supported (imagine packing
+        client parcels with specified wrapping, a greetings card plus variable
+        contents).
 
-        **Property specifications**
+        The ``type`` criterion applies the Goods Type hierarchy, hence it's
+        possible to create a generic packing Assembly for a whole family of
+        Goods Types (e.g., adult trekking shoes).
+
+        Similarly, all Property requirements take the properties inherited
+        from the Goods Types into account.
+
+        **Global Property specifications**
 
         The Assembly :attr:`specification` can have the following
         key/value pairs:
 
-        * ``properties``:
-             a dict of Properties to set on the outcome; the values
-             are pairs ``(TYPE, EXPRESSION)`` evaluated by passing as
+        * ``outcome_properties``:
+             a dict whose keys are Assembly states, and values are
+             dicts of Properties to set on the outcome; the values
+             are pairs ``(TYPE, EXPRESSION)``, evaluated by passing as
              positional arguments to :meth:`eval_typed_expr`.
-        * ``properties_at_execution``:
-             similar to ``properties``, but set during Assembly
-             execution (or at creation in the ``done`` state).
+        * ``inputs_properties``:
+             a dict whose keys are Assembly states, and values are themselves
+             dicts with key/values:
 
-             use-case: when using ``Model.System.Sequence`` to create
-             a serial number,  or if recording the assembly date in
-             the outcome properties, one probably prefer to evaluate
-             this at execution time.
-        * ``forward_properties``:
-             a list of properties that will be copied from all inputs to
-             the Properties of the outcome.
-        * ``required_properties``:
-             a list of properties that all inputs must have to be valid,
-             whatever the values.
-        * ``required_property_values``:
-             a :class:`dict` describing required Property key/value pairs on
-             all inputs.
+             + required:
+                 list of properties that must be present on all inputs
+                 while reaching or passing through the given Assembly state,
+                 whatever their values
+             + required_values:
+                 dict of Property key/value pairs that all inputs must bear
+                 while reaching or passing through the given Assembly state.
+             + forward:
+                 list of properties to forward to the outcome while
+                 reaching or passing through the given Assembly state.
 
-        **Per input specification matching and forwarding**
+        **Per input Property checking, matching and forwarding**
 
-        The last three configuration parameters can be specified
+        The same parameters as in ``inputs_properties`` can also be specified
         inside each :class:`dict` that form
         the ``inputs`` list of the :meth:`Assembly specification <spec>`),
-        and in that case, the Property requirements are used as matching
-        criteria on the inputs. They are applied in order, but remember that
+        as the ``properties`` sub parameter.
+
+        In that case, the Property requirements are used either as
+        matching criteria on the inputs, or as a check on already matched
+        Goods, according to the value of the ``inputs_spec_type`` parameter
+        (default is ``'match'`` in the ``planned`` Assembly state,
+        and ``'check'`` in the other states).
+
+        Example::
+
+          'inputs_spec_type': {
+              'started': 'match',  # default is 'check' for
+                                   # 'started' and 'done' states
+          },
+          'inputs': [
+              {'type': 'GT1',
+               'quantity': 1,
+               'properties': {
+                   'planned': {'required': ['x']},
+                   'started': {
+                       'required_values': {'x': True},
+                   },
+                   'done': {
+                       'forward': ['foo', 'bar'],
+                   },
+              …
+          ]
+
+        During matching, per input specifications are applied in order,
+        but remember that
         the ordering of ``self.inputs`` itself is to be considered random.
+
+        In case ``inputs_spec_type`` is ``'check'``, the checking is done
+        on the Goods matched by previous states, thus avoiding a potentially
+        costly rematching. In the above example, matching will be performed
+        in the ``'planned'`` and ``'started'`` states, but a simple check
+        will be done if going from the ``started`` to the ``done`` state.
+
+        It is therefore possible to plan an Assembly with partial information
+        about its inputs (waiting for some Observation, or a previous Assembly
+        to be done), and to
+        refine that information, which can be displayed to operators, or have
+        consequences on the Properties of the outcome, at each state change.
+        In many cases, rematching the inputs for all state changes is
+        unnecessary. That's why, to avoid paying the computational cost
+        three times, the default value is ``'check'`` for the ``done`` and
+        ``started`` states.
+
+        The result of matching is stored in the :attr:`match` field.
 
         In all cases, if a given Property is to be forwarded from several
         inputs to the outcome and its values on these inputs aren't equal,
         :class:`AssemblyPropertyConflict` will be raised.
 
-        **Specific hooks**
+        **Passing through states**
 
-        While already powerful, the Property manipulations described above
-        are not expected to fit all situations, especially the rule about
-        differing values on inputs. On the other hand, trying to accomodate
-        all use cases through configuration would lead to insanity.
+        Following the general expectations about states of Operations, if
+        an Assembly is created directly in the ``done`` state, it will apply
+        the ``outcome_properties`` for the ``planned``, ``started`` and
+        ``done`` states.
+        Also, the matching and checks of input Properties for the ``planned``,
+        ``started`` and ``done`` state will be performed, in that order.
 
-        Therefore, the core will stick to these still
-        relatively simple primitives, but will also provide the means
-        to perform custom logic, through :meth:`assembly-specific hooks
-        <specific_build_outcome_properties>`
+        In other words, it behaves exactly as if it had been first planned,
+        then started, and finally executed.
 
-        Namely, :meth:`specific_build_outcome_properties` gets called near
-        the end of the process. and the built Properties are built according
-        to its result, with higher precedence than any other source of
-        properties.
+        Similarly, if a planned Assembly is executed (without being started
+        first), then outcome Properties, matches and checks related to the
+        ``started`` state are performed before those of the ``done`` state.
 
+        **for_contents: building the contents Property**
 
-        **The contents Property**
-
-        The outcome also bears the special :data:`contents property
-        <anyblok_wms_base.constants.CONTENTS_PROPERTY>` (
+        The outcome of the Assembly bears the special :data:`contents property
+        <anyblok_wms_base.constants.CONTENTS_PROPERTY>`, also
         used by :class:`Operation.Unpack
-        <anyblok_wms_base.core.operation.unpack.Unpack>`).
+        <anyblok_wms_base.core.operation.unpack.Unpack>`.
 
-        This is controlled by the
-        ``for_contents`` part of the assembly specification, which
-        itself is a pair, whose first element indicates which inputs to list,
-        and the second how to list them. Its default value is
-        :attr:`DEFAULT_FOR_CONTENTS`. It can also be explicitely set to
-        ``None``, to tell the Assembly not to set the contents property
-        (use-cases: if it's unnecessary pollution, for instance if it
-        is later custom set by specific hooks, or if no Unpack for disassembly
-        is ever to be wished anyway).
+        This makes the reversal of Assemblies by Unpacks possible (with
+        care in the behaviour specifications), and also can be used by
+        applicative code to use information about the inputs even after the
+        Assembly is done.
+
+        The building of the contents Property is controlled by the
+        ``for_contents`` parameter, which itself is either ``None`` or a
+        pair of strings, whose first element indicates which inputs to list,
+        and the second how to list them.
+
+        The default value of ``for_contents`` is :attr:`DEFAULT_FOR_CONTENTS`.
+
+        If ``for_contents`` is ``None``, no contents Property will be set
+        on the outcome. Use this if it's unnecessary pollution, for instance
+        if it is custom set by specific hooks anyway, or if no Unpack for
+        disassembly is ever to be wished.
 
         *for_contents: possible values of first element:*
 
@@ -397,37 +670,84 @@ class Assembly(Operation):
             include Goods' Types, those Properties that aren't recoverable by
             an Unpack from the Assembly outcome, together with appropriate
             ``forward_properties`` for those who are (TODO except those that
-            come from a global ``forward_properties`` of the assembly)
+            come from a global ``forward`` in the Assembly specification)
         * ``'records'``:
             same as ``descriptions``, but also includes the record ids, so
             that an Unpack following the Assembly would not give rise to new
             Goods records, but would reuse the existing ones, hence keep the
             promise that the Goods records are meant to track the "sameness"
             of the physical objects.
+
+        **Specific hooks**
+
+        While already powerful, the Property manipulations described above
+        are not expected to fit all situations. This is obviously true for
+        the rule forbidding the forwarding of values that aren't equal for
+        all relevant inputs: in some use cases, one would want to take the
+        minimum of theses values, sum them, keep them as a list,
+        or all of these at once… On the other hand, the specification is
+        already complicated enough as it is.
+
+        Therefore, the core will stick to these still
+        relatively simple primitives, but will also provide the means
+        to perform custom logic, through :meth:`assembly-specific hooks
+        <specific_outcome_properties>`
+        """
+        return self.outcome_type.behaviours['assembly'][self.name]
+
+    DEFAULT_FOR_CONTENTS = ('extra', 'records')
+    """Default value of the ``for_contents`` part of specification.
+
+    See :meth:`outcome_properties` for the meaning of the values.
+    """
+
+    def outcome_properties(self, state, for_creation=False):
+        """Method responsible for properties on the outcome.
+
+        For the given state that is been reached, this method returns a
+        dict of Properties to apply on the outcome.
+
+        :param state: The Assembly state that we are reaching.
+        :param bool for_creation: if ``True``, means that this is part
+                                  of the creation process, i.e, there's no
+                                  previous state.
+        :rtype: :class:`Model.Wms.Goods.Properties
+                <anyblok_wms_base.core.goods.Properties>`
+        :raises: :class:`AssemblyInputNotMatched` if one of the
+                 :attr:`input specifications <specification>` is not
+                 matched by ``self.inputs``,
+                 :class:`AssemblyPropertyConflict` in case of conflicting
+                 values for the outcome.
+
+
+        The :meth:`specific hook <specific_outcome_properties>`
+        gets called at the very end of the process, giving it higher
+        precedence than any other source of Properties.
         """
         spec = self.specification
-        extra, assembled_props = self.analyse_inputs()
+        assembled_props = self.forward_properties(state,
+                                                  for_creation=for_creation)
 
-        contents = self.build_contents(spec, extra, assembled_props)
+        contents = self.build_contents(assembled_props)
         if contents:
             assembled_props[CONTENTS_PROPERTY] = contents
 
-        spec_props = spec.get('properties')
-        if spec_props is not None:
-            assembled_props.update(self.eval_spec_exprs('properties'))
-        direct_exec = self.state == 'done'
-        if direct_exec:
-            assembled_props.update(
-                self.eval_spec_exprs('properties_at_execution'))
+        prop_exprs = merge_state_parameter(
+            spec.get('outcome_properties'),
+            None if for_creation else self.state,
+            state,
+            'dict')
+        assembled_props.update((k, self.eval_typed_expr(*v))
+                               for k, v in prop_exprs.items())
 
-        assembled_props.update(self.specific_build_outcome_properties(
-            assembled_props, for_exec=direct_exec))
-        return self.registry.Wms.Goods.Properties.create(**assembled_props)
+        assembled_props.update(self.specific_outcome_properties(
+            assembled_props, state, for_creation=for_creation))
+        return assembled_props
 
-    props_hook_fmt = "build_outcome_properties_{name}"
+    props_hook_fmt = "outcome_properties_{name}"
 
-    def specific_build_outcome_properties(self, assembled_props,
-                                          for_exec=False):
+    def specific_outcome_properties(self, assembled_props, state,
+                                    for_creation=False):
         """Hook for per-name specific update of Properties on outcome.
 
         At the time of Operation creation or execution,
@@ -439,14 +759,12 @@ class Assembly(Operation):
         the specific method. The signature to implement is identical to the
         present one:
 
+        :param state: The Assembly state that we are reaching.
         :param dict assembled_props:
-           a :class:`dict` of already built Properties, or a
-           :class:`Properties
-           <anyblok_wms_base.core.goods.Properties>` instance.
-        :param bool for_exec:
-          ``False`` during Operation creation in the ``planned`` state,
-          ``True`` during Operation execution or creation in the ``done``
-          state.
+           a :class:`dict` of already prepared Properties for this state.
+        :param bool for_creation:
+            if ``True``, means that this is part of the creation process,
+            i.e, there's no previous state.
         :return: the properties to set or update
         :rtype: any iterable that can be passed to :meth:`dict.update`.
 
@@ -454,22 +772,22 @@ class Assembly(Operation):
         meth = getattr(self, self.props_hook_fmt.format(name=self.name), None)
         if meth is None:
             return ()
-        return meth(assembled_props, for_exec=for_exec)
+        return meth(assembled_props, state, for_creation=for_creation)
 
-    def build_contents(self, spec, extra, forwarded_props):
+    def build_contents(self, forwarded_props):
         """Construction of the ``contents`` property
 
-        This is part of :meth`build_outcome_properties`
+        This is part of :meth`outcome_properties`
         """
-        contents_spec = spec.get('for_contents', self.DEFAULT_FOR_CONTENTS)
+        contents_spec = self.specification.get('for_contents',
+                                               self.DEFAULT_FOR_CONTENTS)
         if contents_spec is None:
             return
         what, how = contents_spec
         if what == 'extra':
-            for_unpack = extra
+            for_unpack = self.extra_inputs
         elif what == 'all':
             for_unpack = self.inputs
-
         contents = []
 
         # sorting here and later is for tests reproducibility
@@ -502,21 +820,43 @@ class Assembly(Operation):
 
         return contents
 
+    def check_match_inputs(self, to_state, for_creation=False):
+        """Check or match inputs according to specification.
+
+        :rtype bool:
+        :return: ``True`` iff a match has been performed
+        """
+        spec = self.specification.get('inputs_spec_type')
+        if spec is None:
+            spec = {}
+        spec.setdefault('planned', 'match')
+
+        cm = merge_state_parameter(spec,
+                                   None if for_creation else self.state,
+                                   to_state,
+                                   'check_match')
+        (self.match_inputs if cm.is_match else self.check_inputs_properties)(
+            to_state, for_creation=for_creation)
+        return cm.is_match
+
     def after_insert(self):
-        outcome_state = 'present' if self.state == 'done' else 'future'
+        state = self.state
+        outcome_state = 'present' if state == 'done' else 'future'
         dt_exec = self.dt_execution
         input_upd = dict(dt_until=dt_exec)
-        if self.state == 'done':
+        if state == 'done':
             input_upd.update(state='past', reason=self)
         # TODO PERF bulk update ?
         for inp in self.inputs:
             inp.update(**input_upd)
 
+        self.check_match_inputs(state, for_creation=True)
         Goods = self.registry.Wms.Goods
         Goods.Avatar.insert(
             goods=Goods.insert(
                 type=self.outcome_type,
-                properties=self.build_outcome_properties()),
+                properties=Goods.Properties.create(
+                    **self.outcome_properties(state, for_creation=True))),
             location=self.inputs[0].location,
             reason=self,
             state=outcome_state,
@@ -524,29 +864,16 @@ class Assembly(Operation):
             dt_until=None)
 
     def execute_planned(self):
-        """Update states and build execution properties.
-
-        Besides the update of state for inputs and outcomes, that all
-        Operations perform, this also performs the final update of
-        Properties on the outcome:
-
-        * application of the ``properties_at_execution`` key of the Assembly
-          :attr:`specification`
-        * application of :meth:`specific_build_outcome_properties`
-          with ``for_exec=True``
+        """Check or rematch inputs, update properties and states.
         """
+        self.check_match_inputs('done')
         # TODO PERF direct update query would probably be faster
         for inp in self.inputs:
             inp.state = 'past'
         outcome = self.outcomes[0]
 
+        outcome.goods.update_properties(self.outcome_properties('done'))
         outcome.state = 'present'
-        goods = outcome.goods
-        goods.update_properties(
-            self.eval_spec_exprs('properties_at_execution'))
-        goods.update_properties(
-            self.specific_build_outcome_properties(goods.properties,
-                                                   for_exec=True))
 
     def eval_typed_expr(self, etype, expr):
         """Evaluate a typed expression.
@@ -569,16 +896,6 @@ class Assembly(Operation):
         elif etype == 'sequence':
             return self.registry.System.Sequence.nextvalBy(code=expr.strip())
         raise UnknownExpressionType(self, etype, expr)
-
-    def eval_spec_exprs(self, spec_key):
-        """Read typed expressions from :attr:`specification` and evaluate them.
-
-        :rtype: iterator of (key, value) pairs.
-        """
-        props = self.specification.get(spec_key)
-        if props is None:
-            return ()
-        return ((k, self.eval_typed_expr(*v)) for k, v in props.items())
 
     def is_reversible(self):
         """Assembly can be reverted by Unpack.
