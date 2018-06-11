@@ -1077,6 +1077,64 @@ class TestAssembly(WmsTestCase):
                                   started=dict(
                                       required_values=dict(qa='ok')))))
 
+    def test_unmatched_code(self):
+        gt1 = self.Goods.Type.insert(code='GT1')
+
+        self.create_outcome_type(dict(default={
+            'inputs': [
+                {'type': 'GT1',
+                 'quantity': 1,
+                 'code': 'brian',
+                 },
+            ],
+        }))
+        avatars = self.create_goods(((gt1, 1), ))
+        goods = avatars[0].goods
+
+        with self.assertRaises(AssemblyInputNotMatched) as arc:
+            self.Assembly.create(inputs=avatars,
+                                 outcome_type=self.outcome_type,
+                                 name='default',
+                                 dt_execution=self.dt_test1,
+                                 state='planned')
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs['spec_nr'], 1)
+        self.assertEqual(exc.kwargs['spec_index'], 0)
+        self.assertEqual(exc.kwargs['spec_detail'],
+                         dict(type='GT1',
+                              quantity=1,
+                              code='brian'))
+
+        goods.code = 'brian'
+        # now it works
+        assembly = self.Assembly.create(inputs=avatars,
+                                        outcome_type=self.outcome_type,
+                                        name='default',
+                                        dt_execution=self.dt_test1,
+                                        state='planned')
+        assembly.cancel()
+
+        # now requiring an unmatchable id (0)
+        with self.assertRaises(AssemblyInputNotMatched) as arc:
+            self.Assembly.create(inputs=avatars,
+                                 outcome_type=self.outcome_type,
+                                 parameters=dict(inputs=[dict(id=0)]),
+                                 dt_execution=self.dt_test1,
+                                 name='default',
+                                 state='planned')
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs['spec_nr'], 1)
+        self.assertEqual(exc.kwargs['spec_index'], 0)
+        self.assertEqual(exc.kwargs['spec_detail'],
+                         dict(type='GT1',
+                              quantity=1,
+                              id=0,
+                              code='brian'))
+
     def test_inconsistent_forwarding_one_spec(self):
         gt1 = self.Goods.Type.insert(code='GT1')
 
