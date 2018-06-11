@@ -227,6 +227,9 @@ class Goods:
                    for k, v in mapping.items())
 
 
+_empty_dict = {}
+
+
 @register(Model.Wms.Goods)
 class Properties:
     """Properties of Goods.
@@ -299,8 +302,7 @@ class Properties:
 
     def get(self, k, *default):
         if len(default) > 1:
-            raise TypeError("get expected at most 2 arguments, got %d" % (
-                len(default) + 1))
+            return _empty_dict.get(k, *default)
 
         try:
             return self[k]
@@ -323,6 +325,35 @@ class Properties:
             flag_modified(self, '__anyblok_field_flexible')
 
     set = __setitem__  # backwards compatibility
+
+    def __delitem__(self, k):
+        if k in ('id', 'flexible'):
+            raise ValueError("The key %r is reserved, can't be used "
+                             "as a property name and hence can't "
+                             "be deleted " % k)
+        if k in self._field_property_names():
+            raise ValueError("Can't delete field backed property %r" % k)
+
+        if self.flexible is None:
+            raise KeyError(k)
+
+        del self.flexible[k]
+        flag_modified(self, '__anyblok_field_flexible')
+
+    def pop(self, k, *default):
+        if k in ('id', 'flexible'):
+            raise ValueError("The key %r is reserved, can't be used "
+                             "as a property name and hence can't "
+                             "be deleted " % k)
+        if k in self._field_property_names():
+            raise ValueError("Can't delete field backed property %r" % k)
+
+        if self.flexible is None:
+            return _empty_dict.pop(k, *default)
+
+        res = self.flexible.pop(k, *default)
+        flag_modified(self, '__anyblok_field_flexible')
+        return res
 
     def duplicate(self):
         """Insert a copy of ``self`` and return its id."""

@@ -6,14 +6,6 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-# -*- coding: utf-8 -*-
-# This file is a part of the AnyBlok / WMS Base project
-#
-#    Copyright (C) 2018 Georges Racinet <gracinet@anybox.fr>
-#
-# This Source Code Form is subject to the terms of the Mozilla Public License,
-# v. 2.0. If a copy of the MPL was not distributed with this file,You can
-# obtain one at http://mozilla.org/MPL/2.0/.class TestGoodsProperties(BlokTestCase):
 """Tests of Wms.Goods.Properties.
 
 This is not about tests of Wms.Goods involving properties
@@ -123,3 +115,40 @@ class TestGoodsProperties(BlokTestCase):
         dup.get('history').append('b')
         self.assertEqual(dup.get('history'), ['a', 'b'])
         self.assertEqual(props.get('history'), ['a'])
+
+    def test_del_pop(self):
+        missing = object()
+        props = self.Props(batch='abcd')
+
+        # case where flexible is None
+        with self.assertRaises(KeyError):
+            del props['history']
+        with self.assertRaises(KeyError):
+            props.pop('history')
+        with self.assertRaises(TypeError):
+            props.pop('history', 1, 2)
+        self.assertEqual(props.pop('history', ['x']), ['x'])
+
+        props['history'] = ['a', 'b']
+        self.assertEqual(props['history'], ['a', 'b'])
+        del props['history']
+
+        self.assertFalse('history' in props)
+        self.assertEqual(props.get('history', missing), missing)
+
+        for k in ('id', 'flexible', 'batch'):
+            with self.assertRaises(ValueError):
+                del props[k]
+
+        props['foo'] = 14
+
+        self.assertEqual(props.pop('foo'), 14)
+        self.assertEqual(props.pop('foo', missing), missing)
+        self.assertFalse('foo' in props)
+        self.assertEqual(props.get('foo', missing), missing)
+
+        for k in ('id', 'flexible', 'batch'):
+            with self.assertRaises(ValueError):
+                props.pop(k)
+        with self.assertRaises(TypeError):
+            props.pop('foo', 1, 2)
