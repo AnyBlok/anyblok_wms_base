@@ -8,21 +8,21 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 
-from . import ns
-from . import base
-from . import single_input
-from . import arrival
-from . import departure
-from . import move
-from . import unpack
-from . import assembly
+def import_declarations(reload=None):
+    from . import ns
+    from . import base
+    from . import single_input
+    from . import arrival
+    from . import departure
+    from . import move
+    from . import unpack
+    from . import assembly
 
-
-def reload_declarations(reload):
-    reload(ns)
-    reload(single_input)
-    reload(arrival)
-    reload(departure)
-    reload(move)
-    reload(unpack)
-    reload(assembly)
+    if reload is not None:
+        reload(ns)
+        reload(single_input)
+        reload(arrival)
+        reload(departure)
+        reload(move)
+        reload(unpack)
+        reload(assembly)

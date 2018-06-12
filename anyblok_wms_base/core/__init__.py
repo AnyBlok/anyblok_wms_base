@@ -8,6 +8,17 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok.blok import Blok
 from . import goods
+from . import operation
+
+
+def import_declarations(reload=None):
+    from . import wms
+    from . import location
+    if reload is not None:
+        reload(wms)
+        reload(location)
+    operation.import_declarations(reload=reload)
+    goods.import_declarations(reload=reload)
 
 
 class WmsCore(Blok):
@@ -18,18 +29,8 @@ class WmsCore(Blok):
 
     @classmethod
     def import_declaration_module(cls):
-        from . import wms  # noqa
-        from . import location  # noqa
-        from . import operation  # noqa
-        goods.import_declarations()
+        import_declarations()
 
     @classmethod
     def reload_declaration_module(cls, reload):
-        from . import wms
-        reload(wms)
-        from . import location
-        reload(location)
-        from . import operation
-        reload(operation)
-        operation.reload_declarations(reload)
-        goods.import_declarations(reload=reload)
+        import_declarations(reload=reload)
