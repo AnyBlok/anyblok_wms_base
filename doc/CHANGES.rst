@@ -30,8 +30,8 @@ Release history
 * Implemented Avatars
 * Uniformisation of the relationship between Operations and Goods
   (Avatars)
-* wms_reservation: initial implementation (with architectural notes in
-  doc)
+* wms-reservation: initial implementation (with architectural
+  notes in documentation)
 * some factorisation of concrete Operation methods into the base
   class, leading to much simpler implementations.
 

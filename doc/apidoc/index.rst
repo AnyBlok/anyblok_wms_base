@@ -13,6 +13,6 @@ package names for readability in page titles.
    constants
    exceptions
    utils
-   bloks/wms_core/index
-   bloks/wms_reservation/index
-   bloks/wms_quantity/index
+   core/index
+   reservation/index
+   quantity/index

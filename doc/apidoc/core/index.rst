@@ -1,5 +1,5 @@
-wms_core
-========
+core: the wms-core Blok
+=======================
 
 .. py:module:: anyblok_wms_base.core
 

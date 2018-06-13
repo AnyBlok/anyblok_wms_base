@@ -1,5 +1,5 @@
-wms_quantity
-============
+quantity: the wms-quantity Blok
+===============================
 
 .. py:module:: anyblok_wms_base.quantity
 

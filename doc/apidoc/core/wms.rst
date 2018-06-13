@@ -1,5 +1,5 @@
-wms_core.wms
-============
+core.wms
+========
 
 .. py:module:: anyblok_wms_base.core.wms
 
