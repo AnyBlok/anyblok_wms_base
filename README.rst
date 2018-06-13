@@ -35,4 +35,4 @@ For the time being, this software is in early stage of development.
 
 AnyBlok / WMS Base is released under the terms of the `Mozilla Public License`.
 
-See the `latest documentation <http://doc.anyblok-wms-base.anyblok.org/>`_
+See the `latest documentation <https://anyblok-wms-base.readthedocs.io/en/latest>`_
