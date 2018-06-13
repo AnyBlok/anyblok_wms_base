@@ -1,9 +1,9 @@
-Transforming Operations
-~~~~~~~~~~~~~~~~~~~~~~~
+Handling and transforming Operations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. py:currentmodule:: anyblok_wms_base.core.operation
 
-ModelWms.Operation.Move
------------------------
+Model.Wms.Operation.Move
+------------------------
 
 This Operation Model inherits from :class:`Mixin.WmsSingleInput
 <anyblok_wms_base.core.operation.single_input.WmsSingleInputOperation>`
