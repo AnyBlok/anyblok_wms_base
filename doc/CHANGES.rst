@@ -23,6 +23,8 @@ Release history
 * Goods Type hierarchy and merging of behaviours
 * Properties on Goods types and defaulting rules from the Goods and
   across the hierarchy
+* new Operation: Assembly, for manufacturing processes with exactly
+  one outcome
 
 0.6.0
 ~~~~~
