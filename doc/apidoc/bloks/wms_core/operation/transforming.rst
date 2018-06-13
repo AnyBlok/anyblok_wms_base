@@ -93,6 +93,7 @@ Model.Wms.Operation.Assembly
 
    .. autoattribute:: specification
    .. autoattribute:: DEFAULT_FOR_CONTENTS
+   .. autoattribute:: SPEC_LIST_MERGE
    .. automethod:: outcome_properties
    .. automethod:: eval_typed_expr
    .. automethod:: specific_outcome_properties

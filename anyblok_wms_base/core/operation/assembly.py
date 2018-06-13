@@ -446,17 +446,23 @@ class Assembly(Operation):
             raise AssemblyExtraInputs(self, inputs)
         return inputs
 
+    # TODO PERF cache ?
     @property
     def specification(self):
         """The Assembly specification
 
-        The Assembly specification is read from the ``assembly`` part of
-        the behaviour field of :attr:`outcome_type`. Namely, it is, within
-        that part, the value associated with :attr:`name`.
+        The Assembly specification is merged from two sources:
+
+        - within the ``assembly`` part of the behaviour field of
+          :attr:`outcome_type`, the subdict associated with :attr:`name`;
+        - optionally, the instance specific :attr:`parameters`.
 
         Here's an example, for an Assembly whose :attr:`name` is
         ``'soldering'``, also displaying most standard parameters.
-        Individual aspects of this is discussed in detail afterwards::
+        Individual aspects of these parameters are discussed in detail
+        afterwards, as well as the merging logic.
+
+        On the :attr:`outcome_type`::
 
           behaviours = {
              …
@@ -489,7 +495,6 @@ class Assembly(Operation):
                           },
                          {'type': 'GT3',
                           'quantity': 1,
-                          'code': 'ABC',
                           }
                      ],
                      'inputs_spec_type': {
@@ -511,6 +516,24 @@ class Assembly(Operation):
                  }
                  …
               }
+          }
+
+        On the Assembly instance::
+
+          parameters = {
+              'outcome_properties': {
+                  'started': {'life': ['const', 'brian']}
+              },
+              'inputs': [
+                 {},
+                 {'code': 'ABC'},
+                 {'id': 1234},
+              ]
+              'inputs_properties': {
+                         'planned': {
+                            'forward': ['foo', 'bar'],
+                         },
+              },
           }
 
         .. note:: Non standard parameters can be specified, for use in
@@ -695,6 +718,23 @@ class Assembly(Operation):
             Goods records, but would reuse the existing ones, hence keep the
             promise that the Goods records are meant to track the "sameness"
             of the physical objects.
+
+        **Merging logic**
+
+        All sub parameters are merged according to the expected type. For
+        instance, ``required`` and ``forward`` in the various Property
+        parameters are merged as a :class:`set`.
+
+        As displayed in the example above, if there's an ``inputs`` part
+        in :attr:`parameters`, it must be made of exactly the same number
+        of ``dicts`` as within the :attr:`outcome_type` behaviour. More
+        precisely, these lists are merged using the :func:`zip` Python
+        builtin, which results in a truncation to the shortest. Of course,
+        not having an ``inputs`` part in :attr:`parameters` does *not*
+        result in empty ``inputs``.
+
+        .. seealso:: :attr:`SPEC_LIST_MERGE` and
+                     :func:`dict_merge <anyblok_wms_base.utils.dict_merge>`.
 
         **Specific hooks**
 

@@ -49,15 +49,21 @@ def dict_merge(first, second, list_merge=None):
        element specifies what to do of lists at top level, with possible
        values:
 
-        + None: ``first`` is returned
-        + 'zip': return the list obtained by merging elements of
-                 the first list with the second, in order.
-        + 'append': ``first`` elements are added at the end of ``second``
-        + 'append': ``first`` elements are added at the beginning of
-                    ``second``
-        + 'set': a set is built with ``first`` and ``second`` elements.
+       + ``None``:
+         ``first`` is returned
+       + ``'zip'``:
+         return the list obtained by merging elements of the first list with
+         those of the second, in order.
+       + ``'append'``:
+         elements of ``first`` are added in order at the end of ``second``.
+       + ``'prepend'``:
+         elements of ``first`` are inserted in order at the beginning
+         of ``second``.
+       + ``'set'``:
+         a :class:`set` is built from elements of ``first`` and ``second``.
 
-       The second element is then for recursing: a :class:`dict` whose keys
+       The second element of ``list_merge`` is then for recursing:
+       a :class:`dict` whose keys
        are list indexes or the ``'*'`` wildcard and values are to be passed
        as ``list_merge`` below. The second element can also be ``None``,
        behaving like an empty :class:`dict`.
