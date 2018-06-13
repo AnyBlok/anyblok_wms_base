@@ -22,7 +22,7 @@
 .. image:: https://readthedocs.org/projects/anyblok-wms-base/badge/?version=latest
     :alt: Documentation Status
     :scale: 100%
-    :target: http://doc.anyblok-wms-base.anyblok.org/?badge=latest
+    :target: https://anyblok-wms-base.readthedocs.io/en/latest
 
 
 AnyBlok / WMS Base
