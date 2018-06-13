@@ -531,20 +531,51 @@ the ``wms-core`` Blok.
 Assemblies have an outcome :ref:`goods_type`, and a name, so that a given
 :ref:`Type <goods_type>` can be assembled in different ways.
 
-The inputs of the Assembly and how to build :ref:`Properties
-<goods_properties>` on
-the outcome are specified within the ``assembly`` behaviour of the
-outcome Goods Type, using the given name as key.
+As an edge case, Assemblies can have a single input,
+how weird that may sound, and are, in fact, the preferred way to alter
+some :ref:`Goods <goods_goods>`
+record to produce *a new one* with new or different
+:ref:`Properties <goods_properties>`,
+whether the :ref:`Type <goods_type>` has changed or
+not. Use case: one may wish to consider that cutting the edges of a
+piece of timber makes it different enough that it must be considered a
+new :ref:`Goods <goods_goods>` record.
 
-The outcome :ref:`Properties <goods_properties>` can be created by the
-Assembly or forwarded from the inputs with simple rules. There are also
-hooks for applications to implement more complex cases.
+Assemblies are governed by a flexible :attr:`specification
+<anyblok_wms_base.core.operation.assembly.Assembly.specification>`,
+which is built from the ``assembly`` behaviour of the
+outcome :ref:`Type <goods_type>` and from their optional
+:attr:`parameters
+<anyblok_wms_base.core.operation.assembly.Assembly.parameters>` field.
+This specification includes:
 
-There are various rules to match the inputs by their
-:ref:`Type <goods_type>` and :ref:`Properties <goods_properties>`.
-They are useful for checking purposes, as well as to give fine
-control over the forwarding of :ref:`Properties <goods_properties>`.
-Assemblies can have variable inputs, depending on a specification parameter.
+- how to build :ref:`Properties <goods_properties>` on
+  the outcome, depending on the :ref:`state <op_states>` been reached.
+  For example, it is possible to use a Model.System.Sequence to build
+  up a serial number once the Assembly reaches the ``started`` state.
+  It's also possible to forward :ref:`Properties <goods_properties>`
+  from one or several inputs to the outcome.
+
+- expected inputs, with various required :ref:`Properties
+  <goods_properties>` depending on the :ref:`state <op_states>` been
+  reached. Variable inputs are also supported (must be
+  explicitely turned on).
+
+  These inputs rules are useful for checking
+  purposes and to perform selective forwarding of :ref:`Properties
+  <goods_properties>` to the outcome. The result been stored in the
+  :attr:`match
+  <anyblok_wms_base.core.operation.assembly.Assembly.match>` field,
+  it can be used as a support for end user display and machine control
+  if needed.
+
+- special rules for the contents Property which is used by
+  :ref:`op_unpack` to describe the variable part of the :ref:`Goods
+  <goods_goods>`.
+
+Assemblies have also programmatic hooks for applications to implement more
+complex cases (at the time of this writing, only for the build of outcome
+:ref:`Properties <goods_properties>`).
 
 Assemblies can be reverted by :ref:`Unpacks <op_unpack>`, if the outcome
 :ref:`Type <goods_type>` supports them. If appropriate, it's possible
