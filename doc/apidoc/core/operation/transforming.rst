@@ -1,9 +1,9 @@
-Transforming Operations
-~~~~~~~~~~~~~~~~~~~~~~~
+Handling and transforming Operations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. py:currentmodule:: anyblok_wms_base.core.operation
 
-ModelWms.Operation.Move
------------------------
+Model.Wms.Operation.Move
+------------------------
 
 This Operation Model inherits from :class:`Mixin.WmsSingleInput
 <anyblok_wms_base.core.operation.single_input.WmsSingleInputOperation>`
@@ -84,6 +84,7 @@ Model.Wms.Operation.Assembly
    .. autoattribute:: id
    .. autoattribute:: outcome_type
    .. autoattribute:: name
+   .. autoattribute:: parameters
    .. autoattribute:: match
 
    .. raw:: html
@@ -92,10 +93,10 @@ Model.Wms.Operation.Assembly
 
    .. autoattribute:: specification
    .. autoattribute:: DEFAULT_FOR_CONTENTS
-   .. automethod:: build_outcome_properties
+   .. autoattribute:: SPEC_LIST_MERGE
+   .. automethod:: outcome_properties
    .. automethod:: eval_typed_expr
-   .. automethod:: eval_spec_exprs
-   .. automethod:: specific_build_outcome_properties
+   .. automethod:: specific_outcome_properties
    .. autoattribute:: props_hook_fmt
 
    .. raw:: html

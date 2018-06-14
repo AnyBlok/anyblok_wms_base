@@ -1,5 +1,5 @@
-wms_core.goods
-==============
+core.goods
+==========
 .. py:module:: anyblok_wms_base.core.goods.goods
 
 Model.Wms.Goods

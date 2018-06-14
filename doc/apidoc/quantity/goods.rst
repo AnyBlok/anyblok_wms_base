@@ -1,5 +1,5 @@
-wms_quantity.goods
-==================
+quantity.goods
+==============
 
 .. py:module:: anyblok_wms_base.quantity.goods
 

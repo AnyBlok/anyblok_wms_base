@@ -7,6 +7,7 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok.blok import Blok
+from anyblok_wms_base import version
 
 
 class WmsQuantity(Blok):
@@ -17,7 +18,7 @@ class WmsQuantity(Blok):
     cases where goods are rarely handled down to the unit, yet without using
     intermediate packaging.
     """
-    version = '0.0.1'
+    version = version
     author = "Georges Racinet"
     required = ['wms-core']
 

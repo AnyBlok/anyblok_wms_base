@@ -1,5 +1,5 @@
-wms_quantity.operation
-======================
+quantity.operation
+==================
 
 Model.Wms.Operation.Split
 ~~~~~~~~~~~~~~~~~~~~~~~~~

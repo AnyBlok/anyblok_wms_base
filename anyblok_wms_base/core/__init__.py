@@ -7,12 +7,13 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok.blok import Blok
+from anyblok_wms_base import version
 
 
 class WmsCore(Blok):
     """Core concepts for WMS and logistics.
     """
-    version = '0.0.1'
+    version = version
     author = "Georges Racinet"
 
     @classmethod
