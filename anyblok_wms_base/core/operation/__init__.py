@@ -18,6 +18,7 @@ def import_declarations(reload=None):
     from . import unpack
     from . import assembly
     from . import apparition
+    from . import disparition
 
     if reload is not None:
         reload(ns)
@@ -28,3 +29,4 @@ def import_declarations(reload=None):
         reload(unpack)
         reload(assembly)
         reload(apparition)
+        reload(disparition)

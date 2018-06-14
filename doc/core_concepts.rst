@@ -493,6 +493,29 @@ other states don't make sense in their case.
 
 Apparitions are irreversible in the sense of :ref:`op_cancel_revert_obliviate`.
 
+.. _op_disparition:
+
+Disparition
+-----------
+.. versionadded:: 0.8.0
+
+.. note:: see :class:`the code documentation
+          <anyblok_wms_base.core.operation.disparition.Disparition>`
+          for more details.
+
+Disparitions are inventory Operations that record that the goods are
+missing, for no known reason. In other words, they are to
+:ref:`Departures <op_departure>` what :ref:`Apparitions
+<op_apparition>` are to :ref:`Arrivals <op_arrival>`:
+
+- they cannot be planned nor started; only direct creations in the
+  ``'done'`` :ref:`state <op_states>` are allowed.
+- they are irreversible.
+- they should be tied in applications to higher level Inventory objects.
+
+Same as for :ref:`op_departure`, the effect of a Disparition is not
+to erase the :ref:`goods_goods`,
+but only to put the given :ref:`Avatar <goods_avatar>` in the ``past`` state.
 
 .. _op_move:
 

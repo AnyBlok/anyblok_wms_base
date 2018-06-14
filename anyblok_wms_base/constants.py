@@ -64,6 +64,7 @@ OPERATION_TYPES = dict(wms_move="wms_op_types_move",
                        wms_arrival="wms_op_types_arrival",
                        wms_departure="wms_op_types_departure",
                        wms_apparition="wms_op_types_apparition",
+                       wms_disparition="wms_op_types_disparition",
                        )
 """The keys of this :class:`dict` are used for the polymorphism of
 the :class:`Wms.Operation
