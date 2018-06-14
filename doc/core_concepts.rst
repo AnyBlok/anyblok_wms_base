@@ -468,6 +468,32 @@ left to applications.
 
 Departures are irreversible in the sense of :ref:`op_cancel_revert_obliviate`.
 
+.. _op_apparition:
+
+Apparition
+----------
+.. versionadded:: 0.8.0
+
+.. note:: see :class:`the code documentation
+          <anyblok_wms_base.core.operation.apparition.Apparition>`
+          for more details.
+
+Apparitions are similar to Arrivals in that they create previously
+untracked :ref:`goods_goods`, but they are meant to be used in
+inventory assessments: they represent the fact that some
+:ref:`goods_goods` have been discovered, with no known explanation.
+
+In concrete applications, Apparitions would typically be optionally
+tied to some higher level Inventory Model that would be backing some user
+interface while grouping and maybe creating them (Anyblok / Wms Base
+does not currently provide such Inventories).
+
+Apparitions are always in the ``done`` :ref:`state <op_states>`, as
+other states don't make sense in their case.
+
+Apparitions are irreversible in the sense of :ref:`op_cancel_revert_obliviate`.
+
+
 .. _op_move:
 
 Move
