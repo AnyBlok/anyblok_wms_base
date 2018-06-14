@@ -34,7 +34,7 @@ class SharedDataTestCase(BlokTestCase):
         """To be implemented by concrete test classes."""
 
     @classmethod
-    def make_testcase_savepoint(cls, session=None):
+    def make_case_savepoint(cls, session=None):
         if session is None:
             session = cls.registry
         cls.testcase_savepoint = session.begin_nested()
@@ -44,13 +44,13 @@ class SharedDataTestCase(BlokTestCase):
         super(BlokTestCase, self).setUp()
         # tearDown is not called in case of errors in setUp, but these are:
         self.addCleanup(self.callCleanUp)
-        self.make_testcase_savepoint()
+        self.make_case_savepoint()
 
         @event.listens_for(self.registry.session, "after_transaction_end")
         def restart_savepoint(session, transaction):
             session.expire_all()
             if transaction is self.testcase_savepoint:
-                self.make_testcase_savepoint()
+                self.make_case_savepoint()
         self.savepoint_restarter = restart_savepoint
 
     @classmethod

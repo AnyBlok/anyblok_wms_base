@@ -17,6 +17,7 @@ from anyblok.column import DateTime
 from anyblok.relationship import Many2One
 from anyblok_postgres.column import Jsonb
 
+from anyblok_wms_base.utils import dict_merge
 from anyblok_wms_base.constants import (
     GOODS_STATES,
 )
@@ -123,6 +124,17 @@ class Goods:
             return self.type.get_property(k, default=default)
         return val
 
+    def merged_properties(self):
+        """Return all Properties, merged with the Type properties.
+
+        :rtype: dict
+
+        To retrieve just one Property, prefer :meth:`get_property`, which
+        is meant to be more efficient.
+        """
+        return dict_merge(self.properties.as_dict(),
+                          self.type.merged_properties())
+
     def _maybe_duplicate_props(self):
         """Internal method to duplicate Properties
 
@@ -215,6 +227,9 @@ class Goods:
                    for k, v in mapping.items())
 
 
+_empty_dict = {}
+
+
 @register(Model.Wms.Goods)
 class Properties:
     """Properties of Goods.
@@ -287,8 +302,7 @@ class Properties:
 
     def get(self, k, *default):
         if len(default) > 1:
-            raise TypeError("get expected at most 2 arguments, got %d" % (
-                len(default) + 1))
+            return _empty_dict.get(k, *default)
 
         try:
             return self[k]
@@ -311,6 +325,35 @@ class Properties:
             flag_modified(self, '__anyblok_field_flexible')
 
     set = __setitem__  # backwards compatibility
+
+    def __delitem__(self, k):
+        if k in ('id', 'flexible'):
+            raise ValueError("The key %r is reserved, can't be used "
+                             "as a property name and hence can't "
+                             "be deleted " % k)
+        if k in self._field_property_names():
+            raise ValueError("Can't delete field backed property %r" % k)
+
+        if self.flexible is None:
+            raise KeyError(k)
+
+        del self.flexible[k]
+        flag_modified(self, '__anyblok_field_flexible')
+
+    def pop(self, k, *default):
+        if k in ('id', 'flexible'):
+            raise ValueError("The key %r is reserved, can't be used "
+                             "as a property name and hence can't "
+                             "be deleted " % k)
+        if k in self._field_property_names():
+            raise ValueError("Can't delete field backed property %r" % k)
+
+        if self.flexible is None:
+            return _empty_dict.pop(k, *default)
+
+        res = self.flexible.pop(k, *default)
+        flag_modified(self, '__anyblok_field_flexible')
+        return res
 
     def duplicate(self):
         """Insert a copy of ``self`` and return its id."""
@@ -499,13 +542,14 @@ class Avatar:
     def __str__(self):
         return ("(id={self.id}, goods={self.goods}, state={self.state!r}, "
                 "location={self.location}, "
-                "dt_range=[{self.dt_from}, {self.dt_until})".format(self=self))
+                "dt_range=[{self.dt_from}, "
+                "{self.dt_until}])".format(self=self))
 
     def __repr__(self):
         return ("Wms.Goods.Avatar(id={self.id}, "
                 "goods={self.goods!r}, state={self.state!r}, "
                 "location={self.location!r}, "
-                "dt_range=[{self.dt_from!r}, {self.dt_until!r})").format(
+                "dt_range=[{self.dt_from!r}, {self.dt_until!r}])").format(
                     self=self)
 
     def get_property(self, k, default=None):
