@@ -23,7 +23,10 @@ class Apparition(Operation):
     """Inventory Operation to record unexpected Goods
 
     This is similar to Arrival, but has a distinct functional meaning.
-    Apparitions can exist in only one state: 'done'
+    Apparitions can exist only in the ``done`` :ref:`state <op_states>`.
+
+    Another difference with Arrivals is that Apparitions have a
+    :attr:`quantity` field.
     """
     TYPE = 'wms_apparition'
 
@@ -33,7 +36,7 @@ class Apparition(Operation):
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
     """Primary key."""
     goods_type = Many2One(model='Model.Wms.Goods.Type')
-    """Expected :class:`Goods Type
+    """Observed :class:`Goods Type
     <anyblok_wms_base.core.goods.Type>`.
     """
     quantity = Integer()
@@ -41,8 +44,8 @@ class Apparition(Operation):
 
     Here, identical means "same type, code and properties"
     """
-    goods_properties = Jsonb(label="Properties of appeared Goods")
-    """Expected :class:`Properties
+    goods_properties = Jsonb()
+    """Observed :class:`Properties
     <anyblok_wms_base.core.goods.Properties>`.
 
     They are copied over to the newly created :class:`Goods
@@ -50,12 +53,15 @@ class Apparition(Operation):
     the Goods, while this Apparition field will keep the exact values
     that were observed during inventory.
     """
-    goods_code = Text(label="Code to set on appeared Goods")
-    """Attributed :attr:`Goods code
+    goods_code = Text()
+    """Observed :attr:`Goods code
     <anyblok_wms_base.core.goods.Goods.code>`.
     """
     location = Many2One(model='Model.Wms.Location')
-    """Will be the location of the initial Avatar."""
+    """Location of appeared Goods.
+
+    This will be the location of the initial Avatars.
+    """
 
     inputs_number = 0
     """This Operation is a purely creative one."""
@@ -66,6 +72,12 @@ class Apparition(Operation):
 
     @classmethod
     def check_create_conditions(cls, state, dt_execution, **kwargs):
+        """Forbid creation with wrong states.
+
+        :raises: :class:`OperationForbiddenState
+                 <anyblok_wms_base.exceptions.OperationForbiddenState>`
+                 if state is not ``'done'``
+        """
         if state != 'done':
             raise OperationForbiddenState(
                 cls, "Apparition can exist only in the 'done' state",
@@ -74,6 +86,11 @@ class Apparition(Operation):
             state, dt_execution, **kwargs)
 
     def after_insert(self):
+        """Create the Goods and their Avatars.
+
+        In the ``wms-core`` implementation, the :attr:`quantity` field
+        gives rise to as many Goods records.
+        """
         Goods = self.registry.Wms.Goods
         self_props = self.goods_properties
         if self_props is None:
