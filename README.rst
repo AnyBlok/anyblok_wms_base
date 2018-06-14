@@ -22,7 +22,7 @@
 .. image:: https://readthedocs.org/projects/anyblok-wms-base/badge/?version=latest
     :alt: Documentation Status
     :scale: 100%
-    :target: http://doc.anyblok-wms-base.anyblok.org/?badge=latest
+    :target: https://anyblok-wms-base.readthedocs.io/en/latest
 
 
 AnyBlok / WMS Base
@@ -35,4 +35,10 @@ For the time being, this software is in early stage of development.
 
 AnyBlok / WMS Base is released under the terms of the `Mozilla Public License`.
 
-See the `latest documentation <http://doc.anyblok-wms-base.anyblok.org/>`_
+Documentation
+~~~~~~~~~~~~~
+
+* `latest development version
+  <https://anyblok-wms-base.readthedocs.io/en/latest>`_ (master branch)
+* `latest released version
+  <https://anyblok-wms-base.readthedocs.io/en/stable>`_

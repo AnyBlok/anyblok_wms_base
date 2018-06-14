@@ -25,6 +25,7 @@ from anyblok_wms_base.exceptions import (OperationInputsError,
 from anyblok_wms_base.constants import (DEFAULT_ASSEMBLY_NAME,
                                         CONTENTS_PROPERTY,
                                         )
+from anyblok_wms_base.utils import dict_merge
 
 register = Declarations.register
 Mixin = Declarations.Mixin
@@ -195,6 +196,13 @@ class Assembly(Operation):
               prove out to be really inconvenient for downstream code.
               TODO apply the default value in :meth:`check_create_conditions`
               for convenience ?
+    """
+
+    parameters = Jsonb()
+    """Extra parameters specific to this instance.
+
+    This :class:`dict` is merged with the parameters from the
+    :attr:`outcome_type` behaviour to build the final :attr:`specification`.
     """
 
     match = Jsonb()
@@ -404,6 +412,9 @@ class Assembly(Operation):
             )
 
             type_code = expected['type']
+            expected_id = expected.get('id')
+            expected_code = expected.get('code')
+
             gtype = types_by_code.get(type_code)
             if gtype is None:
                 gtype = GoodsType.query().filter_by(
@@ -416,6 +427,13 @@ class Assembly(Operation):
                             not goods.has_properties(req_props) or
                             not goods.has_property_values(req_prop_values)):
                         continue
+
+                    if expected_id is not None and goods.id != expected_id:
+                        continue
+                    if (expected_code is not None and
+                            goods.code != expected_code):
+                        continue
+
                     inputs.discard(candidate)
                     match_item.append(candidate.id)
                     break
@@ -428,17 +446,23 @@ class Assembly(Operation):
             raise AssemblyExtraInputs(self, inputs)
         return inputs
 
+    # TODO PERF cache ?
     @property
     def specification(self):
         """The Assembly specification
 
-        The Assembly specification is read from the ``assembly`` part of
-        the behaviour field of :attr:`outcome_type`. Namely, it is, within
-        that part, the value associated with :attr:`name`.
+        The Assembly specification is merged from two sources:
+
+        - within the ``assembly`` part of the behaviour field of
+          :attr:`outcome_type`, the subdict associated with :attr:`name`;
+        - optionally, the instance specific :attr:`parameters`.
 
         Here's an example, for an Assembly whose :attr:`name` is
         ``'soldering'``, also displaying most standard parameters.
-        Individual aspects of this is discussed in detail afterwards::
+        Individual aspects of these parameters are discussed in detail
+        afterwards, as well as the merging logic.
+
+        On the :attr:`outcome_type`::
 
           behaviours = {
              …
@@ -471,7 +495,6 @@ class Assembly(Operation):
                           },
                          {'type': 'GT3',
                           'quantity': 1,
-                          'code': 'ABC',
                           }
                      ],
                      'inputs_spec_type': {
@@ -493,6 +516,24 @@ class Assembly(Operation):
                  }
                  …
               }
+          }
+
+        On the Assembly instance::
+
+          parameters = {
+              'outcome_properties': {
+                  'started': {'life': ['const', 'brian']}
+              },
+              'inputs': [
+                 {},
+                 {'code': 'ABC'},
+                 {'id': 1234},
+              ]
+              'inputs_properties': {
+                         'planned': {
+                            'forward': ['foo', 'bar'],
+                         },
+              },
           }
 
         .. note:: Non standard parameters can be specified, for use in
@@ -678,6 +719,23 @@ class Assembly(Operation):
             promise that the Goods records are meant to track the "sameness"
             of the physical objects.
 
+        **Merging logic**
+
+        All sub parameters are merged according to the expected type. For
+        instance, ``required`` and ``forward`` in the various Property
+        parameters are merged as a :class:`set`.
+
+        As displayed in the example above, if there's an ``inputs`` part
+        in :attr:`parameters`, it must be made of exactly the same number
+        of ``dicts`` as within the :attr:`outcome_type` behaviour. More
+        precisely, these lists are merged using the :func:`zip` Python
+        builtin, which results in a truncation to the shortest. Of course,
+        not having an ``inputs`` part in :attr:`parameters` does *not*
+        result in empty ``inputs``.
+
+        .. seealso:: :attr:`SPEC_LIST_MERGE` and
+                     :func:`dict_merge <anyblok_wms_base.utils.dict_merge>`.
+
         **Specific hooks**
 
         While already powerful, the Property manipulations described above
@@ -693,7 +751,25 @@ class Assembly(Operation):
         to perform custom logic, through :meth:`assembly-specific hooks
         <specific_outcome_properties>`
         """
-        return self.outcome_type.behaviours['assembly'][self.name]
+        type_spec = self.outcome_type.get_behaviour('assembly')[self.name]
+        if self.parameters is None:
+            return type_spec
+        return dict_merge(self.parameters, type_spec,
+                          list_merge=self.SPEC_LIST_MERGE)
+
+    SPEC_LIST_MERGE = dict(
+        inputs_properties={'*': dict(required=('set', None),
+                                     forward=('set', None),
+                                     ),
+                           },
+        inputs=('zip',
+                {'*': dict(properties={'*': dict(required=('set', None),
+                                                 forward=('set', None),
+                                                 ),
+                                       },
+                           ),
+                 })
+        )
 
     DEFAULT_FOR_CONTENTS = ('extra', 'records')
     """Default value of the ``for_contents`` part of specification.

@@ -1,5 +1,5 @@
-wms_core.location
-=================
+core.location
+=============
 .. py:module:: anyblok_wms_base.core.location
 
 Model.Wms.Location

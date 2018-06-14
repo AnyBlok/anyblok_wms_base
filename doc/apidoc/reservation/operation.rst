@@ -1,5 +1,5 @@
-wms_reservation.operation
-=========================
+reservation.operation
+=====================
 
 .. py:module:: anyblok_wms_base.reservation.operation
 

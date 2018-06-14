@@ -23,6 +23,8 @@ Release history
 * Goods Type hierarchy and merging of behaviours
 * Properties on Goods types and defaulting rules from the Goods and
   across the hierarchy
+* new Operation: Assembly, for manufacturing processes with exactly
+  one outcome
 
 0.6.0
 ~~~~~
@@ -30,8 +32,8 @@ Release history
 * Implemented Avatars
 * Uniformisation of the relationship between Operations and Goods
   (Avatars)
-* wms_reservation: initial implementation (with architectural notes in
-  doc)
+* wms-reservation: initial implementation (with architectural
+  notes in documentation)
 * some factorisation of concrete Operation methods into the base
   class, leading to much simpler implementations.
 
