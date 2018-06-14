@@ -12,6 +12,8 @@ from anyblok.column import Text
 from anyblok_postgres.column import Jsonb
 from anyblok.relationship import Many2One
 
+from anyblok_wms_base.exceptions import OperationForbiddenState
+
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
 
@@ -65,8 +67,9 @@ class Apparition(Operation):
     @classmethod
     def check_create_conditions(cls, state, dt_execution, **kwargs):
         if state != 'done':
-            # TODO precise exc
-            raise ValueError("Apparition can exist only in the 'done' state")
+            raise OperationForbiddenState(
+                cls, "Apparition can exist only in the 'done' state",
+                forbidden=state)
         super(Apparition, cls).check_create_conditions(
             state, dt_execution, **kwargs)
 
