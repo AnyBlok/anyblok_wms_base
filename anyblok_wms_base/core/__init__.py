@@ -7,7 +7,19 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok.blok import Blok
-from anyblok_wms_base import version
+from .. import version
+from . import goods
+from . import operation
+
+
+def import_declarations(reload=None):
+    from . import wms
+    from . import location
+    if reload is not None:
+        reload(wms)
+        reload(location)
+    operation.import_declarations(reload=reload)
+    goods.import_declarations(reload=reload)
 
 
 class WmsCore(Blok):
@@ -18,20 +30,8 @@ class WmsCore(Blok):
 
     @classmethod
     def import_declaration_module(cls):
-        from . import wms  # noqa
-        from . import location  # noqa
-        from . import operation  # noqa
-        from . import goods  # noqa
+        import_declarations()
 
     @classmethod
     def reload_declaration_module(cls, reload):
-        from . import wms
-        reload(wms)
-        from . import location
-        reload(location)
-        from . import operation
-        reload(operation)
-        operation.reload_declarations(reload)
-        from . import goods
-        reload(goods)
-        goods.reload_declarations(reload)
+        import_declarations(reload=reload)

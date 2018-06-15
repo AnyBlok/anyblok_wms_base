@@ -122,20 +122,30 @@ class TestGoodsType(BlokTestCase):
         self.assertFalse(parent.has_property('foo'))
         self.assertFalse(parent.has_properties(['foo', 'qa']))
         self.assertTrue(parent.has_properties([]))
+        self.assertEqual(parent.merged_properties(), {})
         parent.properties = dict(foo=1, qa='nok')
 
         self.assertTrue(parent.has_property('foo'))
         self.assertTrue(parent.has_property_values(dict(foo=1)))
         self.assertTrue(parent.has_properties(['foo', 'qa']))
         self.assertFalse(parent.has_property_values(dict(foo=1, qa='ok')))
+        self.assertEqual(parent.merged_properties(), dict(foo=1, qa='nok'))
 
         child = self.Type.insert(code='child', parent=parent)
         self.assertTrue(child.has_property('foo'))
         self.assertTrue(child.has_property_values(dict(foo=1)))
         self.assertTrue(child.has_properties(['foo', 'qa']))
         self.assertFalse(child.has_property_values(dict(foo=1, qa='ok')))
+        self.assertEqual(child.merged_properties(), dict(foo=1, qa='nok'))
 
         child.properties = dict(bar=True)
         self.assertTrue(child.has_property('foo'))
         self.assertTrue(child.has_property_values(dict(foo=1, bar=True)))
         self.assertTrue(child.has_properties(['foo', 'qa', 'bar']))
+        self.assertEqual(child.merged_properties(),
+                         dict(foo=1, qa='nok', bar=True))
+
+        child.properties['foo'] = 2
+        self.assertTrue(child.has_property_values(dict(foo=2, bar=True)))
+        self.assertEqual(child.merged_properties(),
+                         dict(foo=2, qa='nok', bar=True))
