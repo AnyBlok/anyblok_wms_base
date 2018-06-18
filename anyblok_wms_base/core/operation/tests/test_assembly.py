@@ -951,8 +951,8 @@ class TestAssembly(WmsTestCase):
             target_avatar.state = state
             with self.assertRaises(ValueError) as arc:
                 make_assembly()
-                exc = arc.exception
-                self.assertEqual(exc.args, (target_goods_id, 'avatars'))
+        exc = arc.exception
+        self.assertEqual(exc.args, (target_goods_id, 'avatars'))
         target_avatar.state = 'past'
 
         # Wrong Goods Type
