@@ -863,6 +863,135 @@ class TestAssembly(WmsTestCase):
             self.assertEqual(outcome_goods.get_property('foo3'), 'av2')
             assembly.cancel()
 
+    def test_create_done_reuse_goods(self):
+        gt1 = self.Goods.Type.insert(code='RACK/EMPTY')
+        gt2 = self.Goods.Type.insert(code='POWERAMP')
+
+        self.create_outcome_type(dict(default={
+            'inputs': [
+                {'type': 'RACK/EMPTY',
+                 'quantity': 1,
+                 },
+            ],
+            'inputs_properties': {
+                'planned': {
+                    'forward': ['power'],
+                    },
+                },
+            'allow_extra_inputs': True,
+        }))
+        avatars = self.create_goods(((gt1, 1), (gt2, 1)))
+        avatars[1].goods.set_property('power', 300)
+        arrival = self.Operation.Arrival.create(
+            state='done',
+            dt_execution=self.dt_test1,
+            goods_type=self.outcome_type,
+            goods_code='FLY/12',
+            location=self.stock,
+            goods_properties=dict(material='plywood'))
+        target_avatar = arrival.outcomes[0]
+        target_avatar.update(state='past', dt_until=self.dt_test2)
+        target_goods = target_avatar.goods
+        target_goods_id = target_goods.id
+        extra_params = dict(outcome_goods_id=target_goods_id)
+
+        def make_assembly():
+            return self.Assembly.create(inputs=avatars,
+                                        outcome_type=self.outcome_type,
+                                        name='default',
+                                        parameters=extra_params,
+                                        dt_execution=self.dt_test3,
+                                        state='planned')
+
+        assembly = make_assembly()
+        self.assertEqual(assembly.specification['outcome_goods_id'],
+                         target_goods_id)
+
+        outcome_goods = self.assert_singleton(assembly.outcomes).goods
+        self.assertEqual(outcome_goods, target_goods)
+        self.assertEqual(
+            outcome_goods.properties.as_dict(),
+            dict(batch=None,
+                 material='plywood',
+                 power=300,
+                 contents=[dict(type='POWERAMP',
+                                quantity=1,
+                                forward_properties=['power'],
+                                properties=dict(batch=None),
+                                local_goods_ids=[avatars[1].goods.id],
+                                ),
+                           ],
+                 ))
+
+        # cancel() does not destroy the Goods, provided they have at least
+        # an Avatar
+        # (also starting over to test the code checking)
+        assembly.cancel()
+        self.assertIsNotNone(self.Goods.query().get(target_goods_id))
+
+        extra_params['outcome_goods_code'] = 'FLY/12'
+        assembly = make_assembly()
+        outcome_goods = self.assert_singleton(assembly.outcomes).goods
+        self.assertEqual(outcome_goods, target_goods)
+
+        # starting over again, this time to test various checks raising
+        # exceptions
+        assembly.cancel()
+
+        # wrong code
+        extra_params['outcome_goods_code'] = 'FLY/11'
+        with self.assertRaises(ValueError) as arc:
+            make_assembly()
+        exc = arc.exception
+        self.assertEqual(exc.args, (target_goods_id, 'code'))
+        extra_params['outcome_goods_code'] = 'FLY/12'
+
+        # existence of non-past avatars
+        for state in ('present', 'future'):
+            target_avatar.state = state
+            with self.assertRaises(ValueError) as arc:
+                make_assembly()
+                exc = arc.exception
+                self.assertEqual(exc.args, (target_goods_id, 'avatars'))
+        target_avatar.state = 'past'
+
+        # Wrong Goods Type
+        target_goods.type = gt2
+        with self.assertRaises(ValueError) as arc:
+            make_assembly()
+        exc = arc.exception
+        self.assertEqual(exc.args, (target_goods_id, 'type'))
+        target_goods.type = gt1
+
+        # goods can't be found
+        extra_params['outcome_goods_id'] = 0
+        with self.assertRaises(LookupError) as arc:
+            make_assembly()
+        exc = arc.exception
+        self.assertEqual(exc.args, (0, ))
+        extra_params['outcome_goods_id'] = target_goods_id
+
+    def test_create_done_goods_code(self):
+        gt1 = self.Goods.Type.insert(code='GT1')
+        gt2 = self.Goods.Type.insert(code='GT2')
+        self.create_outcome_type(dict(default={
+            'outcome_goods_code': 'FOO/BAR',
+            'inputs': [
+                {'type': 'GT1', 'quantity': 2},
+                {'type': 'GT2', 'quantity': 1},
+            ],
+        }))
+        avatars = self.create_goods(((gt1, 2), (gt2, 1)))
+        avatars[0].goods.set_property('expiration_date', '2010-01-01')
+
+        assembly = self.Assembly.create(inputs=avatars,
+                                        outcome_type=self.outcome_type,
+                                        name='default',
+                                        state='done')
+
+        outcome = self.assert_singleton(assembly.outcomes)
+        self.assertEqual(outcome.goods.code, 'FOO/BAR')
+
     def test_create_basic_errors(self):
         gt = self.Goods.Type.insert(code='GT1')
 
