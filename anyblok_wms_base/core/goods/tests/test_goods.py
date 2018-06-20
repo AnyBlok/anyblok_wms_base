@@ -130,18 +130,34 @@ class TestGoods(BlokTestCase):
             goods.set_property('flexible', 'foo')
 
     def test_merged_properties(self):
-        goods = self.Goods.insert(type=self.goods_type)
+        parent = self.goods_type
+        child = self.Goods.Type.insert(code='child', parent=parent)
+        goods = self.Goods.insert(type=child)
         goods.set_property('holy', 'grail')
         self.assertEqual(goods.merged_properties(),
                          dict(holy='grail',
                               batch=None),  # always present (column)
                          )
-        self.goods_type.properties = dict(holy='arthur', bar=2)
+        parent.properties = dict(holy='arthur')
+        child.properties = dict(bar=2)
         self.assertEqual(goods.merged_properties(),
                          dict(holy='grail',
                               bar=2,
                               batch=None),  # always present (column)
                          )
+
+    def test_merged_properties_type_only(self):
+        parent = self.goods_type
+        child = self.Goods.Type.insert(code='child', parent=parent)
+
+        goods = self.Goods.insert(type=child)
+        self.assertEqual(goods.merged_properties(), {})
+
+        parent.properties = dict(holy='arthur')
+        child.properties = dict(bar=2)
+        self.assertEqual(goods.merged_properties(),
+                         dict(holy='arthur',
+                              bar=2))
 
     def test_prop_api_internal(self):
         """Internal implementation details of Goods dict API.
