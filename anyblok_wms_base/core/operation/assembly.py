@@ -7,6 +7,7 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 import itertools
+from sqlalchemy import or_
 
 from anyblok import Declarations
 from anyblok.column import Integer
@@ -524,6 +525,8 @@ class Assembly(Operation):
               'outcome_properties': {
                   'started': {'life': ['const', 'brian']}
               },
+              'outcome_goods_id': 345,
+              'outcome_goods_code': 'ABC',
               'inputs': [
                  {},
                  {'code': 'ABC'},
@@ -580,6 +583,23 @@ class Assembly(Operation):
              dicts of Properties to set on the outcome; the values
              are pairs ``(TYPE, EXPRESSION)``, evaluated by passing as
              positional arguments to :meth:`eval_typed_expr`.
+        * ``outcome_goods_id`` (makes sense mostly in :attr:parameters):
+            this allows to reuse an existing Goods record, which can be
+            useful in cases where something is repeatedly split into parts
+            and reassembled, thus avoiding to pollute the database with
+            many useless Goods records. The first real use case is a 19"
+            flight case that holds audio devices.
+
+            The Assembly will
+            check that there is indeed a Goods record with that ``id`, with
+            the proper :ref:`Type <goods_type` and code if
+            ``outcome_goods_code`` is also specified. The Assembly will also
+            make sure that all Avatars of this Goods record are in the
+            ``past`` state.
+        * ``outcome_goods_code``:
+            if ``outcome_goods_id`` is not specified, this is simply the
+            :attr:`code <anyblok_wms_base.core.goods.goods.Goods.code>` to
+            set on the newly created Goods record.
         * ``inputs_properties``:
              a dict whose keys are Assembly states, and values are themselves
              dicts with key/values:
@@ -927,17 +947,45 @@ class Assembly(Operation):
             inp.update(**input_upd)
 
         self.check_match_inputs(state, for_creation=True)
-        Goods = self.registry.Wms.Goods
-        Goods.Avatar.insert(
-            goods=Goods.insert(
-                type=self.outcome_type,
-                properties=Goods.Properties.create(
-                    **self.outcome_properties(state, for_creation=True))),
+        self.registry.Wms.Goods.Avatar.insert(
+            goods=self.prepare_goods(),
             location=self.inputs[0].location,
             reason=self,
             state=outcome_state,
             dt_from=dt_exec,
             dt_until=None)
+
+    def prepare_goods(self):
+        """Create or reuse the outcome's Goods record.
+        """
+        Goods = self.registry.Wms.Goods
+        spec = self.specification
+        goods_id = spec.get('outcome_goods_id')
+        goods_code = spec.get('outcome_goods_code')
+        propdict = self.outcome_properties(self.state, for_creation=True)
+        if goods_id is None:
+            return Goods.insert(
+                type=self.outcome_type,
+                code=goods_code,
+                properties=Goods.Properties.create(**propdict))
+        goods = Goods.query().get(goods_id)
+        if goods is None:
+            # TODO precise exc
+            raise LookupError(goods_id)
+        if goods.type != self.outcome_type:
+            raise ValueError(goods_id, 'type')
+        if goods_code is not None and goods.code != goods_code:
+            # TODO precise exc
+            raise ValueError(goods_id, 'code')
+        Avatar = Goods.Avatar
+        if Avatar.query().filter(Avatar.state != 'past',
+                                 or_(Avatar.dt_until.is_(None),
+                                     Avatar.dt_until > self.dt_execution),
+                                 Avatar.goods == goods).count():
+            # TODO precise exc
+            raise ValueError(goods_id, 'avatars')
+        goods.update_properties(propdict)
+        return goods
 
     def execute_planned(self):
         """Check or rematch inputs, update properties and states.
