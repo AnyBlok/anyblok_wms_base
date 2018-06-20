@@ -7,6 +7,7 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 import itertools
+from sqlalchemy import or_
 
 from anyblok import Declarations
 from anyblok.column import Integer
@@ -978,6 +979,8 @@ class Assembly(Operation):
             raise ValueError(goods_id, 'code')
         Avatar = Goods.Avatar
         if Avatar.query().filter(Avatar.state != 'past',
+                                 or_(Avatar.dt_until.is_(None),
+                                     Avatar.dt_until > self.dt_execution),
                                  Avatar.goods == goods).count():
             # TODO precise exc
             raise ValueError(goods_id, 'avatars')

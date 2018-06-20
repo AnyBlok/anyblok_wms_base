@@ -8,6 +8,7 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 import itertools
 from datetime import datetime
+from datetime import timedelta
 
 from anyblok_wms_base.testing import BlokTestCase
 from anyblok_wms_base.testing import WmsTestCase
@@ -947,13 +948,21 @@ class TestAssembly(WmsTestCase):
         extra_params['outcome_goods_code'] = 'FLY/12'
 
         # existence of non-past avatars
-        for state in ('present', 'future'):
-            target_avatar.state = state
+        for state, dt_until in (('present', self.dt_test3 + timedelta(1)),
+                                ('future', None)):
+            target_avatar.update(state=state, dt_until=dt_until)
             with self.assertRaises(ValueError) as arc:
                 make_assembly()
         exc = arc.exception
         self.assertEqual(exc.args, (target_goods_id, 'avatars'))
-        target_avatar.state = 'past'
+
+        # but non-past avatar before the execution date are accepted
+        for state, dt_until in (('present', self.dt_test1),
+                                ('future', self.dt_test2)):
+            target_avatar.update(state=state, dt_until=dt_until)
+            make_assembly().cancel()
+
+        target_avatar.update(state='past', dt_until=self.dt_test2)
 
         # Wrong Goods Type
         target_goods.type = gt2
