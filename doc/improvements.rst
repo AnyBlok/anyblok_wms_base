@@ -311,6 +311,76 @@ Well, yeah, this page should be superseded. How ?
   Maybe that's too formal, but keeping somehow in the docs allows to
   cross-reference, like we did already in :ref:`goal_stubborn_reality`
 
+.. _improvement_goods_location:
+
+Droping Locations altogether in favor of Goods
+----------------------------------------------
+
+In some cases, one wants to put the goods into some containing object,
+and then perhaps move that containing object. The use cases I have
+currently are cables in a plastic box and audio devices in a flight
+case. Let's use the first one as example.
+
+Currently, if one considers the box as a Location, this leaves the
+cables it holds accessible to perform operations on them : perhaps
+move them out of the box, test them and mark them as working or not,
+etc. But, it does not represent the very convenient thing that can
+happen in the physical reality: close the lid, move the whole at once
+into a truck.
+
+On the other hand, one can choose to represent the box as a Goods record, and
+load them via an Assembly operation. Then its ``contents`` property
+will have the Goods that are stored in the box, but each time one
+wants to use or test a cable, one has to perform an Unpack and an
+Assembly again. One would have to ignore that the Unpack will produce
+avatar
+for all the cables in the Location where the box sits, hence much confusion:
+in reality, the cables are still in the box, not aside of it.
+Moreover, unless special effort is done to avoid that, each
+pack/unpack cycle would lead to change of ids, meaning that the system
+considers that the box has changed enough to be a new box.
+On top of that, the contents are not visible in quantity queries…
+
+Add the issues mentioned in :ref:`improvement_location_name` on top of
+that, and it's clear we have a design problem to solve.
+
+In real life, the plastic box is both an object that can be tossed
+into a truck and that can hold other objects, so why should we do
+thing differently in an application meant to represent physical
+objects ?
+
+We could :
+
+* remove the Location model
+* make the ``location`` field of Avatars point towards a Goods record
+* maybe add a flag in :ref:`goods_behaviours` to indicate that some Goods can
+  contain other ones.
+* think of the interplay of this with the ``contents`` propery
+  (variable part of :ref:`op_unpack`) and with packing/unpacking in
+  general.
+* accept the idea that in our system, even a warehouse, not to speak
+  of the universe, is as much an object as a spoon is, and it is, in
+  fact, a very big and unmovable object.
+
+Assuming this doesn't introduce unsolvable problems, this would
+also take care of all the issues of :ref:`improvement_location_name`:
+
+* instead of the obscure ``parent`` of the existing hierarchy, we have
+  the standard Avatar ``location`` field to indicate that some
+  location is inside another: it's now very clear
+  that it's about the position in space of the location, instead of
+  maybe some logical grouping.
+* we wouldn't have the terminology problem that the name might suggest that the
+  position in space is fixed any more
+* we'd gain immediately that Locations, being Goods are now typed. The
+  Type itself can hold interesting information like dimensions etc.
+
+This would leave us mostly with two concepts: Goods (physical objects)
+and Operations, which is probably intellectually satisfying, but we'd
+have a new problem: "Goods" now would sound
+too specific and would have to be replaced by a more general name
+(Item ? Object ? PhysObj ?)
+
 Implemented
 ~~~~~~~~~~~
 
