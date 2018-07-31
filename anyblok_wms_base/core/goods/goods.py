@@ -464,7 +464,7 @@ class Avatar:
     This may become an ENUM once Anyblok supports them.
     """
 
-    location = Many2One(model=Model.Wms.Location,
+    location = Many2One(model=Model.Wms.Goods,
                         nullable=False,
                         index=True)
     """Where the Goods are/will be/were.

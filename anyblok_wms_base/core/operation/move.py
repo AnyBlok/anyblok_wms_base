@@ -27,7 +27,7 @@ class Move(Mixin.WmsSingleInputOperation, Operation):
                  primary_key=True,
                  autoincrement=False,
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
-    destination = Many2One(model='Model.Wms.Location',
+    destination = Many2One(model='Model.Wms.Goods',
                            nullable=False)
 
     def specific_repr(self):

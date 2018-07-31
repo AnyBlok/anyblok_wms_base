@@ -122,12 +122,12 @@ class WmsTestCaseWithGoods(SharedDataTestCase, WmsTestCase):
         cls.dt_test2 = datetime(2018, 1, 2, tzinfo=tz)
         cls.dt_test3 = datetime(2018, 1, 3, tzinfo=tz)
 
-        Wms = cls.Wms
         Operation = cls.Operation
-        cls.goods_type = cls.Goods.Type.insert(label="My good type",
-                                               code='MyGT')
-        cls.incoming_loc = Wms.Location.insert(label="Incoming location")
-        cls.stock = Wms.Location.insert(label="Stock")
+        Goods = cls.Goods
+        cls.goods_type = Goods.Type.insert(label="My good type", code='MyGT')
+        location_type = Goods.Type.insert(code="LOC")
+        cls.incoming_loc = Goods.insert(type=location_type)
+        cls.stock = Goods.insert(type=location_type)
 
         cls.arrival = Operation.Arrival.create(goods_type=cls.goods_type,
                                                location=cls.incoming_loc,

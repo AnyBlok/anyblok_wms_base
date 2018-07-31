@@ -12,40 +12,30 @@ from sqlalchemy import literal
 
 from anyblok import Declarations
 from anyblok.column import Text
-from anyblok.column import Integer
-from anyblok.relationship import Many2One
 
 register = Declarations.register
 Model = Declarations.Model
 
 
 @register(Model.Wms)
-class Location:
-    """A stock location.
+class Goods:
+    """Methods for Goods that are also Goods containers.
 
-    Locations are perhaps ill-named (see :ref:`improvement_location_name`), but
-    ultimately they represent the idea of "where" the Goods are. There's no
-    reason a priori to consider that Locations themselves are not moving.
+    If its :ref:`goods_type Type` has the `container=True` behaviour, then a
+    Goods record is suitable as an Avatar location.
 
-    Locations form a tree-like structure (a forest), which is encoded through
-    the :attr:`parent` field, and have :attr:`tags <tag>` which can be used to
-    express functional meaning, especially for
+    Therefore, Goods containers form a tree-like structure (a forest).
+
+    Goods containers also have a ``container_tag`` property,
+    which can be used to express functional meaning, especially for
     :meth:`quantity computations
     <anyblok_wms_base.core.wms.Wms.quantity>`.
 
-    Downstream libraries and applications which don't want to use this hierarchy
-    and the defaulting of tags that comes along can do so by overriding
-    :meth:`flatten_hierarchy_with_tags` and :meth:`resolve_tag`
-
-    TODO add location types to encode behavioral properties (internal, EDI,
-    stuff like size ?)
+    Downstream libraries and applications which don't want to use this
+    hierarchy and the defaulting of tags that comes along can do so by
+    overriding :meth:`flatten_hierarchy_with_tags` and :meth:`resolve_tag`
     """
-    id = Integer(label="Identifier", primary_key=True)
-    code = Text(label="Identifying code")  # TODO index
-    label = Text(label="Label")
-    parent = Many2One(label="Parent location",
-                      model='Model.Wms.Location')
-    tag = Text()
+    container_tag = Text()
     """Tag for Quantity grouping.
 
     This field is a kind of tag that can be used to filter in quantity
@@ -67,21 +57,18 @@ class Location:
     See in unit tests for a demonstration of that.
     """
 
-    def __str__(self):
-        return ("(id={self.id}, code={self.code!r}, "
-                "label={self.label!r})".format(self=self))
-
-    def __repr__(self):
-        return "Wms.Location" + str(self)
-
     def resolve_tag(self):
         """Return self.tag, or by default ancestor's."""
         # TODO make a recursive query for this also
-        if self.tag is not None:
-            return self.tag
-        if self.parent is None:
+        if self.container_tag is not None:
+            return self.container_tag
+        # TODO this should be done at a certain date, too, with
+        # appropriate states
+        parent = self.Avatar.query().filter_by(
+            location=self, state='present').first()
+        if parent is None:
             return None
-        return self.parent.resolve_tag()
+        return parent.resolve_tag()
 
     @classmethod
     def flatten_subquery_with_tags(cls, top=None, resolve_top_tag=True):

@@ -65,7 +65,7 @@ class Arrival(Operation):
     Can be ``None`` in case the arrival process issues the code only
     at the time of actual arrival.
     """
-    location = Many2One(model='Model.Wms.Location')
+    location = Many2One(model='Model.Wms.Goods')
     """Will be the location of the initial Avatar."""
 
     inputs_number = 0
