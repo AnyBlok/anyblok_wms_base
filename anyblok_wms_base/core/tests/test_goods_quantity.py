@@ -35,10 +35,7 @@ class TestQuantity(WmsTestCase):
             dt_execution=self.dt_test1,
             state='done')
 
-    def assertQuantity(self, quantity, **kwargs):
-        self.assertEqual(
-            self.registry.Wms.quantity(**kwargs),
-            quantity)
+        self.default_quantity_location = None
 
     def insert_goods(self, qty, state, dt_from, until=None, location=None):
         for _ in range(qty):
@@ -57,22 +54,22 @@ class TestQuantity(WmsTestCase):
         self.insert_goods(4, 'future', self.dt_test3)
         self.insert_goods(2, 'past', self.dt_test1, until=self.dt_test2)
 
-        self.assertQuantity(3)
-        self.assertQuantity(3, goods_type=self.goods_type)
-        self.assertQuantity(0, goods_type=self.Goods.Type.insert(code='other'))
+        self.assert_quantity(3)
+        self.assert_quantity(3, goods_type=self.goods_type)
+        self.assert_quantity(0, goods_type=self.Goods.Type.insert(code='other'))
 
-        self.assertQuantity(7, additional_states=['future'],
-                            at_datetime=self.dt_test3)
+        self.assert_quantity(7, additional_states=['future'],
+                             at_datetime=self.dt_test3)
 
-        self.assertQuantity(3, additional_states=['future'],
-                            at_datetime=self.dt_test2)
+        self.assert_quantity(3, additional_states=['future'],
+                             at_datetime=self.dt_test2)
         # the 'past' and 'present' ones were already there
-        self.assertQuantity(4, additional_states=['past'],
-                            at_datetime=self.dt_test1)
+        self.assert_quantity(4, additional_states=['past'],
+                             at_datetime=self.dt_test1)
         # the 'past' one was not there anymore,
         # but the two 'present' ones had already arrived
-        self.assertQuantity(3, additional_states=['past'],
-                            at_datetime=self.dt_test2)
+        self.assert_quantity(3, additional_states=['past'],
+                             at_datetime=self.dt_test2)
 
     def test_quantity_loc_tag(self):
         """No starting location, but filtering with location tags."""
@@ -82,6 +79,6 @@ class TestQuantity(WmsTestCase):
         self.insert_goods(1, 'present', self.dt_test2, location=self.stock)
         self.insert_goods(1, 'present', self.dt_test2, location=sub)
         self.insert_goods(1, 'present', self.dt_test2, location=exc)
-        self.assertQuantity(2, location_tag='ok')
-        self.assertQuantity(1, location_tag='nope')
-        self.assertQuantity(3)
+        self.assert_quantity(2, location_tag='ok')
+        self.assert_quantity(1, location_tag='nope')
+        self.assert_quantity(3)

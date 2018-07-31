@@ -22,11 +22,10 @@ class TestAggregate(WmsTestCase):
 
     def setUp(self):
         super(TestAggregate, self).setUp()
-        Wms = self.Wms = self.registry.Wms
-        Operation = Wms.Operation
-        self.goods_type = Wms.Goods.Type.insert(label="My good type",
-                                                code="MyGT")
-        self.loc = Wms.Location.insert(label="Incoming location")
+        Operation = self.Operation
+        self.goods_type = self.Goods.Type.insert(label="My good type",
+                                                 code="MyGT")
+        self.loc = self.Wms.Location.insert(label="Incoming location")
 
         # The arrival fields doesn't matter, we'll insert goods directly
         self.arrival = Operation.Arrival.insert(goods_type=self.goods_type,
@@ -35,29 +34,23 @@ class TestAggregate(WmsTestCase):
                                                 dt_execution=self.dt_test1,
                                                 quantity=17)
 
-        Avatar = Wms.Goods.Avatar
+        Avatar = self.Goods.Avatar
         self.avatars = [
-            Avatar.insert(goods=Wms.Goods.insert(quantity=qty,
-                                                 type=self.goods_type),
+            Avatar.insert(goods=self.Goods.insert(quantity=qty,
+                                                  type=self.goods_type),
                           location=self.loc,
                           dt_from=self.dt_test1,
                           state='future',
                           reason=self.arrival)
             for qty in (1, 2)]
         self.Agg = Operation.Aggregate
-        self.Goods = Wms.Goods
+
+        self.default_quantity_location = self.loc
 
     def plan_aggregate(self):
         return self.Agg.create(inputs=self.avatars,
                                state='planned',
                                dt_execution=self.dt_test2)
-
-    def assertQuantity(self, quantity, **kwargs):
-        self.assertEqual(
-            self.Wms.quantity(location=self.loc,
-                              goods_type=self.goods_type,
-                              **kwargs),
-            quantity)
 
     def test_create_done_same_props(self):
         props = self.Goods.Properties.insert(flexible=dict(foo='bar'))
@@ -76,8 +69,8 @@ class TestAggregate(WmsTestCase):
         self.assertEqual(new_goods.quantity, 3)
 
         for dt in (self.dt_test1, self.dt_test2, self.dt_test3):
-            self.assertQuantity(3, at_datetime=dt,
-                                additional_states=('past', 'future'))
+            self.assert_quantity(3, at_datetime=dt,
+                                 additional_states=('past', 'future'))
 
     def test_create_done_equal_props(self):
         """Test equality check for different records of properties."""
@@ -248,17 +241,17 @@ class TestAggregate(WmsTestCase):
 
         agg = self.plan_aggregate()
         self.assertEqual(agg.inputs, self.avatars)
-        self.assertQuantity(3)
+        self.assert_quantity(3)
         for dt in (self.dt_test1, self.dt_test2, self.dt_test3):
-            self.assertQuantity(3, at_datetime=dt,
-                                additional_states=('past', 'future'))
+            self.assert_quantity(3, at_datetime=dt,
+                                 additional_states=('past', 'future'))
 
         agg.execute(dt_execution=self.dt_test3)
 
-        self.assertQuantity(3)
+        self.assert_quantity(3)
         for dt in (self.dt_test1, self.dt_test2, self.dt_test3):
-            self.assertQuantity(3, at_datetime=dt,
-                                additional_states=('past', 'future'))
+            self.assert_quantity(3, at_datetime=dt,
+                                 additional_states=('past', 'future'))
 
         for record in self.avatars:
             self.assertEqual(record.state, 'past')

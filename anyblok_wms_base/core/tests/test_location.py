@@ -17,20 +17,19 @@ class TestLocation(WmsTestCase):
 
     def setUp(self):
         super(TestLocation, self).setUp()
-        Wms = self.Wms = self.registry.Wms
-
-        self.Goods = Wms.Goods
-        self.Avatar = Wms.Goods.Avatar
+        self.Avatar = self.Goods.Avatar
         self.goods_type = self.Goods.Type.insert(label="My goods",
                                                  code='MyGT')
 
-        self.Location = Wms.Location
-        self.stock = Wms.Location.insert(label="Stock", code='STK')
-        self.arrival = Wms.Operation.Arrival.insert(
+        self.Location = self.Wms.Location
+        self.stock = self.Location.insert(label="Stock", code='STK')
+        self.arrival = self.Operation.Arrival.insert(
             goods_type=self.goods_type,
             location=self.stock,
             dt_execution=self.dt_test1,
             state='done')
+
+        self.default_quantity_location = self.stock
 
     def insert_goods(self, qty, state, dt_from, until=None, location=None):
         for _ in range(qty):
@@ -46,30 +45,25 @@ class TestLocation(WmsTestCase):
         self.assertTrue('STK' in repr(self.stock))
         self.assertTrue('STK' in str(self.stock))
 
-    def assertQuantity(self, quantity, **kwargs):
-        kwargs.setdefault('location', self.stock)
-        kwargs.setdefault('goods_type', self.goods_type)
-        self.assertEqual(self.Wms.quantity(**kwargs), quantity)
-
     def test_quantity(self):
         self.insert_goods(2, 'present', self.dt_test1)
         self.insert_goods(1, 'present', self.dt_test2)
         self.insert_goods(4, 'future', self.dt_test3)
         self.insert_goods(2, 'past', self.dt_test1, until=self.dt_test2)
 
-        self.assertQuantity(3)
-        self.assertQuantity(7, additional_states=['future'],
-                            at_datetime=self.dt_test3)
+        self.assert_quantity(3)
+        self.assert_quantity(7, additional_states=['future'],
+                             at_datetime=self.dt_test3)
 
-        self.assertQuantity(3, additional_states=['future'],
-                            at_datetime=self.dt_test2)
+        self.assert_quantity(3, additional_states=['future'],
+                             at_datetime=self.dt_test2)
         # the 'past' and 'present' ones were already there
-        self.assertQuantity(4, additional_states=['past'],
-                            at_datetime=self.dt_test1)
+        self.assert_quantity(4, additional_states=['past'],
+                             at_datetime=self.dt_test1)
         # the 'past' one was not there anymore,
         # but the two 'present' ones had already arrived
-        self.assertQuantity(3, additional_states=['past'],
-                            at_datetime=self.dt_test2)
+        self.assert_quantity(3, additional_states=['past'],
+                             at_datetime=self.dt_test2)
 
     def test_quantity_at_infinity(self):
         self.insert_goods(2, 'present', self.dt_test1, until=self.dt_test2)
@@ -78,19 +72,19 @@ class TestLocation(WmsTestCase):
         self.insert_goods(4, 'future', self.dt_test3)
         self.insert_goods(2, 'past', self.dt_test1, until=self.dt_test2)
 
-        self.assertQuantity(1, at_datetime=DATE_TIME_INFINITY)
-        self.assertQuantity(5, additional_states=['future'],
-                            at_datetime=DATE_TIME_INFINITY)
+        self.assert_quantity(1, at_datetime=DATE_TIME_INFINITY)
+        self.assert_quantity(5, additional_states=['future'],
+                             at_datetime=DATE_TIME_INFINITY)
 
     def test_no_match(self):
         """Test that quantity is not None if no Goods match the criteria."""
-        self.assertQuantity(0)
+        self.assert_quantity(0)
 
     def test_at_datetime_required(self):
         with self.assertRaises(ValueError):
-            self.assertQuantity(0, additional_states=['past'])
+            self.assert_quantity(0, additional_states=['past'])
         with self.assertRaises(ValueError):
-            self.assertQuantity(0, additional_states=['future'])
+            self.assert_quantity(0, additional_states=['future'])
 
     def test_tag_recursion(self):
         Location = self.Location
@@ -156,8 +150,8 @@ class TestLocation(WmsTestCase):
 
         try:
             Location.flatten_subquery_with_tags = flatten_subquery_with_tags
-            self.assertQuantity(5)
-            self.assertQuantity(3, location_tag='foo')
+            self.assert_quantity(5)
+            self.assert_quantity(3, location_tag='foo')
         finally:
             Location.flatten_subquery_with_tags = orig_meth
 
@@ -179,15 +173,15 @@ class TestLocation(WmsTestCase):
         sub = self.Location.insert(code='sub', parent=self.stock, tag='foo')
         self.insert_goods(3, 'present', self.dt_test1, location=sub)
 
-        self.assertQuantity(5)
+        self.assert_quantity(5)
 
         # this excludes sub, which has a tag
-        self.assertQuantity(2, location_tag=None)
+        self.assert_quantity(2, location_tag=None)
 
-        self.assertQuantity(3, location_tag='foo')
+        self.assert_quantity(3, location_tag='foo')
 
         self.stock.tag = 'foo'
-        self.assertQuantity(5, location_tag='foo')
+        self.assert_quantity(5, location_tag='foo')
 
     def test_quantity_recursive_top_tag_none(self):
         """Tag filtering works even if topmost location has no direct tag.
@@ -201,8 +195,8 @@ class TestLocation(WmsTestCase):
         self.insert_goods(2, 'present', self.dt_test1, location=sub2)
         # in a previous version, the recursion would have started with sub's
         # tag being None and propagate that to sub2. Now it doesn't
-        self.assertQuantity(3, location=sub, location_tag='sell')
-        self.assertQuantity(6)
+        self.assert_quantity(3, location=sub, location_tag='sell')
+        self.assert_quantity(6)
 
     def test_quantity_tag_non_recursive(self):
         # normally it'd be redundant to ask for tag quantity for
@@ -211,17 +205,17 @@ class TestLocation(WmsTestCase):
         # if upstream inputs are dynamic enough)
 
         self.insert_goods(2, 'present', self.dt_test1)
-        self.assertQuantity(2, location_tag=None, location_recurse=False)
-        self.assertQuantity(0, location_tag='foo', location_recurse=False)
+        self.assert_quantity(2, location_tag=None, location_recurse=False)
+        self.assert_quantity(0, location_tag='foo', location_recurse=False)
         self.stock.tag = 'foo'
-        self.assertQuantity(2, location_tag='foo', location_recurse=False)
+        self.assert_quantity(2, location_tag='foo', location_recurse=False)
 
     def test_quantity_tag_non_recursive_inherited(self):
         # still works if the tag is actually inherited
         sub = self.Location.insert(code='sub', parent=self.stock)
         self.stock.tag = 'foo'
         self.insert_goods(2, 'present', self.dt_test1, location=sub)
-        self.assertQuantity(2,
-                            location=sub,
-                            location_tag='foo',
-                            location_recurse=False)
+        self.assert_quantity(2,
+                             location=sub,
+                             location_tag='foo',
+                             location_recurse=False)

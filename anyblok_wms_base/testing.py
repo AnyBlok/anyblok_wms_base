@@ -20,6 +20,8 @@ try:
 except ImportError:
     from .sdtestcase import SharedDataTestCase
 
+_missing = object()
+
 
 class WmsTestCase(BlokTestCase):
     """Provide some common utilities.
@@ -27,6 +29,15 @@ class WmsTestCase(BlokTestCase):
     Probably some of these should be contributed back into Anyblok, but
     we'll see.
     """
+
+    default_quantity_location = None
+
+    @classmethod
+    def setUpClass(cls):
+        super(WmsTestCase, cls).setUpClass()
+        cls.Wms = Wms = cls.registry.Wms
+        cls.Operation = Wms.Operation
+        cls.Goods = Wms.Goods
 
     def setUp(self):
         tz = self.tz = FixedOffsetTimezone(0)
@@ -58,6 +69,17 @@ class WmsTestCase(BlokTestCase):
         self.assertEqual(len(collection), 1)
         for elt in collection:
             return elt
+
+    def assert_quantity(self, quantity, location=_missing, goods_type=_missing,
+                        **kwargs):
+        if location is _missing:
+            location = self.default_quantity_location
+        if goods_type is _missing:
+            goods_type = self.goods_type
+
+        self.assertEqual(self.Wms.quantity(location=location,
+                                           goods_type=goods_type,
+                                           **kwargs), quantity)
 
     def sorted_props(self, record):
         """Extract Goods Properties, as a sorted tuple.
@@ -100,9 +122,9 @@ class WmsTestCaseWithGoods(SharedDataTestCase, WmsTestCase):
         cls.dt_test2 = datetime(2018, 1, 2, tzinfo=tz)
         cls.dt_test3 = datetime(2018, 1, 3, tzinfo=tz)
 
-        Wms = cls.Wms = cls.registry.Wms
-        Operation = cls.Operation = Wms.Operation
-        cls.goods_type = Wms.Goods.Type.insert(label="My good type",
+        Wms = cls.Wms
+        Operation = cls.Operation
+        cls.goods_type = cls.Goods.Type.insert(label="My good type",
                                                code='MyGT')
         cls.incoming_loc = Wms.Location.insert(label="Incoming location")
         cls.stock = Wms.Location.insert(label="Stock")
@@ -116,8 +138,7 @@ class WmsTestCaseWithGoods(SharedDataTestCase, WmsTestCase):
         assert len(cls.arrival.outcomes) == 1
         cls.avatar = cls.arrival.outcomes[0]
         cls.goods = cls.avatar.goods
-        cls.Goods = Wms.Goods
-        cls.Avatar = Wms.Goods.Avatar
+        cls.Avatar = cls.Goods.Avatar
 
 
 class ConcurrencyBlokTestCase(BlokTestCase):

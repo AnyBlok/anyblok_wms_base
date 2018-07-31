@@ -17,7 +17,7 @@ class TestDeparture(WmsTestCaseWithGoods):
         super(TestDeparture, self).setUp()
         self.Departure = self.Operation.Departure
 
-    def assertQuantities(self, loc=None, **quantities):
+    def assert_quantities(self, loc=None, **quantities):
         if loc is None:
             loc = self.incoming_loc
         for state, info in quantities.items():
@@ -26,11 +26,10 @@ class TestDeparture(WmsTestCaseWithGoods):
             else:
                 qty, at_datetime = info
                 add_state = [state]
-            self.assertEqual(self.Wms.quantity(location=loc,
-                                               goods_type=self.goods_type,
-                                               additional_states=add_state,
-                                               at_datetime=at_datetime),
-                             qty)
+            self.assert_quantity(qty,
+                                 location=loc,
+                                 additional_states=add_state,
+                                 at_datetime=at_datetime)
 
     def test_partial_done(self):
         self.avatar.state = 'present'
@@ -49,13 +48,13 @@ class TestDeparture(WmsTestCaseWithGoods):
         self.assertEqual(sent.goods.quantity, 1)
         # dt_until being exclusive, at self.dt_test2 the
         # goods were already sent.
-        self.assertQuantities(future=(2, self.dt_test2),
-                              present=2,
-                              past=(2, self.dt_test2))
+        self.assert_quantities(future=(2, self.dt_test2),
+                               present=2,
+                               past=(2, self.dt_test2))
         # ... and at self.dt_test1, we still had the original ones
-        self.assertQuantities(future=(2, self.dt_test2),
-                              present=2,
-                              past=(3, self.dt_test1))
+        self.assert_quantities(future=(2, self.dt_test2),
+                               present=2,
+                               past=(3, self.dt_test1))
 
     def test_partial_planned_execute(self):
         dep = self.Departure.create(quantity=1,
@@ -67,10 +66,10 @@ class TestDeparture(WmsTestCaseWithGoods):
         self.assertEqual(dep.follows[0].follows, [self.arrival])
 
         self.avatar.state = 'present'
-        self.assertQuantities(future=(2, self.dt_test2),
-                              present=3,
-                              past=(3, self.dt_test1))
-        self.assertQuantities(past=(3, self.dt_test1))
+        self.assert_quantities(future=(2, self.dt_test2),
+                               present=3,
+                               past=(3, self.dt_test1))
+        self.assert_quantities(past=(3, self.dt_test1))
         dep.execute(dt_execution=self.dt_test3)
 
         sent = self.Avatar.query().filter(self.Avatar.reason == dep).all()
@@ -81,10 +80,10 @@ class TestDeparture(WmsTestCaseWithGoods):
         self.assertEqual(sent.goods.quantity, 1)
         # dt_until being exclusive, at self.dt_test3 the
         # goods were already sent, at self.dt_test2, they aren't yet
-        self.assertQuantities(future=(2, self.dt_test3),
-                              present=2,
-                              past=(2, self.dt_test3))
-        self.assertQuantities(past=(3, self.dt_test2))
+        self.assert_quantities(future=(2, self.dt_test3),
+                               present=2,
+                               past=(2, self.dt_test3))
+        self.assert_quantities(past=(3, self.dt_test2))
 
     def test_repr(self):
         dep = self.Departure.create(quantity=3,

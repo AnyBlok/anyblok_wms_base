@@ -31,10 +31,6 @@ class TestSplit(WmsTestCaseWithGoods):
     arrival_kwargs = dict(quantity=3)
     """Used in setUpSharedData()."""
 
-    def setUp(self):
-        super(TestSplit, self).setUp()
-        self.Operation = self.registry.Wms.Operation
-
     def test_create_done(self):
         self.avatar.state = 'present'
         split = self.Operation.Split.create(state='done',
