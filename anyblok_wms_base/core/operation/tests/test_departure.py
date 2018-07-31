@@ -13,7 +13,6 @@ class TestDeparture(WmsTestCaseWithGoods):
 
     def setUp(self):
         super(TestDeparture, self).setUp()
-        self.stock = self.Wms.Location.insert(label="Stock")
         self.Departure = self.Operation.Departure
 
     def assert_quantities(self, loc=None, **quantities):

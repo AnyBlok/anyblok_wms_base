@@ -52,7 +52,7 @@ class Wms:
             from sublocations of ``location`` will be taken recursively into
             account.
         :param str location_tag:
-            If passed, only the Goods Avatars sitting in a Location having
+            If passed, only the Goods Avatars sitting in a location having
             or inheriting this tag will be taken into account (may seem only
             useful if ``location_recurse`` is ``True``, yet the non-recursive
             case behaves consistently).
@@ -86,7 +86,6 @@ class Wms:
         Let's get a DB with serious volume and datetimes first.
         """
         Goods = cls.registry.Wms.Goods
-        Location = cls.Location
         Avatar = Goods.Avatar
         query = cls.base_quantity_query()
         if goods_type is not None:
@@ -96,7 +95,7 @@ class Wms:
         # quantity request is not recursive (so that tag is the correct one).
         if ((location is not None and location_recurse) or
                 location_tag is not _missing):
-            cte = Location.flatten_subquery_with_tags(top=location)
+            cte = Goods.flatten_subquery_with_tags(top=location)
             query = query.join(cte, cte.c.id == Avatar.location_id)
 
         if location is not None and not location_recurse:

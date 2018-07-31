@@ -22,13 +22,12 @@ class TestQuantity(WmsTestCase):
         super(TestQuantity, self).setUp()
         Wms = self.registry.Wms
 
-        self.Goods = Wms.Goods
-        self.Avatar = Wms.Goods.Avatar
+        self.Avatar = self.Goods.Avatar
         self.goods_type = self.Goods.Type.insert(label="My goods",
                                                  code='MyGT')
 
-        self.Location = Wms.Location
-        self.stock = Wms.Location.insert(label="Stock", code='STK')
+        location_type = self.Goods.Type.insert(code="LOC")
+        self.stock = self.Goods.insert(code='STK', type=location_type)
         self.arrival = Wms.Operation.Arrival.insert(
             goods_type=self.goods_type,
             location=self.stock,
@@ -73,9 +72,19 @@ class TestQuantity(WmsTestCase):
 
     def test_quantity_loc_tag(self):
         """No starting location, but filtering with location tags."""
-        self.stock.tag = 'ok'
-        sub = self.Location.insert(code='sub', parent=self.stock)
-        exc = self.Location.insert(code='except', parent=self.stock, tag='nope')
+        self.stock.container_tag = 'ok'
+        sub = self.Goods.insert(code='sub', type=self.stock.type)
+        exc = self.Goods.insert(code='except', type=self.stock.type,
+                                container_tag='nope')
+        for loc in (sub, exc):
+            # both are inside 'stock'
+            self.Goods.Avatar.insert(goods=loc,
+                                     state='present',
+                                     location=self.stock,
+                                     dt_from=self.dt_test1,
+                                     reason=self.arrival,  # purely formal
+                                     dt_until=None)
+
         self.insert_goods(1, 'present', self.dt_test2, location=self.stock)
         self.insert_goods(1, 'present', self.dt_test2, location=sub)
         self.insert_goods(1, 'present', self.dt_test2, location=exc)

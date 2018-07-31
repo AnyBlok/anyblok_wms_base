@@ -96,10 +96,23 @@ class Goods:
     """
 
     def __str__(self):
-        return "(id={self.id}, type={self.type})".format(self=self)
+        if self.code is None:
+            fmt = "(id={self.id}, type={self.type})"
+        else:
+            # I expect direct assignment onto string litteral to be more
+            # efficient than a string manipulation
+            fmt = "(id={self.id}, code={self.code}, type={self.type})"
+        return fmt.format(self=self)
 
     def __repr__(self):
-        return "Wms.Goods(id={self.id}, type={self.type!r})".format(self=self)
+        if self.code is None:
+            fmt = "Wms.Goods(id={self.id}, type={self.type!r})"
+        else:
+            # I expect direct assignment onto string litteral to be more
+            # efficient than a string manipulation
+            fmt = ("Wms.Goods(id={self.id}, code={self.code!r}, "
+                   "type={self.type!r})")
+        return fmt.format(self=self)
 
     def has_type(self, goods_type):
         """Tell whether ``self`` has the given type.

@@ -21,8 +21,9 @@ class TestLocation(WmsTestCase):
         self.goods_type = self.Goods.Type.insert(label="My goods",
                                                  code='MyGT')
 
-        self.Location = self.Wms.Location
-        self.stock = self.Location.insert(label="Stock", code='STK')
+        self.location_type = self.Goods.Type.insert(code="LOC")
+        self.stock = self.insert_location('STK')
+
         self.arrival = self.Operation.Arrival.insert(
             goods_type=self.goods_type,
             location=self.stock,
@@ -30,6 +31,20 @@ class TestLocation(WmsTestCase):
             state='done')
 
         self.default_quantity_location = self.stock
+
+    def insert_location(self, code, parent=None, tag=None, **fields):
+        loc = self.Goods.insert(type=self.location_type,
+                                code=code,
+                                container_tag=tag,
+                                **fields)
+        if parent is not None:
+            self.Goods.Avatar.insert(goods=loc,
+                                     state='present',
+                                     location=parent,
+                                     dt_from=self.dt_test1,
+                                     reason=self.arrival,  # purely formal
+                                     dt_until=None)
+        return loc
 
     def insert_goods(self, qty, state, dt_from, until=None, location=None):
         for _ in range(qty):
@@ -40,10 +55,6 @@ class TestLocation(WmsTestCase):
                 dt_from=dt_from,
                 dt_until=until,
                 state=state)
-
-    def test_str_repr(self):
-        self.assertTrue('STK' in repr(self.stock))
-        self.assertTrue('STK' in str(self.stock))
 
     def test_quantity(self):
         self.insert_goods(2, 'present', self.dt_test1)
@@ -87,16 +98,16 @@ class TestLocation(WmsTestCase):
             self.assert_quantity(0, additional_states=['future'])
 
     def test_tag_recursion(self):
-        Location = self.Location
-        self.stock.tag = 'sellable'
-        stock_q = Location.insert(code='STK/Q', parent=self.stock, tag='qa')
-        stock_2 = Location.insert(code='STK/2', parent=self.stock)
+        Goods = self.Goods
+        self.stock.container_tag = 'sellable'
+        stock_q = self.insert_location('STK/Q', parent=self.stock, tag='qa')
+        stock_2 = self.insert_location('STK/2', parent=self.stock)
 
-        stock_q1 = Location.insert(code='STK/Q1', parent=stock_q)
-        stock_qok = Location.insert(code='STK/QOK', parent=stock_q,
-                                    tag='sellable')
+        stock_q1 = self.insert_location('STK/Q1', parent=stock_q)
+        stock_qok = self.insert_location('STK/QOK', parent=stock_q,
+                                         tag='sellable')
 
-        cte = Location.flatten_subquery_with_tags(top=self.stock)
+        cte = Goods.flatten_subquery_with_tags(top=self.stock)
         self.assertEqual(
             set(self.registry.session.query(cte.c.id, cte.c.tag).all()),
             {(self.stock.id, 'sellable'),
@@ -108,11 +119,11 @@ class TestLocation(WmsTestCase):
 
         # example with no 'top', also demonstrating how to join (in this
         # case against on Location, to get full instances
-        other = Location.insert(code='foo', tag='bar')
-        notag = Location.insert(code='notag')
-        cte = Location.flatten_subquery_with_tags()
-        joined = Location.query(
-            Location, cte.c.tag).join(cte, cte.c.id == Location.id)
+        other = self.insert_location('foo', tag='bar')
+        notag = self.insert_location('notag')
+        cte = Goods.flatten_subquery_with_tags()
+        joined = Goods.query(
+            Goods, cte.c.tag).join(cte, cte.c.id == Goods.id)
         notsellable = set(joined.filter(cte.c.tag != 'sellable').all())
         self.assertEqual(notsellable,
                          {(stock_q, 'qa'),
@@ -125,8 +136,8 @@ class TestLocation(WmsTestCase):
                          (notag, None))
 
     def test_override_tag_recursion(self):
-        Location = self.Location
-        orig_meth = Location.flatten_subquery_with_tags
+        Goods = self.Goods
+        orig_meth = Goods.flatten_subquery_with_tags
 
         @classmethod
         def flatten_subquery_with_tags(cls, top=None, resolve_top_tag=True):
@@ -136,41 +147,42 @@ class TestLocation(WmsTestCase):
             Not specifying ``top`` is not supported
             """
             prefix = top.code + '/'
-            query = Location.query(Location.id, Location.tag).filter(or_(
-                Location.code.like(prefix + '%'),
-                Location.code == top.code))
+            query = Goods.query(
+                Goods.id, Goods.container_tag.label('tag')).filter(or_(
+                    Goods.code.like(prefix + '%'),
+                    Goods.code == top.code))
             return query.subquery()
 
-        other = self.Location.insert(code='other')
+        other = self.insert_location('other')
         self.insert_goods(2, 'present', self.dt_test1)
         self.insert_goods(1, 'present', self.dt_test1, location=other)
 
-        sub = self.Location.insert(code='STK/sub', tag='foo')
+        sub = self.insert_location('STK/sub', tag='foo')
         self.insert_goods(3, 'present', self.dt_test1, location=sub)
 
         try:
-            Location.flatten_subquery_with_tags = flatten_subquery_with_tags
+            Goods.flatten_subquery_with_tags = flatten_subquery_with_tags
             self.assert_quantity(5)
             self.assert_quantity(3, location_tag='foo')
         finally:
-            Location.flatten_subquery_with_tags = orig_meth
+            Goods.flatten_subquery_with_tags = orig_meth
 
     def test_resolve_tag(self):
-        sub = self.Location.insert(code='sub', parent=self.stock)
-        sub2 = self.Location.insert(code='sub2', parent=sub)
+        sub = self.insert_location('sub', parent=self.stock)
+        sub2 = self.insert_location('sub2', parent=sub)
         self.assertIsNone(self.stock.resolve_tag())
         self.assertIsNone(sub.resolve_tag())
 
-        self.stock.tag = 'top'
+        self.stock.container_tag = 'top'
         self.assertEqual(sub.resolve_tag(), 'top')
         self.assertEqual(sub2.resolve_tag(), 'top')
 
     def test_quantity_recursive(self):
-        other = self.Location.insert(code='other')
+        other = self.insert_location('other')
         self.insert_goods(2, 'present', self.dt_test1)
         self.insert_goods(1, 'present', self.dt_test1, location=other)
 
-        sub = self.Location.insert(code='sub', parent=self.stock, tag='foo')
+        sub = self.insert_location('sub', parent=self.stock, tag='foo')
         self.insert_goods(3, 'present', self.dt_test1, location=sub)
 
         self.assert_quantity(5)
@@ -180,15 +192,15 @@ class TestLocation(WmsTestCase):
 
         self.assert_quantity(3, location_tag='foo')
 
-        self.stock.tag = 'foo'
+        self.stock.container_tag = 'foo'
         self.assert_quantity(5, location_tag='foo')
 
     def test_quantity_recursive_top_tag_none(self):
         """Tag filtering works even if topmost location has no direct tag.
         """
-        self.stock.tag = 'sell'
-        sub = self.Location.insert(code='sub', parent=self.stock)
-        sub2 = self.Location.insert(code='sub2', parent=sub)
+        self.stock.container_tag = 'sell'
+        sub = self.insert_location('sub', parent=self.stock)
+        sub2 = self.insert_location('sub2', parent=sub)
 
         self.insert_goods(3, 'present', self.dt_test1)
         self.insert_goods(1, 'present', self.dt_test1, location=sub)
@@ -207,13 +219,13 @@ class TestLocation(WmsTestCase):
         self.insert_goods(2, 'present', self.dt_test1)
         self.assert_quantity(2, location_tag=None, location_recurse=False)
         self.assert_quantity(0, location_tag='foo', location_recurse=False)
-        self.stock.tag = 'foo'
+        self.stock.container_tag = 'foo'
         self.assert_quantity(2, location_tag='foo', location_recurse=False)
 
     def test_quantity_tag_non_recursive_inherited(self):
         # still works if the tag is actually inherited
-        sub = self.Location.insert(code='sub', parent=self.stock)
-        self.stock.tag = 'foo'
+        sub = self.insert_location('sub', parent=self.stock)
+        self.stock.container_tag = 'foo'
         self.insert_goods(2, 'present', self.dt_test1, location=sub)
         self.assert_quantity(2,
                              location=sub,

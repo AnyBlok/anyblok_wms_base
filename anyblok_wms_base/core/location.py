@@ -64,11 +64,11 @@ class Goods:
             return self.container_tag
         # TODO this should be done at a certain date, too, with
         # appropriate states
-        parent = self.Avatar.query().filter_by(
-            location=self, state='present').first()
-        if parent is None:
+        av = self.Avatar.query().filter_by(
+            goods=self, state='present').first()
+        if av is None:
             return None
-        return parent.resolve_tag()
+        return av.location.resolve_tag()
 
     @classmethod
     def flatten_subquery_with_tags(cls, top=None, resolve_top_tag=True):
@@ -84,11 +84,15 @@ class Goods:
         :param top:
            if specified, the query starts at this Location (inclusive)
 
+        Containing Goods can themselves be placed within a container
+        through the standard mechanism: by having an Avatar whose location is
+        the surrounding container.
         This default implementation issues a recursive CTE (``WITH RECURSIVE``)
-        that climbs down along the :attr:`parent` field.
+        that climbs down along this.
 
-        For some applications with a large and complicated Location hierarchy,
-        joining on this CTE can become a performance problem. Quoting
+        For some applications with a large and complicated containing
+        hierarchy, joining on this CTE can become a performance problem.
+        Quoting
         `PostgreSQL documentation on CTEs
         <https://www.postgresql.org/docs/10/static/queries-with.html>`_:
 
@@ -100,28 +104,31 @@ class Goods:
           discard afterwards.
 
         If that becomes a problem, it is still possible to override the
-        present method: any subquery whose results have the same columbs
+        present method: any subquery whose results have the same columns
         can be used by callers instead of the recursive CTE.
 
         Examples:
 
         1. one might design a flat Location hierarchy using prefixing on
-           :attr:`code` to express inclusion instead of the provided
+           :attr:`code` to express inclusion instead of the standard Avatar
+           mechanism.
            :attr:`parent`. See :meth:`anyblok_wms_base.core.tests
            .test_location.test_override_tag_recursion` for a proof of concept
            of this.
         2. one might make a materialized view out of the present recursive CTE,
            refreshing as soon as needed.
         """
+        Avatar = cls.Avatar
         query = cls.registry.session.query
 
-        if top is not None and top.tag is None:
+        if top is not None and top.container_tag is None:
             init_tag = top.resolve_tag()
             cte = cls.query(cls.id, literal(init_tag).label('tag'))
         else:
-            cte = cls.query(cls.id, cls.tag)
+            cte = cls.query(cls.id, cls.container_tag.label('tag'))
         if top is None:
-            cte = cte.filter(cls.parent == top)  # doesn't work with is_()
+            cte = cte.outerjoin(Avatar, Avatar.goods_id == cls.id).filter(
+                Avatar.location_id.is_(None))
         else:
             # starting with top, not its children so that the children
             # can inherit tag from top (done in the recursive part of the
@@ -132,6 +139,9 @@ class Goods:
         child = orm.aliased(cls, name='child')
         cte = cte.union_all(
             query(child.id,
-                  func.coalesce(child.tag, parent.c.tag).label('tag')).filter(
-                      child.parent_id == parent.c.id))
+                  func.coalesce(child.container_tag, parent.c.tag)
+                  .label('tag'))
+            .join(Avatar, Avatar.goods_id == child.id).filter(
+                      Avatar.location_id == parent.c.id,
+                      Avatar.state == 'present'))  # TODO at a date, with state
         return cte

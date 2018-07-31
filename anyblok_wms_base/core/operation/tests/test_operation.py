@@ -20,13 +20,12 @@ class TestOperation(WmsTestCase):
 
     def setUp(self):
         super(TestOperation, self).setUp()
-        Wms = self.registry.Wms
-        self.Operation = Wms.Operation
-        self.Goods = Wms.Goods
-        self.incoming_loc = Wms.Location.insert(label="Incoming location")
-        self.stock = Wms.Location.insert(label="Stock")
-        self.goods_type = self.Goods.Type.insert(label="My good type",
-                                                 code='MyGT')
+        Goods = self.Goods
+        location_type = Goods.Type.insert(code="LOC")
+        self.incoming_loc = Goods.insert(type=location_type)
+        self.stock = Goods.insert(type=location_type)
+
+        self.goods_type = Goods.Type.insert(label="My good type", code='MyGT')
 
     def test_history(self):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
@@ -101,13 +100,13 @@ class TestOperation(WmsTestCase):
         self.assertEqual(hi.latest_previous_op, arrival)
 
     def test_before_insert(self):
-        other_loc = self.registry.Wms.Location.insert(code='other')
+        other_loc = self.Goods.insert(code='other', type=self.stock.type)
 
         def before_insert(inputs=None, **fields):
             """We're using it in this test to update the location.
 
             Arrival should indeed in check_create_conditions already
-            test that it has a valid Location (but it doesn't at the time of
+            test that it has a valid location (but it doesn't at the time of
             this writing)
             """
             return inputs, dict(location=other_loc)
@@ -176,7 +175,8 @@ class TestOperation(WmsTestCase):
         self.assertEqual(self.Operation.query().count(), 0)
 
     def test_plan_revert_recurse_linear(self):
-        workshop = self.registry.Wms.Location.insert(label="Workshop")
+        workshop = self.Goods.insert(code="Workshop",
+                                     type=self.stock.type)
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
@@ -266,7 +266,8 @@ class TestOperation(WmsTestCase):
             arrival.obliviate()
 
     def test_obliviate_recurse_linear(self):
-        workshop = self.registry.Wms.Location.insert(label="Workshop")
+        workshop = self.Goods.insert(code="Workshop",
+                                     type=self.stock.type)
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,

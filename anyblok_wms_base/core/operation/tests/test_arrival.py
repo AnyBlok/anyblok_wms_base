@@ -13,13 +13,14 @@ class TestArrival(WmsTestCase):
 
     def setUp(self):
         super(TestArrival, self).setUp()
-        Wms = self.registry.Wms
-        self.goods_type = Wms.Goods.Type.insert(label="My good type",
-                                                code='MGT')
-        self.incoming_loc = Wms.Location.insert(label="Incoming location")
-        self.stock = Wms.Location.insert(label="Stock")
-        self.Arrival = Wms.Operation.Arrival
-        self.Goods = Wms.Goods
+        Goods = self.Goods
+        self.goods_type = Goods.Type.insert(label="My good type",
+                                            code='MGT')
+        location_type = Goods.Type.insert(code="LOC")
+        self.incoming_loc = Goods.insert(type=location_type)
+        self.stock = Goods.insert(type=location_type)
+
+        self.Arrival = self.Operation.Arrival
         self.Avatar = self.Goods.Avatar
 
     def test_create_planned_execute(self):
@@ -77,7 +78,8 @@ class TestArrival(WmsTestCase):
                                       goods_type=self.goods_type)
         arrival.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
-        self.assertEqual(self.Goods.query().count(), 0)
+        self.assertEqual(
+            self.Goods.query().filter_by(type=self.goods_type).count(), 0)
 
     def test_arrival_planned_execute_obliviate(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
@@ -90,7 +92,8 @@ class TestArrival(WmsTestCase):
         arrival.execute()
         arrival.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
-        self.assertEqual(self.Goods.query().count(), 0)
+        self.assertEqual(
+            self.Goods.query().filter_by(type=self.goods_type).count(), 0)
 
     def test_repr(self):
         arrival = self.Arrival(location=self.incoming_loc,
@@ -112,13 +115,13 @@ class TestOperationBase(WmsTestCase):
 
     def setUp(self):
         super(TestOperationBase, self).setUp()
-        Wms = self.registry.Wms
-        self.goods_type = Wms.Goods.Type.insert(label="My good type",
-                                                code='MGT')
-        self.incoming_loc = Wms.Location.insert(label="Incoming location")
-        self.stock = Wms.Location.insert(label="Stock")
-        self.Arrival = Wms.Operation.Arrival
-        self.Goods = Wms.Goods
+        Goods = self.Goods
+        self.goods_type = Goods.Type.insert(code='MGT')
+        location_type = Goods.Type.insert(code="LOC")
+        self.incoming_loc = Goods.insert(code="Incoming", type=location_type)
+        self.stock = Goods.insert(code="Stock", type=location_type)
+
+        self.Arrival = self.Operation.Arrival
 
     def test_execute_idempotency(self):
         op = self.Arrival.create(location=self.incoming_loc,

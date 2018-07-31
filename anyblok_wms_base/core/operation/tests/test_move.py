@@ -13,12 +13,8 @@ class TestMove(WmsTestCaseWithGoods):
 
     def setUp(self):
         super(TestMove, self).setUp()
-        Wms = self.registry.Wms
-        Operation = Wms.Operation
-        self.stock = Wms.Location.insert(label="Stock")
-
+        self.Move = self.Operation.Move
         self.avatar.dt_until = self.dt_test3
-        self.Move = Operation.Move
 
     def assertBackToBeginning(self):
         new_goods = self.single_result(self.Avatar.query())

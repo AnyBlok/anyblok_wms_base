@@ -19,7 +19,8 @@ class TestUnpack(WmsTestCase):
         self.Unpack = self.Operation.Unpack
         self.Avatar = self.Goods.Avatar
 
-        self.stock = self.Wms.Location.insert(label="Stock")
+        location_type = self.Goods.Type.insert(code="LOC")
+        self.stock = self.Goods.insert(type=location_type)
         self.default_quantity_location = self.stock
 
     def create_packs(self, type_behaviours=None, properties=None):
@@ -508,7 +509,8 @@ class TestUnpack(WmsTestCase):
                                  dt_execution=self.dt_test2,
                                  input=self.packs)
         self.assertEqual(len(unp.outcomes), 2)  # just a reminder
-        other_loc = self.Wms.Location.insert(code='other')
+        other_loc = self.Goods.insert(code='other',
+                                      type=self.stock.type)
         first_outcome = unp.outcomes[0]
         self.Operation.Move.create(state='done',
                                    input=first_outcome,
