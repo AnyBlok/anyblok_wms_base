@@ -83,20 +83,6 @@ class Location:
             return None
         return self.parent.resolve_tag()
 
-    def quantity(self, goods_type, recursive=True, **kwargs):
-        """Goods quantity computation within the current location.
-
-        This is kept for backwards compatibility and simply calls
-        :meth:`Wms.quantity()
-        <anyblok_wms_base.core.wms.Wms.quantity>`
-
-        (see source code for details on arguments passing)
-        """
-        return self.registry.Wms.quantity(location=self,
-                                          location_recurse=recursive,
-                                          goods_type=goods_type,
-                                          **kwargs)
-
     @classmethod
     def flatten_subquery_with_tags(cls, top=None, resolve_top_tag=True):
         """Return an SQL subquery flattening the hierarchy, resolving tags.

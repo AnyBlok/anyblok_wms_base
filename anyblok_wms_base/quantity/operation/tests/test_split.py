@@ -72,9 +72,10 @@ class TestSplit(WmsTestCaseWithGoods):
         self.assertEqual(sum(out.goods.quantity for out in all_outcomes), 3)
         # this will fail if me mangle the datetimes severely
         self.assertEqual(
-            self.incoming_loc.quantity(self.goods_type,
-                                       additional_states=['future'],
-                                       at_datetime=self.dt_test3),
+            self.Wms.quantity(location=self.incoming_loc,
+                              goods_type=self.goods_type,
+                              additional_states=['future'],
+                              at_datetime=self.dt_test3),
             3)
 
         for outcome in all_outcomes:
@@ -103,9 +104,10 @@ class TestSplit(WmsTestCaseWithGoods):
                                (['past'], self.dt_test2),
                                (['past'], self.dt_test3)):
             self.assertEqual(
-                self.incoming_loc.quantity(self.goods_type,
-                                           additional_states=add_states,
-                                           at_datetime=dt),
+                self.Wms.quantity(location=self.incoming_loc,
+                                  goods_type=self.goods_type,
+                                  additional_states=add_states,
+                                  at_datetime=dt),
                 3)
 
     def test_create_planned_outcome_disappears(self):

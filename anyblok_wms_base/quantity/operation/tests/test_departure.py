@@ -26,9 +26,10 @@ class TestDeparture(WmsTestCaseWithGoods):
             else:
                 qty, at_datetime = info
                 add_state = [state]
-            self.assertEqual(loc.quantity(self.goods_type,
-                                          additional_states=add_state,
-                                          at_datetime=at_datetime),
+            self.assertEqual(self.Wms.quantity(location=loc,
+                                               goods_type=self.goods_type,
+                                               additional_states=add_state,
+                                               at_datetime=at_datetime),
                              qty)
 
     def test_partial_done(self):

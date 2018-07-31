@@ -13,10 +13,8 @@ class TestDeparture(WmsTestCaseWithGoods):
 
     def setUp(self):
         super(TestDeparture, self).setUp()
-        Wms = self.registry.Wms
-        Operation = Wms.Operation
-        self.stock = Wms.Location.insert(label="Stock")
-        self.Departure = Operation.Departure
+        self.stock = self.Wms.Location.insert(label="Stock")
+        self.Departure = self.Operation.Departure
 
     def assertQuantities(self, loc=None, **quantities):
         if loc is None:
@@ -27,9 +25,10 @@ class TestDeparture(WmsTestCaseWithGoods):
             else:
                 qty, at_datetime = info
                 add_state = [state]
-            self.assertEqual(loc.quantity(self.goods_type,
-                                          additional_states=add_state,
-                                          at_datetime=at_datetime),
+            self.assertEqual(self.Wms.quantity(goods_type=self.goods_type,
+                                               location=loc,
+                                               additional_states=add_state,
+                                               at_datetime=at_datetime),
                              qty)
 
     def test_whole_planned_execute(self):

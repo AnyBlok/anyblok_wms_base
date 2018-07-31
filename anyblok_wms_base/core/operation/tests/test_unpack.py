@@ -362,9 +362,10 @@ class TestUnpack(WmsTestCase):
             self.assertEqual(avatar.reason, unp)
 
         self.assertEqual(
-            self.stock.quantity(self.packed_goods_type,
-                                at_datetime=self.dt_test2,
-                                additional_states=['future']),
+            self.Wms.quantity(goods_type=self.packed_goods_type,
+                              location=self.stock,
+                              at_datetime=self.dt_test2,
+                              additional_states=['future']),
             0)
 
         self.packs.state = 'present'
@@ -376,9 +377,10 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(self.packs.reason, unp)
 
         self.assertEqual(
-            self.stock.quantity(self.packed_goods_type,
-                                at_datetime=self.dt_test2,
-                                additional_states=['future']),
+            self.Wms.quantity(goods_type=self.packed_goods_type,
+                              location=self.stock,
+                              at_datetime=self.dt_test2,
+                              additional_states=['future']),
             0)
         self.assertEqual(
             self.Avatar.query().join(self.Avatar.goods).filter(
@@ -586,7 +588,8 @@ class TestUnpack(WmsTestCase):
             Goods.query().filter(Goods.type == unpacked_type).count(),
             0)
         self.assertEqual(
-            self.stock.quantity(self.packed_goods_type,
-                                additional_states=['future'],
-                                at_datetime=self.dt_test2),
+            self.Wms.quantity(goods_type=self.packed_goods_type,
+                              location=self.stock,
+                              additional_states=['future'],
+                              at_datetime=self.dt_test2),
             1)

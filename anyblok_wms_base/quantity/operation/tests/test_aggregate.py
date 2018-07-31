@@ -22,7 +22,7 @@ class TestAggregate(WmsTestCase):
 
     def setUp(self):
         super(TestAggregate, self).setUp()
-        Wms = self.registry.Wms
+        Wms = self.Wms = self.registry.Wms
         Operation = Wms.Operation
         self.goods_type = Wms.Goods.Type.insert(label="My good type",
                                                 code="MyGT")
@@ -54,7 +54,9 @@ class TestAggregate(WmsTestCase):
 
     def assertQuantity(self, quantity, **kwargs):
         self.assertEqual(
-            self.loc.quantity(self.goods_type, **kwargs),
+            self.Wms.quantity(location=self.loc,
+                              goods_type=self.goods_type,
+                              **kwargs),
             quantity)
 
     def test_create_done_same_props(self):

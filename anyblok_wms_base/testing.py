@@ -100,7 +100,7 @@ class WmsTestCaseWithGoods(SharedDataTestCase, WmsTestCase):
         cls.dt_test2 = datetime(2018, 1, 2, tzinfo=tz)
         cls.dt_test3 = datetime(2018, 1, 3, tzinfo=tz)
 
-        Wms = cls.registry.Wms
+        Wms = cls.Wms = cls.registry.Wms
         Operation = cls.Operation = Wms.Operation
         cls.goods_type = Wms.Goods.Type.insert(label="My good type",
                                                code='MyGT')

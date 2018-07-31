@@ -16,7 +16,7 @@ class TestLocation(WmsTestCase):
 
     def setUp(self):
         super(TestLocation, self).setUp()
-        Wms = self.registry.Wms
+        Wms = self.Wms = self.registry.Wms
 
         self.Goods = Wms.Goods
         self.Avatar = Wms.Goods.Avatar
@@ -43,9 +43,9 @@ class TestLocation(WmsTestCase):
         self.assertTrue('STK' in str(self.stock))
 
     def assertQuantity(self, quantity, **kwargs):
-        self.assertEqual(
-            self.stock.quantity(self.goods_type, **kwargs),
-            quantity)
+        kwargs.setdefault('location', self.stock)
+        kwargs.setdefault('goods_type', self.goods_type)
+        self.assertEqual(self.Wms.quantity(**kwargs), quantity)
 
     def test_quantity(self):
         self.insert_goods(1, 'present', self.dt_test1)

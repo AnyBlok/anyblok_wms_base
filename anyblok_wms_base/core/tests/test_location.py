@@ -17,7 +17,7 @@ class TestLocation(WmsTestCase):
 
     def setUp(self):
         super(TestLocation, self).setUp()
-        Wms = self.registry.Wms
+        Wms = self.Wms = self.registry.Wms
 
         self.Goods = Wms.Goods
         self.Avatar = Wms.Goods.Avatar
@@ -47,9 +47,9 @@ class TestLocation(WmsTestCase):
         self.assertTrue('STK' in str(self.stock))
 
     def assertQuantity(self, quantity, **kwargs):
-        self.assertEqual(
-            self.stock.quantity(self.goods_type, **kwargs),
-            quantity)
+        kwargs.setdefault('location', self.stock)
+        kwargs.setdefault('goods_type', self.goods_type)
+        self.assertEqual(self.Wms.quantity(**kwargs), quantity)
 
     def test_quantity(self):
         self.insert_goods(2, 'present', self.dt_test1)
@@ -201,8 +201,7 @@ class TestLocation(WmsTestCase):
         self.insert_goods(2, 'present', self.dt_test1, location=sub2)
         # in a previous version, the recursion would have started with sub's
         # tag being None and propagate that to sub2. Now it doesn't
-        self.assertEqual(sub.quantity(self.goods_type, location_tag='sell'),
-                         3)
+        self.assertQuantity(3, location=sub, location_tag='sell')
         self.assertQuantity(6)
 
     def test_quantity_tag_non_recursive(self):
@@ -212,17 +211,17 @@ class TestLocation(WmsTestCase):
         # if upstream inputs are dynamic enough)
 
         self.insert_goods(2, 'present', self.dt_test1)
-        self.assertQuantity(2, location_tag=None, recursive=False)
-        self.assertQuantity(0, location_tag='foo', recursive=False)
+        self.assertQuantity(2, location_tag=None, location_recurse=False)
+        self.assertQuantity(0, location_tag='foo', location_recurse=False)
         self.stock.tag = 'foo'
-        self.assertQuantity(2, location_tag='foo', recursive=False)
+        self.assertQuantity(2, location_tag='foo', location_recurse=False)
 
     def test_quantity_tag_non_recursive_inherited(self):
         # still works if the tag is actually inherited
         sub = self.Location.insert(code='sub', parent=self.stock)
         self.stock.tag = 'foo'
         self.insert_goods(2, 'present', self.dt_test1, location=sub)
-        self.assertEqual(sub.quantity(self.goods_type,
-                                      recursive=False,
-                                      location_tag='foo'),
-                         2)
+        self.assertQuantity(2,
+                            location=sub,
+                            location_tag='foo',
+                            location_recurse=False)
