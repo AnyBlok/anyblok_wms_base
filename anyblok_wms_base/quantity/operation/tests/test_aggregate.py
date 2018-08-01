@@ -25,9 +25,9 @@ class TestAggregate(WmsTestCase):
         Operation = self.Operation
         self.goods_type = self.Goods.Type.insert(label="My good type",
                                                  code="MyGT")
-        self.loc = self.Wms.Location.insert(label="Incoming location")
+        self.loc = self.insert_location('Incoming')
 
-        # The arrival fields doesn't matter, we'll insert goods directly
+        # The arrival fields don't matter, we'll insert goods directly
         self.arrival = Operation.Arrival.insert(goods_type=self.goods_type,
                                                 location=self.loc,
                                                 state='planned',
@@ -103,7 +103,9 @@ class TestAggregate(WmsTestCase):
         self.assertEqual(outcome.dt_from, self.dt_test3)
 
     def assertBackToBeginning(self, state='present', props=None):
-        new_goods = self.Goods.query().all()
+        Goods = self.Goods
+        new_goods = Goods.query().filter(
+            Goods.type != self.location_type).all()
         self.assertEqual(len(new_goods), 2)
         if props is not None:
             old_props = props.to_dict()
@@ -165,7 +167,7 @@ class TestAggregate(WmsTestCase):
 
     def test_forbid_differences_avatars(self):
         """Forbid differences among avatars own fields"""
-        other_loc = self.registry.Wms.Location.insert(label="Other location")
+        other_loc = self.insert_location('Other')
         self.avatars[1].location = other_loc
         with self.assertRaises(OperationInputsError) as arc:
             self.plan_aggregate()

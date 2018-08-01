@@ -224,7 +224,8 @@ class TestSplit(WmsTestCaseWithGoods):
         split.obliviate()
         Avatar = self.Goods.Avatar
         restored_avatar = self.single_result(Avatar.query())
-        restored_goods = self.single_result(self.Goods.query())
+        restored_goods = self.single_result(self.Goods.query().filter_by(
+            type=self.goods_type))
         self.assertEqual(restored_avatar.goods, restored_goods)
 
         self.assertEqual(restored_avatar.location, self.avatar.location)

@@ -19,7 +19,7 @@ class TestLocation(WmsTestCase):
         self.Avatar = self.Goods.Avatar
         self.goods_type = self.Goods.Type.insert(label="My goods",
                                                  code='MyGT')
-        self.stock = self.Wms.Location.insert(label="Stock", code='STK')
+        self.stock = self.insert_location('STK')
         self.arrival = self.Operation.Arrival.insert(
             goods_type=self.goods_type,
             location=self.stock,
@@ -36,10 +36,6 @@ class TestLocation(WmsTestCase):
             dt_from=dt_from,
             dt_until=until,
             state=state)
-
-    def test_str_repr(self):
-        self.assertTrue('STK' in repr(self.stock))
-        self.assertTrue('STK' in str(self.stock))
 
     def test_quantity(self):
         self.insert_goods(1, 'present', self.dt_test1)

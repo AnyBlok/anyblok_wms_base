@@ -18,8 +18,8 @@ class TestUnpack(WmsTestCase):
         super(TestUnpack, self).setUp()
         self.Unpack = self.Operation.Unpack
         self.Avatar = self.Goods.Avatar
-        self.stock = self.Wms.Location.insert(label="Stock")
 
+        self.stock = self.insert_location('Stock')
         self.default_quantity_location = self.stock
 
     def create_packs(self, type_behaviours=None, properties=None, quantity=5):

@@ -20,8 +20,8 @@ class ReservationTestCase(WmsTestCase):
 
         self.goods_type = Wms.Goods.Type.insert(label="My good type",
                                                 code="MyGT")
-        self.incoming_loc = Wms.Location.insert(label="Incoming location")
-        self.stock = Wms.Location.insert(label="Stock")
+        self.incoming_loc = self.insert_location('INCOMING')
+        self.stock = self.insert_location('STOCK')
 
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,

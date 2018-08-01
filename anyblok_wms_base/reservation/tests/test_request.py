@@ -19,7 +19,7 @@ class RequestItemTestCase(WmsTestCase):
         self.Props = self.Goods.Properties
         self.Reservation = Wms.Reservation
         self.RequestItem = self.Reservation.RequestItem
-        self.loc = Wms.Location.insert(code='INC')
+        self.loc = self.insert_location('INC')
         gt1 = self.goods_type1 = self.Goods.Type.insert(code='MG')
         gt2 = self.goods_type2 = self.Goods.Type.insert(code='MH')
 
