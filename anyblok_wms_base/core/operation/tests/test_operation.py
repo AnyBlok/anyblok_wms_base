@@ -21,9 +21,8 @@ class TestOperation(WmsTestCase):
     def setUp(self):
         super(TestOperation, self).setUp()
         Goods = self.Goods
-        location_type = Goods.Type.insert(code="LOC")
-        self.incoming_loc = Goods.insert(type=location_type)
-        self.stock = Goods.insert(type=location_type)
+        self.incoming_loc = self.insert_location('INCOMING')
+        self.stock = self.insert_location('STOCK')
 
         self.goods_type = Goods.Type.insert(label="My good type", code='MyGT')
 
@@ -100,7 +99,7 @@ class TestOperation(WmsTestCase):
         self.assertEqual(hi.latest_previous_op, arrival)
 
     def test_before_insert(self):
-        other_loc = self.Goods.insert(code='other', type=self.stock.type)
+        other_loc = self.insert_location('other')
 
         def before_insert(inputs=None, **fields):
             """We're using it in this test to update the location.

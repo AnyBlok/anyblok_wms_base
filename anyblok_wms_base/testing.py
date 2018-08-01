@@ -96,6 +96,70 @@ class WmsTestCase(BlokTestCase):
             self.fail("%r is neither a Goods nor an Avatar instance" % record)
         return tuple(sorted(goods.properties.as_dict().items()))
 
+    @classmethod
+    def create_location_type(cls):
+        loc_type = cls.location_type = cls.Wms.Goods.Type.insert(code="LOC")
+        return loc_type
+
+    def insert_location(self, code, location_type=None, **kwargs):
+        """Helper for location creations,
+
+        :param location_type: if not specified, ``self.location_type`` and
+                              ``cls.location.type`` are tried, in that order.
+                              If the latter doesn't exist, it is created.
+        :param parent: if specified, the inserted location gets an Avatar
+                       that places it inside the ``parent`` location.
+        """
+        if location_type is None:
+            location_type = getattr(self, 'location_type', None)
+        dt_from = getattr(self, 'dt_test1', None)
+        return self.cls_insert_location(code,
+                                        location_type=location_type,
+                                        dt_from=dt_from,
+                                        **kwargs)
+
+    @classmethod
+    def cls_insert_location(cls, code,
+                            location_type=None, parent=None, tag=None,
+                            dt_from=None,
+                            **fields):
+        """Helper for location creations, classmethod version
+
+        :param location_type: if not specified, ``cls.location_type``
+                              is created if not already and used.
+        :param parent: if specified, the inserted location gets an Avatar
+                       that places it inside the ``parent`` location.
+        :param dt_from: used if ``parent`` is specified, as the starting date
+                        of the corresponding Avatar, with fallback onto
+                        ``cls.dt_test1``.
+        """
+        if location_type is None:
+            location_type = getattr(cls, 'location_type', None)
+            if location_type is None:
+                location_type = cls.create_location_type()
+        loc = cls.Goods.insert(type=location_type,
+                               code=code,
+                               container_tag=tag,
+                               **fields)
+        if parent is not None:
+            # we insert an Arrival directly in order not to depend onto
+            # Arrival working properly
+            # (useful to debug Arrival itself if needed)
+            # TODO replace by Apparition once they are available in master
+            if dt_from is None:
+                dt_from = cls.dt_test1
+            cls.Goods.Avatar.insert(goods=loc,
+                                    state='present',
+                                    location=parent,
+                                    dt_from=dt_from,
+                                    dt_until=None,
+                                    reason=cls.Operation.Arrival.insert(
+                                        goods_type=location_type,
+                                        location=parent,
+                                        dt_execution=dt_from,
+                                        state='done'))
+        return loc
+
 
 class WmsTestCaseWithGoods(SharedDataTestCase, WmsTestCase):
     """Same as WmsTestCase with a prebaked Goods and Avatar.
@@ -111,6 +175,10 @@ class WmsTestCaseWithGoods(SharedDataTestCase, WmsTestCase):
     * ``goods_type``
     * ``arrival``: the reason for :attr:`avatar`
     * ``incoming_loc``: where that initial Avatar dwells
+
+    The setup of this class depends on the Arrival Operation working
+    correctly, so don't use it for basic Operation tests, nor obviously for
+    Arrival.
     """
 
     arrival_kwargs = {}
@@ -125,9 +193,9 @@ class WmsTestCaseWithGoods(SharedDataTestCase, WmsTestCase):
         Operation = cls.Operation
         Goods = cls.Goods
         cls.goods_type = Goods.Type.insert(label="My good type", code='MyGT')
-        location_type = Goods.Type.insert(code="LOC")
-        cls.incoming_loc = Goods.insert(type=location_type)
-        cls.stock = Goods.insert(type=location_type)
+        cls.create_location_type()
+        cls.incoming_loc = cls.cls_insert_location('INCOMING')
+        cls.stock = cls.cls_insert_location('STOCK')
 
         cls.arrival = Operation.Arrival.create(goods_type=cls.goods_type,
                                                location=cls.incoming_loc,

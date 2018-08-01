@@ -21,7 +21,6 @@ class TestLocation(WmsTestCase):
         self.goods_type = self.Goods.Type.insert(label="My goods",
                                                  code='MyGT')
 
-        self.location_type = self.Goods.Type.insert(code="LOC")
         self.stock = self.insert_location('STK')
 
         self.arrival = self.Operation.Arrival.insert(
@@ -31,20 +30,6 @@ class TestLocation(WmsTestCase):
             state='done')
 
         self.default_quantity_location = self.stock
-
-    def insert_location(self, code, parent=None, tag=None, **fields):
-        loc = self.Goods.insert(type=self.location_type,
-                                code=code,
-                                container_tag=tag,
-                                **fields)
-        if parent is not None:
-            self.Goods.Avatar.insert(goods=loc,
-                                     state='present',
-                                     location=parent,
-                                     dt_from=self.dt_test1,
-                                     reason=self.arrival,  # purely formal
-                                     dt_until=None)
-        return loc
 
     def insert_goods(self, qty, state, dt_from, until=None, location=None):
         for _ in range(qty):

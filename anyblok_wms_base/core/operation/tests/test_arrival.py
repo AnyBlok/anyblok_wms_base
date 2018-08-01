@@ -16,9 +16,8 @@ class TestArrival(WmsTestCase):
         Goods = self.Goods
         self.goods_type = Goods.Type.insert(label="My good type",
                                             code='MGT')
-        location_type = Goods.Type.insert(code="LOC")
-        self.incoming_loc = Goods.insert(type=location_type)
-        self.stock = Goods.insert(type=location_type)
+        self.incoming_loc = self.insert_location('INCOMING')
+        self.stock = self.insert_location('STOCK')
 
         self.Arrival = self.Operation.Arrival
         self.Avatar = self.Goods.Avatar
@@ -117,9 +116,8 @@ class TestOperationBase(WmsTestCase):
         super(TestOperationBase, self).setUp()
         Goods = self.Goods
         self.goods_type = Goods.Type.insert(code='MGT')
-        location_type = Goods.Type.insert(code="LOC")
-        self.incoming_loc = Goods.insert(code="Incoming", type=location_type)
-        self.stock = Goods.insert(code="Stock", type=location_type)
+        self.incoming_loc = self.insert_location("Incoming")
+        self.stock = self.insert_location("Stock")
 
         self.Arrival = self.Operation.Arrival
 

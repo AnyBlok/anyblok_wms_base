@@ -26,13 +26,10 @@ class TestAssembly(WmsTestCase):
 
     def setUp(self):
         super(TestAssembly, self).setUp()
-        Wms = self.registry.Wms
-        self.Operation = Operation = Wms.Operation
-        self.Assembly = Operation.Assembly
+        self.Assembly = self.Operation.Assembly
         self.Avatar = self.Goods.Avatar
 
-        location_type = self.Goods.Type.insert(code="LOC")
-        self.stock = self.Goods.insert(code="STOCK", type=location_type)
+        self.stock = self.insert_location('STOCK')
 
     def create_outcome_type(self, behaviour):
         self.outcome_type = self.Goods.Type.insert(
