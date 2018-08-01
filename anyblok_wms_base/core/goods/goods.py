@@ -132,8 +132,12 @@ class Goods:
         To retrieve just one Property, prefer :meth:`get_property`, which
         is meant to be more efficient.
         """
-        return dict_merge(self.properties.as_dict(),
-                          self.type.merged_properties())
+        props = self.properties
+        type_props = self.type.merged_properties()
+        if props is None:
+            return type_props
+
+        return dict_merge(props.as_dict(), type_props)
 
     def _maybe_duplicate_props(self):
         """Internal method to duplicate Properties
