@@ -730,8 +730,6 @@ class Operation:
         Downstream applications and libraries are
         not supposed to call this method: they should use :meth:`obliviate`,
         which takes care of the necessary recursivity and the final deletion.
-
-        To be implemented in sublasses
         """
         self.reset_inputs_original_values(state='present')
         self.registry.flush()

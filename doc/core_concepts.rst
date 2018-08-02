@@ -529,6 +529,28 @@ Moves represent goods being carried over from one :ref:`location` to
 another, with no change of properties. They are always reversible in
 the sense of :ref:`op_cancel_revert_obliviate`.
 
+.. _op_teleportation:
+
+Teleportation
+-------------
+.. note:: This is an overview, see :class:`the code documentation
+          <anyblok_wms_base.core.operation.teleportation.Teleportation>`
+          for more details.
+
+Teleportations are inventory Operations that record that the goods are
+not missing, but changed places, for no known reason.
+In other words, they are to
+:ref:`Moves <op_move>` what :ref:`Disparitions
+<op_disparition>` are to :ref:`Departures <op_departure>`:
+
+- they cannot be planned nor started; only direct creations in the
+  ``'done'`` :ref:`state <op_states>` are allowed.
+- they are irreversible.
+- they should be tied in applications to higher level Inventory objects.
+
+Apart from that, their have the same effect as :ref:`Moves <op_move>`.
+
+
 .. _op_unpack:
 
 Unpack
