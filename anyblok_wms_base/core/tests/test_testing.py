@@ -24,5 +24,11 @@ class TestWmsTestCase(WmsTestCaseWithGoods):
         with self.assertRaises(self.failureException):
             self.sorted_props(goods.type)
 
+    def test_cls_insert_location(self):
+        loc = self.cls_insert_location('other', parent=self.stock)
+        av = self.assert_singleton(
+            self.Avatar.query().filter_by(goods=loc).all())
+        self.assertEqual(av.dt_from, self.dt_test1)
+
 
 del WmsTestCaseWithGoods
