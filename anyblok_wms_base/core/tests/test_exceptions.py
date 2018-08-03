@@ -11,6 +11,7 @@ from anyblok_wms_base.exceptions import (
     OperationError,
     OperationInputsError,
     OperationInputWrongState,
+    OperationForbiddenState,
     )
 
 
@@ -58,6 +59,16 @@ class TestOperationError(WmsTestCaseWithGoods):
 
         repr(err)
         str(err)
+
+    def test_op_forbidden_state(self):
+        with self.assertRaises(ValueError):
+            OperationForbiddenState(self.Operation.Apparition, "some message")
+        err = OperationForbiddenState(self.Operation.Apparition,
+                                      "incorrect {forbidden!r}",
+                                      forbidden='planned')
+        repr(err)
+        self.assertEqual(str(err), "Model.Wms.Operation.Apparition: "
+                         "incorrect 'planned'")
 
 
 del WmsTestCaseWithGoods
