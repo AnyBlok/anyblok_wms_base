@@ -33,6 +33,28 @@ This Operation Model inherits from :class:`Mixin.WmsSingleInput
    .. automethod:: plan_revert_single
 
 
+Model.Wms.Operation.Teleportation
+---------------------------------
+
+This Operation Model inherits from :class:`Mixin.WmsSingleInput
+<anyblok_wms_base.core.operation.single_input.WmsSingleInputOperation>`
+
+.. autoclass:: anyblok_wms_base.core.operation.teleportation.Teleportation
+
+   .. raw:: html
+
+      <h3>Fields and their semantics</h3>
+
+   .. autoattribute:: id
+   .. autoattribute:: new_location
+
+   .. raw:: html
+
+      <h3>Mandatory methods of Operation subclasses</h3>
+
+   .. automethod:: check_create_conditions
+   .. automethod:: after_insert
+
 
 Model.Wms.Operation.Unpack
 --------------------------

@@ -17,3 +17,22 @@ Model.Wms.Operation.Departure
 .. autoclass:: anyblok_wms_base.core.operation.departure.Departure
    :members:
    :undoc-members:
+
+Model.Wms.Operation.Disparition
+-------------------------------
+
+.. autoclass:: anyblok_wms_base.core.operation.disparition.Disparition
+
+   .. raw:: html
+
+      <h3>Fields and their semantics</h3>
+
+   .. autoattribute:: id
+
+   .. raw:: html
+
+      <h3>Mandatory methods of Operation subclasses</h3>
+
+   .. automethod:: check_create_conditions
+   .. automethod:: after_insert
+

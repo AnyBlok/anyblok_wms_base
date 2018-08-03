@@ -17,6 +17,9 @@ def import_declarations(reload=None):
     from . import move
     from . import unpack
     from . import assembly
+    from . import apparition
+    from . import disparition
+    from . import teleportation
 
     if reload is not None:
         reload(ns)
@@ -26,3 +29,6 @@ def import_declarations(reload=None):
         reload(move)
         reload(unpack)
         reload(assembly)
+        reload(apparition)
+        reload(disparition)
+        reload(teleportation)

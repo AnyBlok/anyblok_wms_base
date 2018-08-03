@@ -142,10 +142,9 @@ class WmsTestCase(BlokTestCase):
                                container_tag=tag,
                                **fields)
         if parent is not None:
-            # we insert an Arrival directly in order not to depend onto
-            # Arrival working properly
-            # (useful to debug Arrival itself if needed)
-            # TODO replace by Apparition once they are available in master
+            # we insert an Apparition directly in order not to depend onto
+            # Apparition working properly
+            # (useful to debug Apparitiom itself if needed)
             if dt_from is None:
                 dt_from = cls.dt_test1
             cls.Goods.Avatar.insert(goods=loc,
@@ -153,8 +152,9 @@ class WmsTestCase(BlokTestCase):
                                     location=parent,
                                     dt_from=dt_from,
                                     dt_until=None,
-                                    reason=cls.Operation.Arrival.insert(
+                                    reason=cls.Operation.Apparition.insert(
                                         goods_type=location_type,
+                                        quantity=1,
                                         location=parent,
                                         dt_execution=dt_from,
                                         state='done'))

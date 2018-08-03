@@ -31,6 +31,18 @@ class OperationError(ValueError):
         return self.model_name + ': ' + self.fmt.format(**self.kwargs)
 
 
+class OperationForbiddenState(OperationError):
+    """Raised by Operations that forbid certain states.
+    """
+
+    def __init__(self, *args, **kwargs):
+        if 'forbidden' not in kwargs:
+            raise ValueError("OperationForbiddenState must pass the state "
+                             "that has been refused as the 'forbidden' kwargs")
+
+        OperationError.__init__(self, *args, **kwargs)
+
+
 class OperationInputsError(OperationError):
     """Used in Operations for errors about their inputs.
 
