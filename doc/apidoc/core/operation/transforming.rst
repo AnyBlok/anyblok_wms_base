@@ -50,8 +50,6 @@ This Operation Model inherits from :class:`Mixin.WmsSingleInput
 
    .. raw:: html
 
-   .. raw:: html
-
       <h3>Mandatory methods of Operation subclasses</h3>
 
    .. automethod:: check_create_conditions
