@@ -10,5 +10,5 @@ This package provides the :ref:`blok_wms_core` Blok.
    wms
    goods
    operation/index
-   location
+
 

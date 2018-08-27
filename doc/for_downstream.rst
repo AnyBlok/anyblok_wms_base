@@ -80,3 +80,48 @@ In particular, the general workers will issue
 events, such as a sale that should translate as an outbound shipment,
 but they can also sometimes perform :ref:`Reservations
 <resa_reservation>` directly if needed.
+
+.. _avatars_containers_contents:
+
+Avatars and containers vs the 'contents' Property
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+At first sight, it may seem that we have in Anyblok / Wms two
+different ways to encode that something contains something else: the
+``location`` field of :ref:`Avatars <goods_avatar>`, pointing to  containers,
+on one hand, and the ``contents`` :ref:`Property <goods_properties>`
+on the other hand. In truth, these two are fairly different, and this
+section's purpose is to explain how, to help developers choose the
+right one for their case.
+
+Let's begin by recalling that the ``contents`` Property is used
+primarily in :ref:`Unpack Operations
+<op_unpack>`, where it encodes the variable part of the expected
+outcomes. Conversely, :ref:`Assembly Operations <op_assembly>` are able to
+fill this Property, paving the way for a subsequent Unpack.
+
+Here are the differences:
+
+- Comprehensiveness:
+   the ``contents`` Property does not necessarily encode all the
+   contents of some Physical Object, only what is not a direct
+   consequence of its :ref:`Type <goods_type>`.
+- Transparency:
+   Goods that are described in a ``contents`` Property don't actually
+   exist in the system. At most they can have future Avatars if an Unpack is
+   planned or past Avatars if they are the result of some Assembly.
+   They won't be counted correctly by quantity queries, nor
+   will it be directly possible to perform Operations on them, e.g,
+   Moves, obviously but also Observations, Disparitions:
+   one must first at least plan an Unpack – which affects the whole
+   pack, and in many cases would be followed by a converse Assembly.
+- Accuracy:
+   The ``contents`` Property is actually more a promise of what will be
+   found if an Unpack is performed than anything else.
+- Evolution:
+   Like all Properties, ``contents`` cannot have different values
+   according to some considered date and time.
+
+
+
+

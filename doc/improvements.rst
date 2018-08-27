@@ -19,24 +19,6 @@ although proposed solutions have to take them into account.
 Current ideas
 ~~~~~~~~~~~~~
 
-.. _improvement_location_name:
-
-"Location" terminology is misleading
-------------------------------------
-
-Our concept of :ref:`Location <location>` does not imply that it is
-actually a fixed place. Locations can actually be moving ones (a van,
-a ship, a trolley or even a carrying box if needed).
-
-I've heard that some proprietary WMS system makes use of the word
-"support" for the same purposes. It sounds a bit obscure to my taste,
-though. What alternatives would we have ?
-
-Similarly, the hierarchy of locations does not mean that they are
-actually inside each other. It's rather some kind of logical grouping,
-useful to aggregate stock levels, or to confine some Goods to a group
-of Locations once they are reserved.
-
 .. _improvement_operation_superseding:
 
 Superseding of planned operations
@@ -311,13 +293,18 @@ Well, yeah, this page should be superseded. How ?
   Maybe that's too formal, but keeping somehow in the docs allows to
   cross-reference, like we did already in :ref:`goal_stubborn_reality`
 
+Implemented
+~~~~~~~~~~~
+
 .. _improvement_goods_location:
 
 Droping Locations altogether in favor of Goods
 ----------------------------------------------
 
+.. versionadded:: 0.8.0
+
 In some cases, one wants to put the goods into some containing object,
-and then perhaps move that containing object. The use cases I have
+dsand then perhaps move that containing object. The use cases I have
 currently are cables in a plastic box and audio devices in a flight
 case. Let's use the first one as example.
 
@@ -381,8 +368,26 @@ have a new problem: "Goods" now would sound
 too specific and would have to be replaced by a more general name
 (Item ? Object ? PhysObj ?)
 
-Implemented
-~~~~~~~~~~~
+.. _improvement_location_name:
+
+"Location" terminology is misleading
+------------------------------------
+
+.. versionadded:: 0.8.0 (actually made obsolete by
+                  :ref:`improvement_goods_location`)
+
+Our concept of :ref:`Location <location>` does not imply that it is
+actually a fixed place. Locations can actually be moving ones (a van,
+a ship, a trolley or even a carrying box if needed).
+
+I've heard that some proprietary WMS system makes use of the word
+"support" for the same purposes. It sounds a bit obscure to my taste,
+though. What alternatives would we have ?
+
+Similarly, the hierarchy of locations does not mean that they are
+actually inside each other. It's rather some kind of logical grouping,
+useful to aggregate stock levels, or to confine some Goods to a group
+of Locations once they are reserved.
 
 .. _improvement_goods_type_hierarchy:
 
