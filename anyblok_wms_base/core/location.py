@@ -7,11 +7,14 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from sqlalchemy import orm
+from sqlalchemy import or_
 from sqlalchemy import func
 from sqlalchemy import literal
 
 from anyblok import Declarations
 from anyblok.column import Text
+
+from anyblok_wms_base.constants import DATE_TIME_INFINITY
 
 register = Declarations.register
 Model = Declarations.Model
@@ -71,7 +74,8 @@ class Goods:
         return av.location.resolve_tag()
 
     @classmethod
-    def flatten_subquery_with_tags(cls, top=None, resolve_top_tag=True):
+    def flatten_subquery_with_tags(cls, top=None, resolve_top_tag=True,
+                                   additional_states=None, at_datetime=None):
         """Return an SQL subquery flattening the hierarchy, resolving tags.
 
         The resolving tag policy is that a Location whose tag is ``None``
@@ -137,11 +141,25 @@ class Goods:
         cte = cte.cte(name="location_tag", recursive=True)
         parent = orm.aliased(cte, name='parent')
         child = orm.aliased(cls, name='child')
-        cte = cte.union_all(
-            query(child.id,
-                  func.coalesce(child.container_tag, parent.c.tag)
-                  .label('tag'))
-            .join(Avatar, Avatar.goods_id == child.id).filter(
-                      Avatar.location_id == parent.c.id,
-                      Avatar.state == 'present'))  # TODO at a date, with state
+        tail = query(child.id,
+                     func.coalesce(child.container_tag, parent.c.tag)
+                     .label('tag')).join(
+                         Avatar, Avatar.goods_id == child.id).filter(
+                             Avatar.location_id == parent.c.id)
+        # taking additional states and datetime query into account
+        # TODO, this location part is very redundant with what's done in
+        # Wms.quantity() itself for the Goods been counted, we should refactor
+        if additional_states is None:
+            tail = tail.filter(Avatar.state == 'present')
+        else:
+            tail = tail.filter(Avatar.state.in_(
+                ('present', ) + tuple(additional_states)))
+
+        if at_datetime is DATE_TIME_INFINITY:
+            tail = tail.filter(Avatar.dt_until.is_(None))
+        elif at_datetime is not None:
+            tail = tail.filter(Avatar.dt_from <= at_datetime,
+                               or_(Avatar.dt_until.is_(None),
+                                   Avatar.dt_until > at_datetime))
+        cte = cte.union_all(tail)
         return cte

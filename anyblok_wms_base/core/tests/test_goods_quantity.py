@@ -7,6 +7,7 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok_wms_base.testing import WmsTestCase
+from anyblok_wms_base.constants import DATE_TIME_INFINITY
 
 
 class TestQuantity(WmsTestCase):
@@ -34,14 +35,17 @@ class TestQuantity(WmsTestCase):
         self.default_quantity_location = None
 
     def insert_goods(self, qty, state, dt_from, until=None, location=None):
+        avatars = []
         for _ in range(qty):
-            self.Avatar.insert(
+            avatars.append(self.Avatar.insert(
                 goods=self.Goods.insert(type=self.goods_type),
                 reason=self.arrival,
                 location=self.stock if location is None else location,
                 dt_from=dt_from,
                 dt_until=until,
                 state=state)
+            )
+        return avatars
 
     def test_quantity_no_loc(self):
         # cases with a given location are for now treated in test_location
@@ -79,3 +83,118 @@ class TestQuantity(WmsTestCase):
         self.assert_quantity(2, location_tag='ok')
         self.assert_quantity(1, location_tag='nope')
         self.assert_quantity(3)
+
+    def test_dt_quantity_moved_loc(self):
+        """Test quantity queries with Goods in a location that moves."""
+        loc = self.insert_location('sub', parent=self.stock)
+        loc_av = self.Avatar.query().filter_by(goods=loc).one()
+        other = self.insert_location('other')
+        self.insert_goods(3, 'present', self.dt_test1, location=loc)
+        loc_move = self.Operation.Move.create(input=loc_av,
+                                              destination=other,
+                                              state='planned',
+                                              dt_execution=self.dt_test2)
+        for dt in (self.dt_test2, self.dt_test3, DATE_TIME_INFINITY):
+            self.assert_quantity(0,
+                                 additional_states=['future'],
+                                 location=self.stock,
+                                 at_datetime=dt)
+            self.assert_quantity(3,
+                                 additional_states=['future'],
+                                 location=other,
+                                 at_datetime=dt)
+
+        loc_move.execute(dt_execution=self.dt_test2)
+
+        self.assert_quantity(3,
+                             additional_states=['past'],
+                             location=self.stock,
+                             at_datetime=self.dt_test1)
+        self.assert_quantity(0,
+                             additional_states=['past'],
+                             location=other,
+                             at_datetime=self.dt_test1)
+
+        for dt in (self.dt_test2, self.dt_test3, DATE_TIME_INFINITY):
+            self.assert_quantity(0,
+                                 additional_states=['past'],
+                                 location=self.stock,
+                                 at_datetime=dt)
+            self.assert_quantity(3,
+                                 additional_states=['past'],
+                                 location=other,
+                                 at_datetime=dt)
+
+    def test_dt_quantity_moved_loc_and_goods(self):
+        """Test quantity queries with both Goods and locations moving."""
+        loc = self.insert_location('sub', parent=self.stock)
+        loc_av = self.Avatar.query().filter_by(goods=loc).one()
+        other = self.insert_location('other')
+        avatars = self.insert_goods(3, 'present', self.dt_test1)
+        goods_move = self.Operation.Move.create(input=avatars[0],
+                                                destination=loc,
+                                                state='planned',
+                                                dt_execution=self.dt_test2)
+        loc_move = self.Operation.Move.create(input=loc_av,
+                                              destination=other,
+                                              state='planned',
+                                              dt_execution=self.dt_test3)
+
+        self.assert_quantity(3,
+                             additional_states=['future'],
+                             location=self.stock,
+                             at_datetime=self.dt_test2)
+        self.assert_quantity(0,
+                             additional_states=['future'],
+                             location=other,
+                             at_datetime=self.dt_test2)
+        for dt in (self.dt_test3, DATE_TIME_INFINITY):
+            self.assert_quantity(2,
+                                 additional_states=['future'],
+                                 location=self.stock,
+                                 at_datetime=dt)
+            self.assert_quantity(1,
+                                 additional_states=['future'],
+                                 location=other,
+                                 at_datetime=dt)
+
+        goods_move.execute(dt_execution=self.dt_test2)
+        self.assert_quantity(3, location=self.stock)
+        self.assert_quantity(0, location=other)
+        self.assert_quantity(3,
+                             additional_states=['past'],
+                             location=self.stock,
+                             at_datetime=self.dt_test1)
+        self.assert_quantity(0,
+                             additional_states=['future'],
+                             location=other,
+                             at_datetime=self.dt_test1)
+        for dt in (self.dt_test3, DATE_TIME_INFINITY):
+            self.assert_quantity(2,
+                                 additional_states=['future'],
+                                 location=self.stock,
+                                 at_datetime=dt)
+            self.assert_quantity(1,
+                                 additional_states=['future'],
+                                 location=other,
+                                 at_datetime=dt)
+
+        loc_move.execute(dt_execution=self.dt_test3)
+        for dt in (self.dt_test1, self.dt_test2):
+            self.assert_quantity(3,
+                                 additional_states=['past'],
+                                 location=self.stock,
+                                 at_datetime=dt)
+            self.assert_quantity(0,
+                                 additional_states=['past'],
+                                 location=other,
+                                 at_datetime=dt)
+        for dt in (self.dt_test3, DATE_TIME_INFINITY):
+            self.assert_quantity(2,
+                                 additional_states=['past'],
+                                 location=self.stock,
+                                 at_datetime=dt)
+            self.assert_quantity(1,
+                                 additional_states=['past'],
+                                 location=other,
+                                 at_datetime=dt)

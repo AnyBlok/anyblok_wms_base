@@ -95,7 +95,10 @@ class Wms:
         # quantity request is not recursive (so that tag is the correct one).
         if ((location is not None and location_recurse) or
                 location_tag is not _missing):
-            cte = Goods.flatten_subquery_with_tags(top=location)
+            cte = Goods.flatten_subquery_with_tags(
+                top=location,
+                at_datetime=at_datetime,
+                additional_states=additional_states)
             query = query.join(cte, cte.c.id == Avatar.location_id)
 
         if location is not None and not location_recurse:

@@ -125,11 +125,15 @@ class TestLocation(WmsTestCase):
         orig_meth = Goods.flatten_subquery_with_tags
 
         @classmethod
-        def flatten_subquery_with_tags(cls, top=None, resolve_top_tag=True):
+        def flatten_subquery_with_tags(cls, top=None, resolve_top_tag=True,
+                                       **kwargs):
             """This is an example of flattening by code prefixing.
 
             Tag defaulting is disabled: only the direct tag is returned.
             Not specifying ``top`` is not supported
+
+            We also assume that locations don't move, and therefore ignore
+            the at_datetime and additional_states kwargs
             """
             prefix = top.code + '/'
             query = Goods.query(
