@@ -28,6 +28,15 @@ class TestOperation(WmsTestCase):
         self.goods_type = self.Goods.Type.insert(label="My good type",
                                                  code='MyGT')
 
+    def test_execute_idempotency(self):
+        op = self.Operation.Arrival.create(location=self.incoming_loc,
+                                           state='planned',
+                                           dt_execution=self.dt_test2,
+                                           goods_type=self.goods_type)
+        op.state = 'done'
+        op.execute_planned = lambda: self.fail("Should not be called")
+        op.execute()
+
     def test_history(self):
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 dt_execution=self.dt_test1,
