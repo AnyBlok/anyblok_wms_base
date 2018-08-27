@@ -39,8 +39,10 @@ def install_bloks(*bloks):
 def nosetests(paths, options, cover_erase=False):
     print("Lauching tests from paths: " + ' '.join(paths))
     cmd = ['nosetests', '--with-anyblok-bloks',
-           '--with-coverage', '--cover-html', '--cover-package',
-           'anyblok_wms_base', '--cover-html-dir', '/tmp/COVER-wms']
+           '--with-coverage',
+           '--cover-tests',
+           '--cover-package', 'anyblok_wms_base',
+           '--cover-html', '--cover-html-dir', '/tmp/COVER-wms']
     if cover_erase:
         cmd.append('--cover-erase')
     cmd.extend(paths)

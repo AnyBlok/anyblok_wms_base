@@ -119,29 +119,3 @@ class TestArrival(WmsTestCase):
         str(exc)
         repr(exc)
         self.assertEqual(exc.kwargs['offender'], wrong_loc)
-
-
-class TestOperationBase(WmsTestCase):
-    """Test the Operation base class
-
-    In these test cases, Operation.Move is considered the canonical example
-    to test some corner cases in the base Operation model.
-    """
-
-    def setUp(self):
-        super(TestOperationBase, self).setUp()
-        Goods = self.Goods
-        self.goods_type = Goods.Type.insert(code='MGT')
-        self.incoming_loc = self.insert_location("Incoming")
-        self.stock = self.insert_location("Stock")
-
-        self.Arrival = self.Operation.Arrival
-
-    def test_execute_idempotency(self):
-        op = self.Arrival.create(location=self.incoming_loc,
-                                 state='planned',
-                                 dt_execution=self.dt_test2,
-                                 goods_type=self.goods_type)
-        op.state = 'done'
-        op.execute_planned = lambda: self.fail("Should not be called")
-        op.execute()
