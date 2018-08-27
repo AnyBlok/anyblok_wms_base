@@ -45,7 +45,7 @@ class Teleportation(Mixin.WmsSingleInputOperation, Operation):
     @classmethod
     def check_create_conditions(cls, state, dt_execution,
                                 new_location=None, **kwargs):
-        """Forbid creation with wrong states.
+        """Forbid creation with wrong states, check new_location is container.
 
         :raises: :class:`OperationForbiddenState
                  <anyblok_wms_base.exceptions.OperationForbiddenState>`
