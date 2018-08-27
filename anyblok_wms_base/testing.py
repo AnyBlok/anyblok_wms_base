@@ -98,7 +98,9 @@ class WmsTestCase(BlokTestCase):
 
     @classmethod
     def create_location_type(cls):
-        loc_type = cls.location_type = cls.Wms.Goods.Type.insert(code="LOC")
+        loc_type = cls.location_type = cls.Wms.Goods.Type.insert(
+            code="LOC",
+            behaviours=dict(container={}))
         return loc_type
 
     def insert_location(self, code, location_type=None, **kwargs):

@@ -10,6 +10,7 @@ from .testcase import WmsTestCase
 from anyblok_wms_base.exceptions import (
     OperationIrreversibleError,
     OperationForbiddenState,
+    OperationContainerExpected,
 )
 
 
@@ -138,3 +139,15 @@ class TestApparition(WmsTestCase):
         repr(exc)
         str(exc)
         self.assertEqual(exc.kwargs.get('forbidden'), 'planned')
+
+    def test_not_a_container(self):
+        wrong_loc = self.Goods.insert(type=self.goods_type)
+        with self.assertRaises(OperationContainerExpected) as arc:
+            self.Apparition.create(
+                location=wrong_loc,
+                state='done',
+                goods_type=self.goods_type)
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs['offender'], wrong_loc)

@@ -8,6 +8,10 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 from .testcase import WmsTestCase
 
+from anyblok_wms_base.exceptions import (
+    OperationContainerExpected,
+)
+
 
 class TestArrival(WmsTestCase):
 
@@ -103,6 +107,18 @@ class TestArrival(WmsTestCase):
                                goods_type=self.goods_type)
         repr(arrival)
         str(arrival)
+
+    def test_not_a_container(self):
+        wrong_loc = self.Goods.insert(type=self.goods_type)
+        with self.assertRaises(OperationContainerExpected) as arc:
+            self.Arrival.create(
+                location=wrong_loc,
+                state='done',
+                goods_type=self.goods_type)
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs['offender'], wrong_loc)
 
 
 class TestOperationBase(WmsTestCase):

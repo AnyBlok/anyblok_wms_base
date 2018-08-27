@@ -10,7 +10,10 @@ from anyblok import Declarations
 from anyblok.column import Integer
 from anyblok.relationship import Many2One
 
-from anyblok_wms_base.exceptions import OperationForbiddenState
+from anyblok_wms_base.exceptions import (
+    OperationForbiddenState,
+    OperationContainerExpected,
+    )
 
 register = Declarations.register
 Mixin = Declarations.Mixin
@@ -40,7 +43,8 @@ class Teleportation(Mixin.WmsSingleInputOperation, Operation):
     """Where the Goods record showed up."""
 
     @classmethod
-    def check_create_conditions(cls, state, dt_execution, **kwargs):
+    def check_create_conditions(cls, state, dt_execution,
+                                new_location=None, **kwargs):
         """Forbid creation with wrong states.
 
         :raises: :class:`OperationForbiddenState
@@ -51,8 +55,13 @@ class Teleportation(Mixin.WmsSingleInputOperation, Operation):
         """
         if state != 'done':
             raise OperationForbiddenState(
-                cls, "Apparition can exist only in the 'done' state",
+                cls, "Teleportation can exist only in the 'done' state",
                 forbidden=state)
+        if new_location is None or not new_location.is_container():
+            raise OperationContainerExpected(
+                cls, "new_location field value {offender}",
+                offender=new_location)
+
         super(Teleportation, cls).check_create_conditions(
             state, dt_execution, **kwargs)
 

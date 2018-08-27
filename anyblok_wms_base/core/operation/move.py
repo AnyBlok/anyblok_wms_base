@@ -10,6 +10,9 @@
 from anyblok import Declarations
 from anyblok.column import Integer
 from anyblok.relationship import Many2One
+from anyblok_wms_base.exceptions import (
+    OperationContainerExpected,
+    )
 
 
 register = Declarations.register
@@ -49,6 +52,17 @@ class Move(Mixin.WmsSingleInputOperation, Operation):
         to_move.dt_until = dt_exec
         if state == 'done':
             to_move.state = 'past'
+
+    @classmethod
+    def check_create_conditions(cls, state, dt_execution, destination=None,
+                                **kwargs):
+        """Ensure that ``destination`` is indeed a container."""
+        super(Move, cls).check_create_conditions(state, dt_execution,
+                                                 **kwargs)
+        if destination is None or not destination.is_container():
+            raise OperationContainerExpected(
+                cls, "destination field value {offender}",
+                offender=destination)
 
     def execute_planned(self):
         dt_execution = self.dt_execution

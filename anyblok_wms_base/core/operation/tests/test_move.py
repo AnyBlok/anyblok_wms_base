@@ -8,6 +8,10 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok_wms_base.testing import WmsTestCaseWithGoods
 
+from anyblok_wms_base.exceptions import (
+    OperationContainerExpected,
+)
+
 
 class TestMove(WmsTestCaseWithGoods):
 
@@ -79,6 +83,19 @@ class TestMove(WmsTestCaseWithGoods):
         move.execute()  # result already tested
         move.obliviate()
         self.assertBackToBeginning()
+
+    def test_not_a_container(self):
+        wrong_loc = self.Goods.insert(type=self.goods_type)
+        with self.assertRaises(OperationContainerExpected) as arc:
+            self.Move.create(
+                destination=wrong_loc,
+                dt_execution=self.dt_test2,
+                state='planned',
+                input=self.avatar)
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs['offender'], wrong_loc)
 
 
 del WmsTestCaseWithGoods

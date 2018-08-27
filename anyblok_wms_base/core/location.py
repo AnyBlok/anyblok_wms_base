@@ -163,3 +163,6 @@ class Goods:
                                    Avatar.dt_until > at_datetime))
         cte = cte.union_all(tail)
         return cte
+
+    def is_container(self):
+        return self.type.get_behaviour('container') is not None
