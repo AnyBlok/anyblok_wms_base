@@ -139,10 +139,10 @@ class WmsTestCase(BlokTestCase):
             location_type = getattr(cls, 'location_type', None)
             if location_type is None:
                 location_type = cls.create_location_type()
-        loc = cls.Goods.insert(type=location_type,
-                               code=code,
-                               container_tag=tag,
-                               **fields)
+        loc = cls.Wms.create_root_container(location_type,
+                                            code=code,
+                                            container_tag=tag,
+                                            **fields)
         if parent is not None:
             # we insert an Apparition directly in order not to depend onto
             # Apparition working properly

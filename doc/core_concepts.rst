@@ -279,6 +279,14 @@ container (at some point in time). Anyblok / Wms Base provides
 :meth:`quantity queries <anyblok_wms_base.core.wms.Wms.quantity>`
 that are able to recurse through this, optionally at a given point in time.
 
+.. warning:: topmost containers must be created by the
+             dedicated :meth:`helper method
+             <anyblok_wms_base.core.wms.Wms.create_root_container>`.
+
+             Other containers can be created by Operations such as
+             :ref:`op_arrival` or :ref:`op_apparition`, like any Goods.
+
+
 The fact that there is no strong distinction between Goods and their
 containers may seem surprising for some developers, but it has lots of
 interesting benefits:
@@ -296,11 +304,6 @@ interesting benefits:
              of the Location model <improvement_goods_location>`.
 
 .. seealso:: :ref:`avatars_containers_contents`
-
-.. note:: topmost containers have no :ref:`Avatars
-          <goods_avatar>`, and therefore must be inserted directly,
-          rather than created through an :ref:`op_arrival` or an
-          :ref:`op_apparition`.
 
 .. _operation:
 

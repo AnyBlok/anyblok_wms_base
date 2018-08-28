@@ -220,3 +220,7 @@ class TestLocation(WmsTestCase):
                              location=sub,
                              location_tag='foo',
                              location_recurse=False)
+
+    def test_create_root_container_wrong_type(self):
+        with self.assertRaises(ValueError):
+            self.Wms.create_root_container(self.goods_type)

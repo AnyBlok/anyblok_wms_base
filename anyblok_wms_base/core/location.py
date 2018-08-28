@@ -165,4 +165,4 @@ class Goods:
         return cte
 
     def is_container(self):
-        return self.type.get_behaviour('container') is not None
+        return self.type.is_container()

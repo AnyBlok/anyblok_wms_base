@@ -136,3 +136,24 @@ class Wms:
         """
         Avatar = cls.Goods.Avatar
         return Avatar.query(func.count(Avatar.id)).join(Avatar.goods)
+
+    @classmethod
+    def create_root_container(cls, container_type, **fields):
+        """Helper to create topmost containers.
+
+        Topmost containers must have themselves no surrounding container,
+        which means they can't have Avatars, and therefore can't be outcomes
+        of any Operations, which is quite exceptional in Anyblok / Wms Base.
+
+        On the other hand, at least one
+        such container is needed to root the containing hierarchy.
+
+        :param container_type: a :ref:`Goods Type <goods_type>` that's
+                               suitable for containers.
+        :return: the created container
+        """
+        if container_type is None or not container_type.is_container():
+            raise ValueError(
+                "Not a proper container type: %r " % container_type)
+        return cls.registry.Wms.Goods.insert(type=container_type,
+                                             **fields)

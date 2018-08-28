@@ -12,5 +12,6 @@ Model.Wms
 
       <h3>Methods</h3>
 
+   .. automethod:: create_root_container
    .. automethod:: quantity
    .. automethod:: base_quantity_query
