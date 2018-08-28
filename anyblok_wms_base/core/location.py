@@ -33,6 +33,8 @@ class Goods:
 
     @classmethod
     def flatten_containers_subquery(cls, top=None,
+                                    container_types=None,
+                                    exclude_container_types=None,
                                     additional_states=None, at_datetime=None):
         """Return an SQL subquery flattening the containment graph.
 

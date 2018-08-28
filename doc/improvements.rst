@@ -469,6 +469,8 @@ possibilities:
 Location hierarchical structure and stock levels
 ------------------------------------------------
 
+.. note:: replaced by simple location type filterings in version 0.8.0
+
 .. versionadded:: 0.7.0
 
 Counting (or summing) the goods quantities is expensive within an

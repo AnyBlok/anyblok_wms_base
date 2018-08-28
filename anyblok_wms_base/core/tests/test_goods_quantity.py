@@ -84,6 +84,28 @@ class TestQuantity(WmsTestCase):
                              location=sub,
                              location_recurse=False)
 
+    def test_additional_filters(self):
+        special_loc_type = self.Goods.Type.insert(code='SPECIAL-LOC',
+                                                  parent=self.location_type)
+        special_loc = self.insert_location('special', parent=self.stock,
+                                           location_type=special_loc_type)
+
+        self.insert_goods(2, 'present', self.dt_test1, location=special_loc)
+        self.insert_goods(1, 'present', self.dt_test1, location=self.stock)
+        only_special = self.Wms.filter_container_types([special_loc_type])
+        not_special = self.Wms.exclude_container_types([special_loc_type])
+        exclude_all = self.Wms.exclude_container_types([special_loc_type,
+                                                        self.stock.type])
+        self.assert_quantity(2,
+                             location=self.stock,
+                             additional_filter=only_special)
+        self.assert_quantity(1,
+                             location=self.stock,
+                             additional_filter=not_special)
+        self.assert_quantity(0,
+                             location=self.stock,
+                             additional_filter=exclude_all)
+
     def test_dt_quantity_moved_loc(self):
         """Test quantity queries with Goods in a location that moves."""
         loc = self.insert_location('sub', parent=self.stock)

@@ -7,7 +7,9 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from sqlalchemy import or_
+from sqlalchemy import not_
 from sqlalchemy import func
+from sqlalchemy import orm
 from anyblok import Declarations
 from anyblok_wms_base.constants import DATE_TIME_INFINITY
 
@@ -33,6 +35,7 @@ class Wms:
                  goods_type=None,
                  additional_states=None,
                  at_datetime=None,
+                 additional_filter=None,
                  location=None,
                  location_recurse=True):
         """Compute the quantity of Goods meeting various criteria.
@@ -50,6 +53,30 @@ class Wms:
             If ``True``, and ``location`` is specified, the Goods Avatars
             from sublocations of ``location`` will be taken recursively into
             account.
+        :param additional_filter:
+           optional function to restrict the Goods Avatars to take into
+           account. It applies to the outer query, i.e., not within
+           the containers recursions.
+
+           The :meth:`restrict_container_types` and
+           :meth:`exclude_container_types` provided methods return functions
+           that are meant to be used with this parameter.
+
+           In general, the passed function must have the following signature::
+
+                def additional_filter(query):
+                   filtered_query = ...
+                   return filtered_query
+
+           where ``query`` is a query object involving Avatars.
+
+           .. seealso:: :meth:`filter_container_types` for a working example.
+
+
+           .. warning:: any JOINs that this function introduces
+                        *should be aliased* to avoid conflicting with the
+                        ones already present in ``query``.
+
         :param additional_states:
             Optionally, states of the Goods Avatar to take into account
             in addition to the ``present`` state.
@@ -112,6 +139,8 @@ class Wms:
             query = query.filter(Avatar.dt_from <= at_datetime,
                                  or_(Avatar.dt_until.is_(None),
                                      Avatar.dt_until > at_datetime))
+        if additional_filter is not None:
+            query = additional_filter(query)
         res = query.one()[0]
         return 0 if res is None else res
 
@@ -124,6 +153,47 @@ class Wms:
         """
         Avatar = cls.Goods.Avatar
         return Avatar.query(func.count(Avatar.id)).join(Avatar.goods)
+
+    @classmethod
+    def filter_container_types(cls, types):
+        """Allow restricting container types in quantity queries.
+
+        :return: a suitable filtering function that restricts the counted
+                 Avatars to those whose *direct* location is of the given
+                 types.
+        """
+        Goods = cls.registry.Wms.Goods
+        Avatar = Goods.Avatar
+        loc_goods = orm.aliased(Goods, name='location_goods')
+
+        def add_filter(query):
+            return query.join(loc_goods, Avatar.location).filter(
+                loc_goods.type_id.in_(set(t.id for t in types)))
+
+        return add_filter
+
+    @classmethod
+    def exclude_container_types(cls, types):
+        """Allow restricting container types in quantity queries.
+
+        :return: a suitable filtering function that restricts the counted
+                 Avatars to those whose *direct* location is not of
+                 the given types.
+        """
+        Goods = cls.registry.Wms.Goods
+        Avatar = Goods.Avatar
+        loc_goods = orm.aliased(Goods, name='location_goods')
+
+        def add_filter(query):
+            joined = query.join(loc_goods, Avatar.location)
+            if len(types) == 1:
+                # better for SQL indexes
+                return joined.filter(loc_goods.type_id != types[0].id)
+            else:
+                return joined.filter(
+                    not_(loc_goods.type_id.in_(set(t.id for t in types))))
+
+        return add_filter
 
     @classmethod
     def create_root_container(cls, container_type, **fields):
