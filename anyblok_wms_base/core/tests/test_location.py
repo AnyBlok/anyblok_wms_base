@@ -82,62 +82,64 @@ class TestLocation(WmsTestCase):
         with self.assertRaises(ValueError):
             self.assert_quantity(0, additional_states=['future'])
 
-    def test_tag_recursion(self):
+    def test_recursion(self):
+        """Test flatten_containers_subquery recursion, demonstrating joins.
+        """
         Goods = self.Goods
-        self.stock.container_tag = 'sellable'
-        stock_q = self.insert_location('STK/Q', parent=self.stock, tag='qa')
+        sell_loc_type = self.location_type
+        nosell_loc_type = self.Wms.Goods.Type.insert(
+            code='NOSELL',
+            behaviours=dict(container={}))
+        stock_q = self.insert_location('STK/Q', parent=self.stock,
+                                       location_type=nosell_loc_type)
         stock_2 = self.insert_location('STK/2', parent=self.stock)
 
-        stock_q1 = self.insert_location('STK/Q1', parent=stock_q)
-        stock_qok = self.insert_location('STK/QOK', parent=stock_q,
-                                         tag='sellable')
+        stock_q1 = self.insert_location('STK/Q1', parent=stock_q,
+                                        location_type=nosell_loc_type)
+        stock_qok = self.insert_location('STK/QOK', parent=stock_q)
 
-        cte = Goods.flatten_subquery_with_tags(top=self.stock)
+        cte = Goods.flatten_containers_subquery(top=self.stock)
         self.assertEqual(
-            set(self.registry.session.query(cte.c.id, cte.c.tag).all()),
-            {(self.stock.id, 'sellable'),
-             (stock_q.id, 'qa'),
-             (stock_2.id, 'sellable'),
-             (stock_q1.id, 'qa'),
-             (stock_qok.id, 'sellable'),
-             })
+            set(r[0] for r in self.registry.session.query(cte.c.id).all()),
+            {self.stock.id, stock_q.id, stock_2.id, stock_q1.id, stock_qok.id}
+        )
 
         # example with no 'top', also demonstrating how to join (in this
         # case against on Location, to get full instances
-        other = self.insert_location('foo', tag='bar')
-        notag = self.insert_location('notag')
-        cte = Goods.flatten_subquery_with_tags()
-        joined = Goods.query(
-            Goods, cte.c.tag).join(cte, cte.c.id == Goods.id)
-        notsellable = set(joined.filter(cte.c.tag != 'sellable').all())
-        self.assertEqual(notsellable,
-                         {(stock_q, 'qa'),
-                          (stock_q1, 'qa'),
-                          (other, 'bar'),
-                          })
-        # notag wasn't there because of NULL semantics, and this has nothing
-        # to do with the recursive CTE itself:
-        self.assertEqual(joined.filter(cte.c.tag.is_(None)).one(),
-                         (notag, None))
+        other = self.insert_location('foo',
+                                     location_type=self.Wms.Goods.Type.insert(
+                                         code='NOSELL-OTHER',
+                                         behaviours=dict(container={}))
+                                     )
+        cte = Goods.flatten_containers_subquery()
+        joined = Goods.query().join(cte, cte.c.id == Goods.id)
 
-    def test_override_tag_recursion(self):
+        notsellable = set(joined.filter(Goods.type != sell_loc_type).all())
+        self.assertEqual(notsellable, {stock_q, stock_q1, other})
+
+        # Note that in this form, i.e. without joining on Avatars pointing to
+        # the containers, there is nothing that actually restricts the
+        # subquery to actually containers.
+        self.insert_goods(1, 'present', self.dt_test1)
+        self.assertIsNotNone(joined.filter(
+            Goods.type == self.goods_type).first())
+
+    def test_override_recursion(self):
         Goods = self.Goods
-        orig_meth = Goods.flatten_subquery_with_tags
+        orig_meth = Goods.flatten_containers_subquery
 
         @classmethod
-        def flatten_subquery_with_tags(cls, top=None, resolve_top_tag=True,
-                                       **kwargs):
+        def flatten_containers_subquery(cls, top=None, **kwargs):
             """This is an example of flattening by code prefixing.
 
-            Tag defaulting is disabled: only the direct tag is returned.
-            Not specifying ``top`` is not supported
+            Not specifying ``top`` is not supported in this simple example
 
             We also assume that locations don't move, and therefore ignore
             the at_datetime and additional_states kwargs
             """
             prefix = top.code + '/'
-            query = Goods.query(
-                Goods.id, Goods.container_tag.label('tag')).filter(or_(
+            query = Goods.query(Goods.id).filter(
+                or_(
                     Goods.code.like(prefix + '%'),
                     Goods.code == top.code))
             return query.subquery()
@@ -146,80 +148,24 @@ class TestLocation(WmsTestCase):
         self.insert_goods(2, 'present', self.dt_test1)
         self.insert_goods(1, 'present', self.dt_test1, location=other)
 
-        sub = self.insert_location('STK/sub', tag='foo')
+        sub = self.insert_location('STK/sub')
         self.insert_goods(3, 'present', self.dt_test1, location=sub)
 
         try:
-            Goods.flatten_subquery_with_tags = flatten_subquery_with_tags
+            Goods.flatten_containers_subquery = flatten_containers_subquery
             self.assert_quantity(5)
-            self.assert_quantity(3, location_tag='foo')
         finally:
-            Goods.flatten_subquery_with_tags = orig_meth
-
-    def test_resolve_tag(self):
-        sub = self.insert_location('sub', parent=self.stock)
-        sub2 = self.insert_location('sub2', parent=sub)
-        self.assertIsNone(self.stock.resolve_tag())
-        self.assertIsNone(sub.resolve_tag())
-
-        self.stock.container_tag = 'top'
-        self.assertEqual(sub.resolve_tag(), 'top')
-        self.assertEqual(sub2.resolve_tag(), 'top')
+            Goods.flatten_containers_subquery = orig_meth
 
     def test_quantity_recursive(self):
         other = self.insert_location('other')
         self.insert_goods(2, 'present', self.dt_test1)
         self.insert_goods(1, 'present', self.dt_test1, location=other)
 
-        sub = self.insert_location('sub', parent=self.stock, tag='foo')
+        sub = self.insert_location('sub', parent=self.stock)
         self.insert_goods(3, 'present', self.dt_test1, location=sub)
 
         self.assert_quantity(5)
-
-        # this excludes sub, which has a tag
-        self.assert_quantity(2, location_tag=None)
-
-        self.assert_quantity(3, location_tag='foo')
-
-        self.stock.container_tag = 'foo'
-        self.assert_quantity(5, location_tag='foo')
-
-    def test_quantity_recursive_top_tag_none(self):
-        """Tag filtering works even if topmost location has no direct tag.
-        """
-        self.stock.container_tag = 'sell'
-        sub = self.insert_location('sub', parent=self.stock)
-        sub2 = self.insert_location('sub2', parent=sub)
-
-        self.insert_goods(3, 'present', self.dt_test1)
-        self.insert_goods(1, 'present', self.dt_test1, location=sub)
-        self.insert_goods(2, 'present', self.dt_test1, location=sub2)
-        # in a previous version, the recursion would have started with sub's
-        # tag being None and propagate that to sub2. Now it doesn't
-        self.assert_quantity(3, location=sub, location_tag='sell')
-        self.assert_quantity(6)
-
-    def test_quantity_tag_non_recursive(self):
-        # normally it'd be redundant to ask for tag quantity for
-        # non recursive queries, but for consistence it should work
-        # (can happen as a result of some refactor, for instance, or
-        # if upstream inputs are dynamic enough)
-
-        self.insert_goods(2, 'present', self.dt_test1)
-        self.assert_quantity(2, location_tag=None, location_recurse=False)
-        self.assert_quantity(0, location_tag='foo', location_recurse=False)
-        self.stock.container_tag = 'foo'
-        self.assert_quantity(2, location_tag='foo', location_recurse=False)
-
-    def test_quantity_tag_non_recursive_inherited(self):
-        # still works if the tag is actually inherited
-        sub = self.insert_location('sub', parent=self.stock)
-        self.stock.container_tag = 'foo'
-        self.insert_goods(2, 'present', self.dt_test1, location=sub)
-        self.assert_quantity(2,
-                             location=sub,
-                             location_tag='foo',
-                             location_recurse=False)
 
     def test_create_root_container_wrong_type(self):
         with self.assertRaises(ValueError):

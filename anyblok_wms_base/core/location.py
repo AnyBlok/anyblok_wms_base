@@ -8,11 +8,8 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 from sqlalchemy import orm
 from sqlalchemy import or_
-from sqlalchemy import func
-from sqlalchemy import literal
 
 from anyblok import Declarations
-from anyblok.column import Text
 
 from anyblok_wms_base.constants import DATE_TIME_INFINITY
 
@@ -29,70 +26,40 @@ class Goods:
 
     Therefore, Goods containers form a tree-like structure (a forest).
 
-    Goods containers also have a ``container_tag`` property,
-    which can be used to express functional meaning, especially for
-    :meth:`quantity computations
-    <anyblok_wms_base.core.wms.Wms.quantity>`.
-
     Downstream libraries and applications which don't want to use this
-    hierarchy and the defaulting of tags that comes along can do so by
-    overriding :meth:`flatten_hierarchy_with_tags` and :meth:`resolve_tag`
+    hierarchy that comes along can do so by
+    overriding :meth:`flatten_subquery`.
     """
-    container_tag = Text()
-    """Tag for Quantity grouping.
-
-    This field is a kind of tag that can be used to filter in quantity
-    queries. It allows for location-based assessment of stock levels by
-    recursing in the hierarchy while still allowing exceptions: to discard or
-    include sublocations.
-
-    For instance, one may represent a big warehouse as having several rooms
-    (R1, R2)
-    each one with an examination area (R1/QA, R2/QA), which can be further
-    subdivided.
-
-    Goods stored in the workshop are not to be sold, except maybe those that
-    are in the waiting area before been put back in stock (R1/QA/Good etc.).
-
-    It's then useful to tag Rooms as 'sellable', but in them, QA locations as
-    'qa', and finally the good waiting areas as 'sellable' again.
-
-    See in unit tests for a demonstration of that.
-    """
-
-    def resolve_tag(self):
-        """Return self.tag, or by default ancestor's."""
-        # TODO make a recursive query for this also
-        if self.container_tag is not None:
-            return self.container_tag
-        # TODO this should be done at a certain date, too, with
-        # appropriate states
-        av = self.Avatar.query().filter_by(
-            goods=self, state='present').first()
-        if av is None:
-            return None
-        return av.location.resolve_tag()
 
     @classmethod
-    def flatten_subquery_with_tags(cls, top=None, resolve_top_tag=True,
-                                   additional_states=None, at_datetime=None):
-        """Return an SQL subquery flattening the hierarchy, resolving tags.
-
-        The resolving tag policy is that a Location whose tag is ``None``
-        inherits its parent's.
-
-        This subquery cannot be used directly: it is meant to be used as part
-        of a wider query; see unit tests (``test_location``) for nice examples
-        with or without joins. It has two columns: ``id`` and ``tag``.
-
-        :param top:
-           if specified, the query starts at this Location (inclusive)
+    def flatten_containers_subquery(cls, top=None,
+                                    additional_states=None, at_datetime=None):
+        """Return an SQL subquery flattening the containment graph.
 
         Containing Goods can themselves be placed within a container
         through the standard mechanism: by having an Avatar whose location is
         the surrounding container.
         This default implementation issues a recursive CTE (``WITH RECURSIVE``)
-        that climbs down along this.
+        that climbs down along this, returning just the ``id`` column
+
+
+        This subquery cannot be used directly: it is meant to be used as part
+        of a wider query; see unit tests (``test_location``) for nice examples
+        with or without joins.
+
+        .. note:: This subquery itself does not restrict its results to
+                  actually be containers! Only its use in joins as locations
+                  of Avatars will, and that's considered good enough, as
+                  filtering on actual containers would be more complicated
+                  (resolving behaviour inheritance) and is useless for
+                  quantity queries.
+
+                  Applicative code relying on this method for other reasons
+                  than quantity counting should therefore add its own ways
+                  to restrict to actual containers if needed.
+
+        :param top:
+           if specified, the query starts at this Location (inclusive)
 
         For some applications with a large and complicated containing
         hierarchy, joining on this CTE can become a performance problem.
@@ -124,26 +91,17 @@ class Goods:
         """
         Avatar = cls.Avatar
         query = cls.registry.session.query
-
-        if top is not None and top.container_tag is None:
-            init_tag = top.resolve_tag()
-            cte = cls.query(cls.id, literal(init_tag).label('tag'))
-        else:
-            cte = cls.query(cls.id, cls.container_tag.label('tag'))
+        cte = cls.query(cls.id)
         if top is None:
             cte = cte.outerjoin(Avatar, Avatar.goods_id == cls.id).filter(
                 Avatar.location_id.is_(None))
         else:
-            # starting with top, not its children so that the children
-            # can inherit tag from top (done in the recursive part of the
-            # subquery)
-            cte = cte.filter(cls.id == top.id)
-        cte = cte.cte(name="location_tag", recursive=True)
+            cte = cte.filter_by(id=top.id)
+
+        cte = cte.cte(name="container", recursive=True)
         parent = orm.aliased(cte, name='parent')
         child = orm.aliased(cls, name='child')
-        tail = query(child.id,
-                     func.coalesce(child.container_tag, parent.c.tag)
-                     .label('tag')).join(
+        tail = query(child.id).join(
                          Avatar, Avatar.goods_id == child.id).filter(
                              Avatar.location_id == parent.c.id)
         # taking additional states and datetime query into account

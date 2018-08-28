@@ -122,7 +122,7 @@ class WmsTestCase(BlokTestCase):
 
     @classmethod
     def cls_insert_location(cls, code,
-                            location_type=None, parent=None, tag=None,
+                            location_type=None, parent=None,
                             dt_from=None,
                             **fields):
         """Helper for location creations, classmethod version
@@ -141,7 +141,6 @@ class WmsTestCase(BlokTestCase):
                 location_type = cls.create_location_type()
         loc = cls.Wms.create_root_container(location_type,
                                             code=code,
-                                            container_tag=tag,
                                             **fields)
         if parent is not None:
             # we insert an Apparition directly in order not to depend onto

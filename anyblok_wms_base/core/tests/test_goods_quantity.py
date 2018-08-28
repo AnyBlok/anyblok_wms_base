@@ -71,18 +71,18 @@ class TestQuantity(WmsTestCase):
         self.assert_quantity(3, additional_states=['past'],
                              at_datetime=self.dt_test2)
 
-    def test_quantity_loc_tag(self):
-        """No starting location, but filtering with location tags."""
-        self.stock.container_tag = 'ok'
+    def test_quantity_no_recurse(self):
+        # cases with a given location are for now treated in test_location
         sub = self.insert_location('sub', parent=self.stock)
-        exc = self.insert_location('except', tag='nope', parent=self.stock)
+        self.insert_goods(2, 'present', self.dt_test1, location=sub)
+        self.insert_goods(1, 'present', self.dt_test1, location=self.stock)
 
-        self.insert_goods(1, 'present', self.dt_test2, location=self.stock)
-        self.insert_goods(1, 'present', self.dt_test2, location=sub)
-        self.insert_goods(1, 'present', self.dt_test2, location=exc)
-        self.assert_quantity(2, location_tag='ok')
-        self.assert_quantity(1, location_tag='nope')
-        self.assert_quantity(3)
+        self.assert_quantity(1, goods_type=self.goods_type,
+                             location=self.stock,
+                             location_recurse=False)
+        self.assert_quantity(2, goods_type=self.goods_type,
+                             location=sub,
+                             location_recurse=False)
 
     def test_dt_quantity_moved_loc(self):
         """Test quantity queries with Goods in a location that moves."""

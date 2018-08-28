@@ -34,8 +34,7 @@ class Wms:
                  additional_states=None,
                  at_datetime=None,
                  location=None,
-                 location_recurse=True,
-                 location_tag=_missing):
+                 location_recurse=True):
         """Compute the quantity of Goods meeting various criteria.
 
         The computation actually involves querying :class:`Avatars
@@ -51,11 +50,6 @@ class Wms:
             If ``True``, and ``location`` is specified, the Goods Avatars
             from sublocations of ``location`` will be taken recursively into
             account.
-        :param str location_tag:
-            If passed, only the Goods Avatars sitting in a location having
-            or inheriting this tag will be taken into account (may seem only
-            useful if ``location_recurse`` is ``True``, yet the non-recursive
-            case behaves consistently).
         :param additional_states:
             Optionally, states of the Goods Avatar to take into account
             in addition to the ``present`` state.
@@ -91,21 +85,15 @@ class Wms:
         if goods_type is not None:
             query = query.filter(Goods.type == goods_type)
 
-        # location_tag needs the recursive CTE even if the
-        # quantity request is not recursive (so that tag is the correct one).
-        if ((location is not None and location_recurse) or
-                location_tag is not _missing):
-            cte = Goods.flatten_subquery_with_tags(
-                top=location,
-                at_datetime=at_datetime,
-                additional_states=additional_states)
-            query = query.join(cte, cte.c.id == Avatar.location_id)
-
-        if location is not None and not location_recurse:
-            query = query.filter(Avatar.location == location)
-
-        if location_tag is not _missing:
-            query = query.filter(cte.c.tag == location_tag)
+        if location is not None:
+            if location_recurse:
+                cte = Goods.flatten_containers_subquery(
+                    top=location,
+                    at_datetime=at_datetime,
+                    additional_states=additional_states)
+                query = query.join(cte, cte.c.id == Avatar.location_id)
+            else:
+                query = query.filter(Avatar.location == location)
 
         if additional_states is None:
             query = query.filter(Avatar.state == 'present')
