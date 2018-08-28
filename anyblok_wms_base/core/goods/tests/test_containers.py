@@ -11,12 +11,12 @@ from anyblok_wms_base.constants import DATE_TIME_INFINITY
 from anyblok_wms_base.testing import WmsTestCase
 
 
-class TestLocation(WmsTestCase):
+class TestContainers(WmsTestCase):
 
     blok_entry_points = ('bloks', 'test_bloks')
 
     def setUp(self):
-        super(TestLocation, self).setUp()
+        super(TestContainers, self).setUp()
         self.Avatar = self.Goods.Avatar
         self.goods_type = self.Goods.Type.insert(label="My goods",
                                                  code='MyGT')
@@ -125,6 +125,16 @@ class TestLocation(WmsTestCase):
             Goods.type == self.goods_type).first())
 
     def test_override_recursion(self):
+        """Demonstrate overriding of the flatten_containers_subquery method.
+
+        Of course, since this is a BlokTestCase,
+        instead of using the standard Anyblok overriding mechanism (we can't
+        want to install a Blok just for these purposes within the test),
+        we resort to monkey patching. The end result is still the same.
+
+        The overridden method demonstrates exactly quantity grouping
+        (hierarchy) based on the code prefix.
+        """
         Goods = self.Goods
         orig_meth = Goods.flatten_containers_subquery
 

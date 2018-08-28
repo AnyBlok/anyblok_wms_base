@@ -301,9 +301,9 @@ class Goods:
         1. one might design a flat Location hierarchy using prefixing on
            :attr:`code` to express inclusion instead of the standard Avatar
            mechanism.
-           :attr:`parent`. See :meth:`anyblok_wms_base.core.tests
-           .test_containers.test_tag_recursion` for a proof of concept
-           of this.
+           :attr:`parent`. See :meth:`this test
+           <.tests.test_containers.TestContainers.test_override_recursion>`
+           for a proof of this concept.
         2. one might make a materialized view out of the present recursive CTE,
            refreshing as soon as needed.
         """
