@@ -7,7 +7,10 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from copy import deepcopy
+
 from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy import orm
+from sqlalchemy import or_
 
 from anyblok import Declarations
 from anyblok.column import Text
@@ -20,6 +23,7 @@ from anyblok_postgres.column import Jsonb
 from anyblok_wms_base.utils import dict_merge
 from anyblok_wms_base.constants import (
     GOODS_STATES,
+    DATE_TIME_INFINITY,
 )
 
 _missing = object()
@@ -118,7 +122,8 @@ class Goods:
         """Tell whether ``self`` has the given type.
 
         :param .type.Type goods_type:
-        :return: ``True`` if the :attr:`type` attribute is ``goods_type``
+        :return: ``True`` if the :attr:`type` attribute is ``goods_type`` or
+                 on of its descendants.
 
         :rtype bool:
         """
@@ -190,6 +195,7 @@ class Goods:
 
         :param mapping: a :class:`dict` like object, or an iterable of
                         (key, value) pairs
+
         This method implements a simple Copy-on-Write mechanism. Namely,
         if the properties are referenced by other Goods records, it
         will duplicate them before actually setting the wished value.
@@ -242,6 +248,100 @@ class Goods:
 
         return all(self.get_property(k, default=_missing) == v
                    for k, v in mapping.items())
+
+    @classmethod
+    def flatten_containers_subquery(cls, top=None,
+                                    additional_states=None, at_datetime=None):
+        """Return an SQL subquery flattening the containment graph.
+
+        Containing Goods can themselves be placed within a container
+        through the standard mechanism: by having an Avatar whose location is
+        the surrounding container.
+        This default implementation issues a recursive CTE (``WITH RECURSIVE``)
+        that climbs down along this, returning just the ``id`` column
+
+        This subquery cannot be used directly: it is meant to be used as part
+        of a wider query; see :mod:`unit tests
+        <anyblok_wms_base.core.goods.tests.test_containers>`) for nice
+        examples with or without joins.
+
+        .. note:: This subquery itself does not restrict its results to
+                  actually be containers! Only its use in joins as locations
+                  of Avatars will, and that's considered good enough, as
+                  filtering on actual containers would be more complicated
+                  (resolving behaviour inheritance) and is useless for
+                  quantity queries.
+
+                  Applicative code relying on this method for other reasons
+                  than quantity counting should therefore add its own ways
+                  to restrict to actual containers if needed.
+
+        :param top:
+           if specified, the query starts at this Location (inclusive)
+
+        For some applications with a large and complicated containing
+        hierarchy, joining on this CTE can become a performance problem.
+        Quoting
+        `PostgreSQL documentation on CTEs
+        <https://www.postgresql.org/docs/10/static/queries-with.html>`_:
+
+          However, the other side of this coin is that the optimizer is less
+          able to push restrictions from the parent query down into a WITH
+          query than an ordinary subquery.
+          The WITH query will generally be evaluated as written,
+          without suppression of rows that the parent query might
+          discard afterwards.
+
+        If that becomes a problem, it is still possible to override the
+        present method: any subquery whose results have the same columns
+        can be used by callers instead of the recursive CTE.
+
+        Examples:
+
+        1. one might design a flat Location hierarchy using prefixing on
+           :attr:`code` to express inclusion instead of the standard Avatar
+           mechanism.
+           :attr:`parent`. See :meth:`anyblok_wms_base.core.tests
+           .test_containers.test_tag_recursion` for a proof of concept
+           of this.
+        2. one might make a materialized view out of the present recursive CTE,
+           refreshing as soon as needed.
+        """
+        Avatar = cls.Avatar
+        query = cls.registry.session.query
+        cte = cls.query(cls.id)
+        if top is None:
+            cte = cte.outerjoin(Avatar, Avatar.goods_id == cls.id).filter(
+                Avatar.location_id.is_(None))
+        else:
+            cte = cte.filter_by(id=top.id)
+
+        cte = cte.cte(name="container", recursive=True)
+        parent = orm.aliased(cte, name='parent')
+        child = orm.aliased(cls, name='child')
+        tail = query(child.id).join(
+                         Avatar, Avatar.goods_id == child.id).filter(
+                             Avatar.location_id == parent.c.id)
+        # taking additional states and datetime query into account
+        # TODO, this location part is very redundant with what's done in
+        # Wms.quantity() itself for the Goods been counted, we should refactor
+        if additional_states is None:
+            tail = tail.filter(Avatar.state == 'present')
+        else:
+            tail = tail.filter(Avatar.state.in_(
+                ('present', ) + tuple(additional_states)))
+
+        if at_datetime is DATE_TIME_INFINITY:
+            tail = tail.filter(Avatar.dt_until.is_(None))
+        elif at_datetime is not None:
+            tail = tail.filter(Avatar.dt_from <= at_datetime,
+                               or_(Avatar.dt_until.is_(None),
+                                   Avatar.dt_until > at_datetime))
+        cte = cte.union_all(tail)
+        return cte
+
+    def is_container(self):
+        return self.type.is_container()
 
 
 _empty_dict = {}

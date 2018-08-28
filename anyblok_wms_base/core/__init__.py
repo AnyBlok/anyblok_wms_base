@@ -18,9 +18,6 @@ def import_declarations(reload=None):
         reload(wms)
     operation.import_declarations(reload=reload)
     goods.import_declarations(reload=reload)
-    from . import location
-    if reload is not None:
-        reload(location)
 
 
 class WmsCore(Blok):
