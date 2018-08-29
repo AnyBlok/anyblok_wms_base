@@ -206,7 +206,7 @@ class Wms:
         On the other hand, at least one
         such container is needed to root the containing hierarchy.
 
-        :param container_type: a :ref:`PhysObj Type <goods_type>` that's
+        :param container_type: a :ref:`PhysObj Type <physobj_type>` that's
                                suitable for containers.
         :return: the created container
         """

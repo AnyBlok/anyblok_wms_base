@@ -71,7 +71,7 @@ class PhysObj:
                           model='Model.Wms.PhysObj.Properties')
     """Link to :class:`Properties`.
 
-    .. seealso:: :ref:`goods_properties` for functional aspects.
+    .. seealso:: :ref:`physobj_properties` for functional aspects.
 
     .. warning:: don't ever mutate the contents of :attr:`properties` directly,
                  unless what you want is precisely to affect all the PhysObj
@@ -557,7 +557,7 @@ class Properties:
 class Avatar:
     """PhysObj Avatar.
 
-    See in :ref:`Core Concepts <goods_avatar>` for a functional description.
+    See in :ref:`Core Concepts <physobj_avatar>` for a functional description.
     """
 
     id = Integer(label="Identifier", primary_key=True)
@@ -604,7 +604,7 @@ class Avatar:
 
     + In the ``future`` state, this is completely theoretical, and
       ``wms-core`` doesn't do much about it, besides using it to avoid
-      counting several :ref:`goods_avatar` of the same physical goods
+      counting several :ref:`physobj_avatar` of the same physical goods
       while :meth:`peeking at quantities in the future
       <anyblok_wms_base.core.location.Location.quantity>`.
       If the end application does serious time prediction, it can use it

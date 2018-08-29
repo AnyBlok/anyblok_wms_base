@@ -2,9 +2,9 @@ core.goods
 ==========
 .. py:module:: anyblok_wms_base.core.goods.goods
 
-Model.Wms.Goods
-~~~~~~~~~~~~~~~
-.. autoclass:: anyblok_wms_base.core.goods.goods.Goods
+Model.Wms.PhysObj
+~~~~~~~~~~~~~~~~~
+.. autoclass:: anyblok_wms_base.core.goods.goods.PhysObj
 
    .. raw:: html
 
@@ -38,8 +38,8 @@ Model.Wms.Goods
 
    .. automethod:: flatten_containers_subquery
 
-Model.Wms.Goods.Type
-~~~~~~~~~~~~~~~~~~~~
+Model.Wms.PhysObj.Type
+~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: anyblok_wms_base.core.goods.type.Type
 
    .. raw:: html
@@ -57,8 +57,8 @@ Model.Wms.Goods.Type
    .. automethod:: get_behaviour
 
 
-Model.Wms.Goods.Properties
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Model.Wms.PhysObj.Properties
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: anyblok_wms_base.core.goods.goods.Properties
 
    .. raw:: html
@@ -77,8 +77,8 @@ Model.Wms.Goods.Properties
    .. automethod:: get
    .. automethod:: set
 
-Model.Wms.Goods.Avatar
-~~~~~~~~~~~~~~~~~~~~~~
+Model.Wms.PhysObj.Avatar
+~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: anyblok_wms_base.core.goods.goods.Avatar
 
    .. raw:: html

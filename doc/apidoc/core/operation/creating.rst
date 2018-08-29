@@ -1,7 +1,6 @@
 Creating Operations
 ~~~~~~~~~~~~~~~~~~~
-This Operations take no Goods records as inputs, and have one or
-several of them as outcomes.
+These Operations have no inputs, and have one or several outcomes.
 
 Model.Wms.Operation.Arrival
 ---------------------------

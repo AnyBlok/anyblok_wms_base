@@ -26,7 +26,7 @@ Model = Declarations.Model
 class Type:
     """Types of PhysObj.
 
-    For a full functional discussion, see :ref:`goods_type`.
+    For a full functional discussion, see :ref:`physobj_type`.
     """
     id = Integer(label="Identifier", primary_key=True)
     """Primary key"""
