@@ -6,7 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok_wms_base.testing import WmsTestCaseWithGoods
+from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 
 from anyblok_wms_base.constants import (
     SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR
@@ -17,12 +17,12 @@ from anyblok_wms_base.exceptions import (
     )
 
 
-class TestSplit(WmsTestCaseWithGoods):
+class TestSplit(WmsTestCaseWithPhysObj):
     """Specific testing of Wms.Operation.Split
 
     This may look very partial, but most of the testing of Split is
     actually done within the tests of operations that inherit from the
-    GoodsSplitter mixin.
+    PhysObjSplitter mixin.
 
     TODO for the sake of clarity and granularity of tests, complete this
     testcase so that Split can have an independent development life.
@@ -153,13 +153,13 @@ class TestSplit(WmsTestCaseWithGoods):
         self.assertEqual(set(aggregate.inputs), set(outcomes))
         aggregate.execute()
 
-        Avatar = self.Goods.Avatar
+        Avatar = self.PhysObj.Avatar
         new_avatar = self.single_result(
             Avatar.query().filter(Avatar.state == 'present'))
         new_goods = new_avatar.goods
         self.assertEqual(new_goods.quantity, 3)
         # TODO would be neat for the outcome to actually be self.goods,
-        # i.e., the Goods record we started with
+        # i.e., the PhysObj record we started with
         self.assertEqual(new_avatar.location, self.avatar.location)
         self.assertEqual(new_goods.type, self.goods.type)
         self.assertEqual(new_goods.properties, self.goods.properties)
@@ -195,13 +195,13 @@ class TestSplit(WmsTestCaseWithGoods):
         rev_move.execute()
         aggregate.execute()
 
-        Avatar = self.Goods.Avatar
+        Avatar = self.PhysObj.Avatar
         new_avatar = self.single_result(
             Avatar.query().filter(Avatar.state == 'present'))
         new_goods = new_avatar.goods
         self.assertEqual(new_goods.quantity, 3)
         # TODO would be neat for the outcome to actually be self.goods,
-        # i.e., the Goods record we started with
+        # i.e., the PhysObj record we started with
         self.assertEqual(new_avatar.location, self.avatar.location)
         self.assertEqual(new_goods.type, self.goods.type)
         self.assertEqual(new_goods.properties, self.goods.properties)
@@ -222,19 +222,19 @@ class TestSplit(WmsTestCaseWithGoods):
                                             quantity=2)
 
         split.obliviate()
-        Avatar = self.Goods.Avatar
+        Avatar = self.PhysObj.Avatar
         restored_avatar = self.single_result(Avatar.query())
-        restored_goods = self.single_result(self.Goods.query().filter_by(
+        restored_goods = self.single_result(self.PhysObj.query().filter_by(
             type=self.goods_type))
         self.assertEqual(restored_avatar.goods, restored_goods)
 
         self.assertEqual(restored_avatar.location, self.avatar.location)
         # TODO would be neat for the outcome to actually be self.goods,
-        # i.e., the Goods record we started with
+        # i.e., the PhysObj record we started with
         self.assertEqual(restored_goods, self.goods)
         self.assertEqual(restored_goods.type, self.goods.type)
         self.assertEqual(restored_goods.quantity, 3)
         self.assertEqual(restored_goods.properties, self.goods.properties)
 
 
-del WmsTestCaseWithGoods
+del WmsTestCaseWithPhysObj

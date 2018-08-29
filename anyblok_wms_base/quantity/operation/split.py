@@ -23,15 +23,15 @@ SingleInput = Declarations.Mixin.WmsSingleInputOperation
 
 @register(Operation)
 class Split(SingleInput, Operation):
-    """A split of Goods record in two.
+    """A split of PhysObj record in two.
 
-    Splits replace their input's :class:`Goods
-    <anyblok_wms_base.quantity.goods.Goods>` record with
+    Splits replace their input's :class:`PhysObj
+    <anyblok_wms_base.quantity.goods.PhysObj>` record with
     two of them, one having the wished :attr:`quantity`, along with
     Avatars at the same location, while
     keeping the same properties and the same total quantity.
 
-    This is therefore destructive for the input's Goods, which is not
+    This is therefore destructive for the input's PhysObj, which is not
     conceptually satisfactory, but will be good enough at this stage of
     development.
 
@@ -45,9 +45,9 @@ class Split(SingleInput, Operation):
     Formal Splits can always be reverted with
     :class:`Aggregate <.aggregate.Aggregate>` Operations,
     but only some physical Splits can be reverted, depending on
-    the Goods Type.
+    the PhysObj Type.
 
-    .. seealso:: :class:`Model.Wms.Goods.Type
+    .. seealso:: :class:`Model.Wms.PhysObj.Type
                  <anyblok_wms_base.quantity.goods.Type>`
                  for a full discussion including use-cases of formal and
                  physical splits and reversal of the latter.
@@ -60,9 +60,9 @@ class Split(SingleInput, Operation):
     helps implementing :ref:`history manipulating methods
     <op_cancel_revert_obliviate>` a lot.
 
-    The drawback is that we get a proliferation of Goods records, some of them
-    even with a zero second lifespan, but even those could be simplified only
-    for executed Splits.
+    The drawback is that we get a proliferation of PhysObj records, some of
+    them even with a zero second lifespan, but even those could be simplified
+    only for executed Splits.
 
     Splits are typically created and executed from :class:`Splitter Operations
     <.splitter.WmsSplitterOperation>`, and that explains the
@@ -114,22 +114,22 @@ class Split(SingleInput, Operation):
 
     @property
     def wished_outcome(self):
-        """Return the Goods record with the wished quantity.
+        """Return the PhysObj record with the wished quantity.
 
         This is only one of :attr:`outcomes
         <anyblok_wms_base.core.operation.base.Operation.outcomes>`
 
-        :rtype: :class:`Wms.Goods
-                <anyblok_wms_base.core.goods.Goods>`
+        :rtype: :class:`Wms.PhysObj
+                <anyblok_wms_base.core.goods.PhysObj>`
         """
-        Goods = self.registry.Wms.Goods
-        Avatar = Goods.Avatar
+        PhysObj = self.registry.Wms.PhysObj
+        Avatar = PhysObj.Avatar
         # in case the split is exactly in half, there's no difference
         # between the two records we created, let's pick any.
         outcome = Avatar.query().join(Avatar.goods).filter(
             Avatar.reason == self,
             Avatar.state != 'past',
-            Goods.quantity == self.quantity).first()
+            PhysObj.quantity == self.quantity).first()
         if outcome is None:
             raise OperationError(self, "The split outcomes have disappeared")
         return outcome
@@ -156,9 +156,9 @@ class Split(SingleInput, Operation):
         self.registry.flush()
 
     def is_reversible(self):
-        """Reversibility depends on the relevant Goods Type.
+        """Reversibility depends on the relevant PhysObj Type.
 
-        See :meth:`on Model.Goods.Type
+        See :meth:`on Model.PhysObj.Type
         <anyblok_wms_base.core.goods.Type.is_split_reversible>`
         """
         return self.input.goods.type.is_split_reversible()
@@ -168,7 +168,7 @@ class Split(SingleInput, Operation):
             # reversal of an end-of-chain split
             follows = [self]
         Wms = self.registry.Wms
-        Avatars = Wms.Goods.Avatar
+        Avatars = Wms.PhysObj.Avatar
         # here in that case, that's for multiple operations
         # in_ is not implemented for Many2Ones
         reason_ids = set(f.id for f in follows)
@@ -181,7 +181,7 @@ class Split(SingleInput, Operation):
                                               state='planned')
 
     def obliviate_single(self):
-        """Remove the created Goods in addition to base class operation.
+        """Remove the created PhysObj in addition to base class operation.
 
         The base class would only take care of the created Avatars
         """

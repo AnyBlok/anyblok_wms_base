@@ -16,9 +16,9 @@ class TestLocation(WmsTestCase):
 
     def setUp(self):
         super(TestLocation, self).setUp()
-        self.Avatar = self.Goods.Avatar
-        self.goods_type = self.Goods.Type.insert(label="My goods",
-                                                 code='MyGT')
+        self.Avatar = self.PhysObj.Avatar
+        self.goods_type = self.PhysObj.Type.insert(label="My goods",
+                                                   code='MyGT')
         self.stock = self.insert_location('STK')
         self.arrival = self.Operation.Arrival.insert(
             goods_type=self.goods_type,
@@ -31,7 +31,7 @@ class TestLocation(WmsTestCase):
 
     def insert_goods(self, qty, state, dt_from, until=None):
         self.Avatar.insert(
-            goods=self.Goods.insert(type=self.goods_type, quantity=qty),
+            goods=self.PhysObj.insert(type=self.goods_type, quantity=qty),
             reason=self.arrival, location=self.stock,
             dt_from=dt_from,
             dt_until=until,
@@ -58,7 +58,7 @@ class TestLocation(WmsTestCase):
                              at_datetime=self.dt_test2)
 
     def test_no_match(self):
-        """Test that quantity is not None if no Goods match the criteria."""
+        """Test that quantity is not None if no PhysObj match the criteria."""
         self.assert_quantity(0)
 
     def test_at_datetime_required(self):

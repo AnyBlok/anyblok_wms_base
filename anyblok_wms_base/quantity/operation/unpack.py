@@ -26,14 +26,14 @@ class Unpack:
 
         TODO: introduce a behaviour (available in spec) to create as many
         records as specified. Even if ``wms-quantity`` is installed, it might
-        be more efficient for some Goods types. Use-case: some bulk handling
+        be more efficient for some PhysObj types. Use-case: some bulk handling
         alongside packed goods by the unit in the same facility.
         """
-        Goods = self.registry.Wms.Goods
+        PhysObj = self.registry.Wms.PhysObj
         target_qty = fields['quantity'] = spec['quantity'] * self.quantity
         existing_ids = spec.get('local_goods_ids')
         if existing_ids is not None:
-            goods = [Goods.query().get(eid for eid in existing_ids)]
+            goods = [PhysObj.query().get(eid for eid in existing_ids)]
             if sum(g.quantity for g in goods) != target_qty:
                 raise OperationInputsError(
                     self,
@@ -43,4 +43,4 @@ class Unpack:
                     "Detailed input: {inputs[0]!r}",
                     spec=spec, target_qty=target_qty)
             return goods
-        return [Goods.insert(**fields)]
+        return [PhysObj.insert(**fields)]

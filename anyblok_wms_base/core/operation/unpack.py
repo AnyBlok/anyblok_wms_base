@@ -20,16 +20,16 @@ Operation = Declarations.Model.Wms.Operation
 
 @register(Operation)
 class Unpack(Mixin.WmsSingleInputOperation, Operation):
-    """Unpacking some goods, creating new Goods and Avatar records.
+    """Unpacking some goods, creating new PhysObj and Avatar records.
 
     This is a destructive Operation, in the usual mild sense: once it's done,
-    the input Goods Avatars is in the ``past`` state, and their underlying Goods
-    have no new Avatars. It is
-    meant to be reversible through appropriate Pack / Assembly Operations,
-    which are not implemented yet at the time being.
+    the input PhysObj Avatars is in the ``past`` state, and their underlying
+    PhysObj have no new Avatars.
 
-    Which Goods will get created and which Properties they will bear is
-    specified in the ``unpack`` behaviour of the Type of the Goods being
+    It is conditionally reversible through appropriate Assembly Operations.
+
+    Which PhysObj will get created and which Properties they will bear is
+    specified in the ``unpack`` behaviour of the Type of the PhysObj being
     unpacked, together with their ``contents`` optional Properties.
     See :meth:`get_outcome_specs` and :meth:`forward_props` for details
     about these and how to achieve the wished functionality.
@@ -71,7 +71,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         packs.update(state='past', reason=self)
 
     def create_unpacked_goods(self, fields, spec):
-        """Create Goods record according to given specification.
+        """Create PhysObj record according to given specification.
 
         This singled out method is meant for easy subclassing (see, e.g,
         in :ref:`wms-quantity Blok <blok_wms_quantity>`).
@@ -81,18 +81,18 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
                        ``spec``, hence one may think of them as redundant,
                        but the point is that they are outside the
                        responsibility of this method.
-        :param spec: specification for these Goods, should be used minimally
+        :param spec: specification for these PhysObj, should be used minimally
                      in subclasses, typically for quantity related adjustments.
                      Also, if the special ``local_goods_ids`` is provided,
-                     this method should attempt to reuse the Goods record with
-                     that ``id`` (interplay with quantity might depend on the
-                     implementation).
-        :return: the list of created Goods records. In ``wms-core``, there
+                     this method should attempt to reuse the PhysObj record
+                     with that ``id`` (interplay with quantity might depend
+                     on the implementation).
+        :return: the list of created PhysObj records. In ``wms-core``, there
                  will be as many as the wished quantity, but in
                  ``wms-quantity``, this maybe a single record bearing the
                  total quantity.
         """
-        Goods = self.registry.Wms.Goods
+        PhysObj = self.registry.Wms.PhysObj
         existing_ids = spec.get('local_goods_ids')
         target_qty = spec['quantity']
         if existing_ids is not None:
@@ -104,18 +104,18 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
                     "the wished total quantity {target_qty} "
                     "Detailed input: {inputs[0]!r}",
                     spec=spec, target_qty=target_qty)
-            return [Goods.query().get(eid) for eid in existing_ids]
-        return [Goods.insert(**fields) for _ in range(spec['quantity'])]
+            return [PhysObj.query().get(eid) for eid in existing_ids]
+        return [PhysObj.insert(**fields) for _ in range(spec['quantity'])]
 
     def after_insert(self):
-        Goods = self.registry.Wms.Goods
-        GoodsType = Goods.Type
+        PhysObj = self.registry.Wms.PhysObj
+        PhysObjType = PhysObj.Type
         packs = self.input
         dt_execution = self.dt_execution
         spec = self.get_outcome_specs()
         type_codes = set(outcome['type'] for outcome in spec)
-        outcome_types = {gt.code: gt for gt in GoodsType.query().filter(
-            GoodsType.code.in_(type_codes)).all()}
+        outcome_types = {gt.code: gt for gt in PhysObjType.query().filter(
+            PhysObjType.code.in_(type_codes)).all()}
 
         outcome_state = 'present' if self.state == 'done' else 'future'
         if self.state == 'done':
@@ -127,26 +127,27 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
             clone = outcome_spec.get('forward_properties') == 'clone'
             if clone:
                 goods_fields['properties'] = packs.goods.properties
-            for goods in self.create_unpacked_goods(goods_fields, outcome_spec):
-                Goods.Avatar.insert(goods=goods,
-                                    location=packs.location,
-                                    reason=self,
-                                    dt_from=dt_execution,
-                                    dt_until=packs.dt_until,
-                                    state=outcome_state)
+            for goods in self.create_unpacked_goods(goods_fields,
+                                                    outcome_spec):
+                PhysObj.Avatar.insert(goods=goods,
+                                      location=packs.location,
+                                      reason=self,
+                                      dt_from=dt_execution,
+                                      dt_until=packs.dt_until,
+                                      state=outcome_state)
                 if not clone:
                     self.forward_props(outcome_spec, goods)
         packs.dt_until = dt_execution
 
     def forward_props(self, spec, outcome):
-        """Handle the properties for a given outcome (Goods record)
+        """Handle the properties for a given outcome (PhysObj record)
 
         This is actually a bit more that just forwarding.
 
         :param dict spec: the relevant specification for this outcome, as
                           produced by :meth:`get_outcome_specs` (see below
                           for the contents).
-        :param outcome: the just created Goods instance
+        :param outcome: the just created PhysObj instance
 
         *Specification contents*
 
@@ -157,7 +158,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
 
             Also, if spec has the ``local_goods_id`` key, ``properties`` is
             ignored. The rationale for this is that normally, there are no
-            present or future Avatar for these Goods, and therefore the
+            present or future Avatar for these PhysObj, and therefore the
             Properties of outcome should not have diverged from the contents
             of ``properties`` since the spec (which must itself not come from
             the behaviour, but instead from ``contents``) has been
@@ -209,7 +210,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         """Produce a complete specification for outcomes and their properties.
 
         In what follows "the behaviour" means the value associated with the
-        ``unpack`` key in the Goods Type :attr:`behaviours
+        ``unpack`` key in the PhysObj Type :attr:`behaviours
         <anyblok_wms_base.core.goods.Type.behaviours>`.
 
         Unless ``uniform_outcomes`` is set to ``True`` in the behaviour,
@@ -237,20 +238,20 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         special ``'clone'`` value for ``forward_properties``.
 
         Otherwise, the ``forward_properties`` and ``required_properties``
-        unpack behaviour from the Goods Type of the packs (``self.input``)
+        unpack behaviour from the PhysObj Type of the packs (``self.input``)
         are merged with those of the outcomes, so that, for instance
         ``forward_properties`` have three key/value sources:
 
         - at toplevel of the behaviour (``uniform_outcomes=True``)
         - in each outcome of the behaviour (``outcomes`` key)
-        - in each outcome of the Goods record (``contents`` property)
+        - in each outcome of the PhysObj record (``contents`` property)
 
         Here's a use-case: imagine the some purchase order reference is
         tracked as property ``po_ref`` (could be important for accounting).
 
-        A Goods Type representing an incoming package holding various Goods
+        A PhysObj Type representing an incoming package holding various PhysObj
         could specify that ``po_ref`` must be forwarded upon Unpack in all
-        cases. For instance, a Goods record with that type could then
+        cases. For instance, a PhysObj record with that type could then
         specify that its outcomes are a phone with a given ``color``
         property (to be forwarded upon Unpack)
         and a power adapter (whose colour is not tracked).
@@ -279,7 +280,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
                 self,
                 "unpacking {inputs[0]} yields no outcomes. "
                 "Type {type} 'unpack' behaviour: {behaviour}, "
-                "specific outcomes from Goods properties: "
+                "specific outcomes from PhysObj properties: "
                 "{specific}",
                 type=goods_type, behaviour=behaviour,
                 specific=specific_outcomes)
@@ -294,7 +295,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         return specs
 
     def cancel_single(self):
-        """Remove the newly created Goods, not only their Avatars."""
+        """Remove the newly created PhysObj, not only their Avatars."""
         self.reset_inputs_original_values()
         self.registry.flush()
         all_goods = set()

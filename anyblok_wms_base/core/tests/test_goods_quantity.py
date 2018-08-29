@@ -21,10 +21,10 @@ class TestQuantity(WmsTestCase):
 
     def setUp(self):
         super(TestQuantity, self).setUp()
-        self.Avatar = self.Goods.Avatar
+        self.Avatar = self.PhysObj.Avatar
 
-        self.goods_type = self.Goods.Type.insert(label="My goods",
-                                                 code='MyGT')
+        self.goods_type = self.PhysObj.Type.insert(label="My goods",
+                                                   code='MyGT')
         self.stock = self.insert_location('STK')
         self.arrival = self.Operation.Arrival.insert(
             goods_type=self.goods_type,
@@ -38,7 +38,7 @@ class TestQuantity(WmsTestCase):
         avatars = []
         for _ in range(qty):
             avatars.append(self.Avatar.insert(
-                goods=self.Goods.insert(type=self.goods_type),
+                goods=self.PhysObj.insert(type=self.goods_type),
                 reason=self.arrival,
                 location=self.stock if location is None else location,
                 dt_from=dt_from,
@@ -56,7 +56,8 @@ class TestQuantity(WmsTestCase):
 
         self.assert_quantity(3)
         self.assert_quantity(3, goods_type=self.goods_type)
-        self.assert_quantity(0, goods_type=self.Goods.Type.insert(code='other'))
+        self.assert_quantity(0, goods_type=self.PhysObj.Type.insert(
+            code='other'))
 
         self.assert_quantity(7, additional_states=['future'],
                              at_datetime=self.dt_test3)
@@ -85,8 +86,8 @@ class TestQuantity(WmsTestCase):
                              location_recurse=False)
 
     def test_additional_filters(self):
-        special_loc_type = self.Goods.Type.insert(code='SPECIAL-LOC',
-                                                  parent=self.location_type)
+        special_loc_type = self.PhysObj.Type.insert(code='SPECIAL-LOC',
+                                                    parent=self.location_type)
         special_loc = self.insert_location('special', parent=self.stock,
                                            location_type=special_loc_type)
 
@@ -107,7 +108,7 @@ class TestQuantity(WmsTestCase):
                              additional_filter=exclude_all)
 
     def test_dt_quantity_moved_loc(self):
-        """Test quantity queries with Goods in a location that moves."""
+        """Test quantity queries with PhysObj in a location that moves."""
         loc = self.insert_location('sub', parent=self.stock)
         loc_av = self.Avatar.query().filter_by(goods=loc).one()
         other = self.insert_location('other')
@@ -148,7 +149,7 @@ class TestQuantity(WmsTestCase):
                                  at_datetime=dt)
 
     def test_dt_quantity_moved_loc_and_goods(self):
-        """Test quantity queries with both Goods and locations moving."""
+        """Test quantity queries with both PhysObj and locations moving."""
         loc = self.insert_location('sub', parent=self.stock)
         loc_av = self.Avatar.query().filter_by(goods=loc).one()
         other = self.insert_location('other')

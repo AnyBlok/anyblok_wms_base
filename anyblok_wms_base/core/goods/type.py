@@ -22,9 +22,9 @@ register = Declarations.register
 Model = Declarations.Model
 
 
-@register(Model.Wms.Goods)
+@register(Model.Wms.PhysObj)
 class Type:
-    """Types of Goods.
+    """Types of PhysObj.
 
     For a full functional discussion, see :ref:`goods_type`.
     """
@@ -40,15 +40,22 @@ class Type:
 
     label = Text(label=u"Label")
 
-    behaviours = Jsonb(label="Behaviours in operations")
+    behaviours = Jsonb()
     """
-    Goods Types specify with this flexible field how various :class:`Operations
-    <anyblok_wms_base.core.operation.base.Operation>` will treat
-    the represented Goods.
+    Flexible field to encode how represented objects interact with the system.
+
+    Notably, PhysObj Types specify with this flexible field how various
+    :class:`Operations <anyblok_wms_base.core.operation.base.Operation>`
+    will treat the represented physical object.
 
     .. seealso:: :class:`Unpack
                  <anyblok_wms_base.core.operation.unpack.Unpack>`
                  for a complex example.
+
+    But behaviours are in no means in one to one correspondence with Operation
+    classes, nor do they need to be related to Operations. Any useful
+    information that depends on the Type only is admissible to encode as a
+    behaviour.
 
     The value is a key/value mapping (behaviour name/value).
 
@@ -64,23 +71,23 @@ class Type:
     """
 
     properties = Jsonb(label="Properties")
-    """Goods Types also have flexible properties.
+    """PhysObj Types also have flexible properties.
 
-    These are usually read from the Goods themselves (where they act as
-    default values if not defined on the Goods), and are useful with
+    These are usually read from the PhysObj themselves (where they act as
+    default values if not defined on the PhysObj), and are useful with
     generic Types, i.e., those that have children. Operations that handle
     Properties can do interesting things by using properties that actually
     come from Type information.
     """
 
-    parent = Many2One(model='Model.Wms.Goods.Type')
-    """This field expresses the hierarchy of Goods Types."""
+    parent = Many2One(model='Model.Wms.PhysObj.Type')
+    """This field expresses the hierarchy of PhysObj Types."""
 
     def __str__(self):
         return "(id={self.id}, code={self.code!r})".format(self=self)
 
     def __repr__(self):
-        return "Wms.Goods.Type" + str(self)
+        return "Wms.PhysObj.Type" + str(self)
 
     # TODO PERF cache ?
     def get_behaviour(self, name, default=None):

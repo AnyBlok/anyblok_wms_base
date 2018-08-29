@@ -11,9 +11,9 @@ from anyblok_wms_base import version
 
 
 class WmsQuantity(Blok):
-    """Enhance Goods with quantity field and related logic.
+    """Enhance PhysObj with quantity field and related logic.
 
-    Without this Blok, quantity information is derived by counting Goods
+    Without this Blok, quantity information is derived by counting PhysObj
     records, which should be enough except when dealing with bulk goods or in
     cases where goods are rarely handled down to the unit, yet without using
     intermediate packaging.

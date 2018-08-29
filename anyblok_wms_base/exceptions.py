@@ -115,8 +115,8 @@ class OperationIrreversibleError(OperationError):
             "on the present instance: {op}", op=op)
 
 
-class OperationGoodsReserved(OperationError):
-    """Used if an Operation tries and work on some reserved Goods in a
+class OperationPhysObjReserved(OperationError):
+    """Used if an Operation tries and work on some reserved PhysObj in a
     txn that doesn't own the reservation."""
 
 
@@ -140,8 +140,8 @@ class AssemblyInputNotMatched(OperationInputsError):
                  prelude=None, fmt=None, **kwargs):
         """Initialisation.
 
-        :param spec_item: the pair made of the item in inputs specification that
-                          hasn't been matched and its index (first is 0).
+        :param spec_item: the pair made of the item in inputs specification
+                          that hasn't been matched and its index (first is 0).
         """
         spec_detail, spec_index = spec_item
 
@@ -169,9 +169,9 @@ class AssemblyPropertyConflict(OperationInputsError):
                  prelude=None, fmt=None, **kwargs):
         """Initialisation.
 
-        :param spec_item: the pair made of the item in inputs specification that
-                          hasn't been matched and its index (first is 0),
-                          or None for conflicts arising from the global
+        :param spec_item: the pair made of the item in inputs specification
+                          that is conflicting and of its index (first is 0),
+                          or ``None`` for conflicts arising from the global
                           ``forward_properties`` parameters.
         """
         fmt = "{operation}, inconsistent properties. "
@@ -237,8 +237,8 @@ class AssemblyExtraInputs(OperationInputsError):
                  prelude=None, fmt=None, **kwargs):
         """Initialisation.
 
-        :param spec_item: the pair made of the item in inputs specification that
-                          hasn't been matched and its index (first is 0).
+        :param extra: the Assembly given input that is unaccounted for in the
+                      inputs specification.
         """
         if fmt is None:
             if prelude is None:
@@ -258,8 +258,8 @@ class UnknownExpressionType(OperationError):
                  prelude=None, fmt=None, **kwargs):
         """Initialisation.
 
-        :param spec_item: the pair made of the item in inputs specification that
-                          hasn't been matched and its index (first is 0).
+        :param etype: type of the expression
+        :param evalue: value of the expression (unevaluated of course)
         """
         if fmt is None:
             if prelude is None:

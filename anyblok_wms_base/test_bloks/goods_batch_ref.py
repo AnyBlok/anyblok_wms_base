@@ -13,6 +13,6 @@ register = Declarations.register
 Model = Declarations.Model
 
 
-@register(Model.Wms.Goods)
+@register(Model.Wms.PhysObj)
 class Properties:
     batch = String(label="Production batch reference")

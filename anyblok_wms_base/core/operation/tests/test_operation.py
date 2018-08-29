@@ -20,11 +20,12 @@ class TestOperation(WmsTestCase):
 
     def setUp(self):
         super(TestOperation, self).setUp()
-        Goods = self.Goods
+        PhysObj = self.PhysObj
         self.incoming_loc = self.insert_location('INCOMING')
         self.stock = self.insert_location('STOCK')
 
-        self.goods_type = Goods.Type.insert(label="My good type", code='MyGT')
+        self.goods_type = PhysObj.Type.insert(label="My good type",
+                                              code='MyGT')
 
     def test_execute_idempotency(self):
         op = self.Operation.Arrival.create(location=self.incoming_loc,
@@ -53,8 +54,8 @@ class TestOperation(WmsTestCase):
                                                 dt_execution=self.dt_test1,
                                                 location=self.incoming_loc,
                                                 state='planned')
-        Avatar = self.Goods.Avatar
-        goods = [Avatar.insert(goods=self.Goods.insert(type=self.goods_type),
+        Avatar = self.PhysObj.Avatar
+        goods = [Avatar.insert(goods=self.PhysObj.insert(type=self.goods_type),
                                location=self.incoming_loc,
                                dt_from=self.dt_test1,
                                state='future',
@@ -72,14 +73,16 @@ class TestOperation(WmsTestCase):
                                                 dt_execution=self.dt_test1,
                                                 location=self.incoming_loc,
                                                 state='planned')
-        Avatar = self.Goods.Avatar
-        avatars = [Avatar.insert(goods=self.Goods.insert(type=self.goods_type),
-                                 location=self.incoming_loc,
-                                 dt_from=self.dt_test1,
-                                 dt_until=dt,
-                                 state='future',
-                                 reason=arrival)
-                   for dt in (self.dt_test1, self.dt_test2, self.dt_test3)]
+        Avatar = self.PhysObj.Avatar
+        avatars = [
+            Avatar.insert(
+                goods=self.PhysObj.insert(type=self.goods_type),
+                location=self.incoming_loc,
+                dt_from=self.dt_test1,
+                dt_until=dt,
+                state='future',
+                reason=arrival)
+            for dt in (self.dt_test1, self.dt_test2, self.dt_test3)]
 
         HI = self.Operation.HistoryInput
 
@@ -138,7 +141,7 @@ class TestOperation(WmsTestCase):
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
                                                 state='planned')
-        Avatar = self.Goods.Avatar
+        Avatar = self.PhysObj.Avatar
         future_query = Avatar.query().filter(Avatar.state == 'future')
         self.assertEqual(future_query.count(), 1)
 
@@ -177,14 +180,14 @@ class TestOperation(WmsTestCase):
                                         state='planned')
         self.registry.flush()
         arrival.cancel()
-        Avatar = self.Goods.Avatar
+        Avatar = self.PhysObj.Avatar
         self.assertEqual(Avatar.query().filter(
             Avatar.state == 'future').count(), 0)
         self.assertEqual(self.Operation.query().count(), 0)
 
     def test_plan_revert_recurse_linear(self):
-        workshop = self.Goods.insert(code="Workshop",
-                                     type=self.stock.type)
+        workshop = self.PhysObj.insert(code="Workshop",
+                                       type=self.stock.type)
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
@@ -219,7 +222,7 @@ class TestOperation(WmsTestCase):
         rev_dt2 = self.dt_test3 + timedelta(2)
         move1_rev.execute(rev_dt2)
 
-        Avatar = self.Goods.Avatar
+        Avatar = self.PhysObj.Avatar
         avatar = self.single_result(
             Avatar.query().filter(Avatar.state != 'past'))
         self.assertEqual(avatar.dt_from, rev_dt2)
@@ -274,8 +277,8 @@ class TestOperation(WmsTestCase):
             arrival.obliviate()
 
     def test_obliviate_recurse_linear(self):
-        workshop = self.Goods.insert(code="Workshop",
-                                     type=self.stock.type)
+        workshop = self.PhysObj.insert(code="Workshop",
+                                       type=self.stock.type)
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
@@ -295,7 +298,7 @@ class TestOperation(WmsTestCase):
                     state='done')
         move1.obliviate()
 
-        Avatar = self.Goods.Avatar
+        Avatar = self.PhysObj.Avatar
         avatar = self.single_result(
             Avatar.query().filter(Avatar.state != 'past'))
         self.assertEqual(avatar.location, self.incoming_loc)

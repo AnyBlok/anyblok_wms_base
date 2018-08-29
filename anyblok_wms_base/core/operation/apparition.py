@@ -23,7 +23,7 @@ Operation = Declarations.Model.Wms.Operation
 
 @register(Operation)
 class Apparition(Operation):
-    """Inventory Operation to record unexpected Goods
+    """Inventory Operation to record unexpected physical objects.
 
     This is similar to Arrival, but has a distinct functional meaning.
     Apparitions can exist only in the ``done`` :ref:`state <op_states>`.
@@ -38,12 +38,12 @@ class Apparition(Operation):
                  autoincrement=False,
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
     """Primary key."""
-    goods_type = Many2One(model='Model.Wms.Goods.Type')
-    """Observed :class:`Goods Type
+    goods_type = Many2One(model='Model.Wms.PhysObj.Type')
+    """Observed :class:`PhysObj Type
     <anyblok_wms_base.core.goods.Type>`.
     """
     quantity = Integer()
-    """The number of identical Goods that have appeared.
+    """The number of identical PhysObj that have appeared.
 
     Here, identical means "same type, code and properties"
     """
@@ -51,17 +51,17 @@ class Apparition(Operation):
     """Observed :class:`Properties
     <anyblok_wms_base.core.goods.Properties>`.
 
-    They are copied over to the newly created :class:`Goods
-    <anyblok_wms_base.core.goods.Goods>`. Then the Properties can evolve on
-    the Goods, while this Apparition field will keep the exact values
+    They are copied over to the newly created :class:`PhysObj
+    <anyblok_wms_base.core.goods.PhysObj>`. Then the Properties can evolve on
+    the PhysObj, while this Apparition field will keep the exact values
     that were observed during inventory.
     """
     goods_code = Text()
-    """Observed :attr:`Goods code
-    <anyblok_wms_base.core.goods.Goods.code>`.
+    """Observed :attr:`PhysObj code
+    <anyblok_wms_base.core.goods.PhysObj.code>`.
     """
-    location = Many2One(model='Model.Wms.Goods')
-    """Location of appeared Goods.
+    location = Many2One(model='Model.Wms.PhysObj')
+    """Location of appeared PhysObj.
 
     This will be the location of the initial Avatars.
     """
@@ -99,24 +99,24 @@ class Apparition(Operation):
             state, dt_execution, **kwargs)
 
     def after_insert(self):
-        """Create the Goods and their Avatars.
+        """Create the PhysObj and their Avatars.
 
         In the ``wms-core`` implementation, the :attr:`quantity` field
-        gives rise to as many Goods records.
+        gives rise to as many PhysObj records.
         """
-        Goods = self.registry.Wms.Goods
+        PhysObj = self.registry.Wms.PhysObj
         self_props = self.goods_properties
         if self_props is None:
             props = None
         else:
-            props = Goods.Properties.create(**self_props)
+            props = PhysObj.Properties.create(**self_props)
 
         for _ in range(self.quantity):
-            goods = Goods.insert(type=self.goods_type,
-                                 properties=props,
-                                 code=self.goods_code)
-            Goods.Avatar.insert(goods=goods,
-                                location=self.location,
-                                reason=self,
-                                state='present',
-                                dt_from=self.dt_execution)
+            goods = PhysObj.insert(type=self.goods_type,
+                                   properties=props,
+                                   code=self.goods_code)
+            PhysObj.Avatar.insert(goods=goods,
+                                  location=self.location,
+                                  reason=self,
+                                  state='present',
+                                  dt_from=self.dt_execution)
