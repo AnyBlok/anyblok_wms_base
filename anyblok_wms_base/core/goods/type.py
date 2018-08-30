@@ -172,6 +172,38 @@ class Type:
             return parent.get_property(k, default=default)
         return val
 
+    @classmethod
+    def query_behaviour(cls, behaviour, as_cte=False):
+        """Return a recursive SQL query for behaviour presence.
+
+        :param behaviour: Types having this behaviour will be returned.
+                           The value of the behaviours don't matter.
+        :param bool as_cte: if ``True``, instead of a directly usable query,
+                            a CTE (WITH statement) is returned, that the
+                            called may in turn use as they wish
+
+        The resulting query or CTE matches all Types that are descendents
+        (inclusive) of those in ``ancestors``.
+        """
+        # TODO factorize with query_subtypes
+        # this is simply those that have the behaviour plus their descendents
+        # i.e., only the non-recursive part differs
+        session = cls.registry.session
+        cte = cls.query(cls.id).filter(
+            cls.behaviours.has_key(  # noqa: pep8 thinks it's dict API
+                behaviour)).cte(name='typebeh', recursive=True)
+        parent = orm.aliased(cte, name='typebeh_parent')
+        child = orm.aliased(cls, name='typebeh_child')
+        cte = cte.union_all(
+            session.query(child.id).filter(
+                child.parent_id == parent.c.id))
+        if as_cte:
+            return cte
+        # TODO strangely enough, I can't see to have SQLAlchemy issuing
+        # a working IN clause on the CTE (it would repeat the CTE contents and
+        # use that), so let's do with a JOIN for the time being
+        return cls.query().join(cte, cte.c.id == cls.id)
+
     def merged_properties(self):
         """Return this Type properties, merged with its parent."""
         parent = self.parent

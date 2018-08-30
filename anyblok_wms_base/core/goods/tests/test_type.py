@@ -172,3 +172,13 @@ class TestGoodsType(BlokTestCase):
         self.assertTrue(child.has_property_values(dict(foo=2, bar=True)))
         self.assertEqual(child.merged_properties(),
                          dict(foo=2, qa='nok', bar=True))
+
+    def test_query_behaviour(self):
+        parent = self.Type.insert(code='parent',
+                                  behaviours=dict(foo=1))
+        child = self.Type.insert(code='child',
+                                 parent=parent,
+                                 behaviours=dict(bar=2))
+        self.assertEqual(set(self.Type.query_behaviour('foo').all()),
+                         {parent, child})
+        self.assertEqual(self.Type.query_behaviour('bar').one(), child)
