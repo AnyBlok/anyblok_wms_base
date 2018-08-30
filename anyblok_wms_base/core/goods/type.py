@@ -7,6 +7,8 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 
+from sqlalchemy import orm
+
 from anyblok import Declarations
 from anyblok.column import Text
 from anyblok.column import Integer
@@ -127,6 +129,33 @@ class Type:
         if parent is None:
             return False
         return parent.is_sub_type(gt)
+
+    @classmethod
+    def query_subtypes(cls, ancestors, as_cte=False):
+        """Return a recursive SQL query for Type hierarchy.
+
+        :param ancestors: the Type to start with (inclusive)
+        :param bool as_cte: if ``True``, instead of a directly usable query,
+                            a CTE (WITH statement) is returned, that the
+                            called may in turn use as they wish
+
+        The resulting query or CTE matches all Types that are descendents
+        (inclusive) of those in ``ancestors``.
+        """
+        session = cls.registry.session
+        cte = cls.query(cls.id).filter(
+            cls.id.in_(a.id for a in ancestors)).cte(name='subtypes',
+                                                     recursive=True)
+        parent = orm.aliased(cte, name='subtypes_parent')
+        child = orm.aliased(cls, name='subtypes_child')
+        cte = cte.union_all(
+            session.query(child.id).filter(child.parent_id == parent.c.id))
+        if as_cte:
+            return cte
+        # TODO strangely enough, I can't see to have SQLAlchemy issuing
+        # a working IN clause on the CTE (it would repeat the CTE contents and
+        # use that), so let's do with a JOIN for the time being
+        return cls.query().join(cte, cte.c.id == cls.id)
 
     def get_property(self, k, default=None):
         """Read a property value recursively.

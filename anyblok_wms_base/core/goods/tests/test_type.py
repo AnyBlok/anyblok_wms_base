@@ -116,6 +116,29 @@ class TestGoodsType(BlokTestCase):
         self.assertFalse(stranger.is_sub_type(grand))
         self.assertFalse(stranger.is_sub_type(parent))
 
+    def test_query_subtype(self):
+        grand = self.Type.insert(code='grand')
+        parent = self.Type.insert(code='parent', parent=grand)
+        child = self.Type.insert(code='child', parent=parent)
+        sibling = self.Type.insert(code='sibling', parent=parent)
+        self.Type.insert(code='stranger')
+
+        self.assertEqual(set(self.Type.query_subtypes([parent]).all()),
+                         {parent, child, sibling})
+        self.assertEqual(set(self.Type.query_subtypes([grand]).all()),
+                         {grand, parent, child, sibling})
+        aunt = self.Type.insert(code='aunt', parent=grand)
+        self.assertEqual(set(self.Type.query_subtypes([grand]).all()),
+                         {grand, aunt, parent, child, sibling})
+
+        # direct use as a CTE
+        Goods = self.registry.Wms.Goods
+        goods = Goods.insert(type=child)
+        cte = self.Type.query_subtypes([grand], as_cte=True)
+        self.assertEqual(Goods.query()
+                         .join(cte, cte.c.id == Goods.type_id).one(),
+                         goods)
+
     def test_properties(self):
         parent = self.Type.insert(code='parent')
 
