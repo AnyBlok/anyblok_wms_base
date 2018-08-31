@@ -31,10 +31,6 @@ class TestSplit(WmsTestCaseWithGoods):
     arrival_kwargs = dict(quantity=3)
     """Used in setUpSharedData()."""
 
-    def setUp(self):
-        super(TestSplit, self).setUp()
-        self.Operation = self.registry.Wms.Operation
-
     def test_create_done(self):
         self.avatar.state = 'present'
         split = self.Operation.Split.create(state='done',
@@ -72,9 +68,10 @@ class TestSplit(WmsTestCaseWithGoods):
         self.assertEqual(sum(out.goods.quantity for out in all_outcomes), 3)
         # this will fail if me mangle the datetimes severely
         self.assertEqual(
-            self.incoming_loc.quantity(self.goods_type,
-                                       additional_states=['future'],
-                                       at_datetime=self.dt_test3),
+            self.Wms.quantity(location=self.incoming_loc,
+                              goods_type=self.goods_type,
+                              additional_states=['future'],
+                              at_datetime=self.dt_test3),
             3)
 
         for outcome in all_outcomes:
@@ -103,9 +100,10 @@ class TestSplit(WmsTestCaseWithGoods):
                                (['past'], self.dt_test2),
                                (['past'], self.dt_test3)):
             self.assertEqual(
-                self.incoming_loc.quantity(self.goods_type,
-                                           additional_states=add_states,
-                                           at_datetime=dt),
+                self.Wms.quantity(location=self.incoming_loc,
+                                  goods_type=self.goods_type,
+                                  additional_states=add_states,
+                                  at_datetime=dt),
                 3)
 
     def test_create_planned_outcome_disappears(self):
@@ -226,7 +224,8 @@ class TestSplit(WmsTestCaseWithGoods):
         split.obliviate()
         Avatar = self.Goods.Avatar
         restored_avatar = self.single_result(Avatar.query())
-        restored_goods = self.single_result(self.Goods.query())
+        restored_goods = self.single_result(self.Goods.query().filter_by(
+            type=self.goods_type))
         self.assertEqual(restored_avatar.goods, restored_goods)
 
         self.assertEqual(restored_avatar.location, self.avatar.location)

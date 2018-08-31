@@ -20,6 +20,8 @@ try:
 except ImportError:
     from .sdtestcase import SharedDataTestCase
 
+_missing = object()
+
 
 class WmsTestCase(BlokTestCase):
     """Provide some common utilities.
@@ -27,6 +29,15 @@ class WmsTestCase(BlokTestCase):
     Probably some of these should be contributed back into Anyblok, but
     we'll see.
     """
+
+    default_quantity_location = None
+
+    @classmethod
+    def setUpClass(cls):
+        super(WmsTestCase, cls).setUpClass()
+        cls.Wms = Wms = cls.registry.Wms
+        cls.Operation = Wms.Operation
+        cls.Goods = Wms.Goods
 
     def setUp(self):
         tz = self.tz = FixedOffsetTimezone(0)
@@ -59,6 +70,17 @@ class WmsTestCase(BlokTestCase):
         for elt in collection:
             return elt
 
+    def assert_quantity(self, quantity, location=_missing, goods_type=_missing,
+                        **kwargs):
+        if location is _missing:
+            location = self.default_quantity_location
+        if goods_type is _missing:
+            goods_type = self.goods_type
+
+        self.assertEqual(self.Wms.quantity(location=location,
+                                           goods_type=goods_type,
+                                           **kwargs), quantity)
+
     def sorted_props(self, record):
         """Extract Goods Properties, as a sorted tuple.
 
@@ -73,6 +95,71 @@ class WmsTestCase(BlokTestCase):
         else:
             self.fail("%r is neither a Goods nor an Avatar instance" % record)
         return tuple(sorted(goods.properties.as_dict().items()))
+
+    @classmethod
+    def create_location_type(cls):
+        loc_type = cls.location_type = cls.Wms.Goods.Type.insert(
+            code="LOC",
+            behaviours=dict(container={}))
+        return loc_type
+
+    def insert_location(self, code, location_type=None, **kwargs):
+        """Helper for location creations,
+
+        :param location_type: if not specified, ``self.location_type`` and
+                              ``cls.location.type`` are tried, in that order.
+                              If the latter doesn't exist, it is created.
+        :param parent: if specified, the inserted location gets an Avatar
+                       that places it inside the ``parent`` location.
+        """
+        if location_type is None:
+            location_type = getattr(self, 'location_type', None)
+        dt_from = getattr(self, 'dt_test1', None)
+        return self.cls_insert_location(code,
+                                        location_type=location_type,
+                                        dt_from=dt_from,
+                                        **kwargs)
+
+    @classmethod
+    def cls_insert_location(cls, code,
+                            location_type=None, parent=None,
+                            dt_from=None,
+                            **fields):
+        """Helper for location creations, classmethod version
+
+        :param location_type: if not specified, ``cls.location_type``
+                              is created if not already and used.
+        :param parent: if specified, the inserted location gets an Avatar
+                       that places it inside the ``parent`` location.
+        :param dt_from: used if ``parent`` is specified, as the starting date
+                        of the corresponding Avatar, with fallback onto
+                        ``cls.dt_test1``.
+        """
+        if location_type is None:
+            location_type = getattr(cls, 'location_type', None)
+            if location_type is None:
+                location_type = cls.create_location_type()
+        loc = cls.Wms.create_root_container(location_type,
+                                            code=code,
+                                            **fields)
+        if parent is not None:
+            # we insert an Apparition directly in order not to depend onto
+            # Apparition working properly
+            # (useful to debug Apparitiom itself if needed)
+            if dt_from is None:
+                dt_from = cls.dt_test1
+            cls.Goods.Avatar.insert(goods=loc,
+                                    state='present',
+                                    location=parent,
+                                    dt_from=dt_from,
+                                    dt_until=None,
+                                    reason=cls.Operation.Apparition.insert(
+                                        goods_type=location_type,
+                                        quantity=1,
+                                        location=parent,
+                                        dt_execution=dt_from,
+                                        state='done'))
+        return loc
 
 
 class WmsTestCaseWithGoods(SharedDataTestCase, WmsTestCase):
@@ -89,6 +176,10 @@ class WmsTestCaseWithGoods(SharedDataTestCase, WmsTestCase):
     * ``goods_type``
     * ``arrival``: the reason for :attr:`avatar`
     * ``incoming_loc``: where that initial Avatar dwells
+
+    The setup of this class depends on the Arrival Operation working
+    correctly, so don't use it for basic Operation tests, nor obviously for
+    Arrival.
     """
 
     arrival_kwargs = {}
@@ -100,12 +191,12 @@ class WmsTestCaseWithGoods(SharedDataTestCase, WmsTestCase):
         cls.dt_test2 = datetime(2018, 1, 2, tzinfo=tz)
         cls.dt_test3 = datetime(2018, 1, 3, tzinfo=tz)
 
-        Wms = cls.registry.Wms
-        Operation = cls.Operation = Wms.Operation
-        cls.goods_type = Wms.Goods.Type.insert(label="My good type",
-                                               code='MyGT')
-        cls.incoming_loc = Wms.Location.insert(label="Incoming location")
-        cls.stock = Wms.Location.insert(label="Stock")
+        Operation = cls.Operation
+        Goods = cls.Goods
+        cls.goods_type = Goods.Type.insert(label="My good type", code='MyGT')
+        cls.create_location_type()
+        cls.incoming_loc = cls.cls_insert_location('INCOMING')
+        cls.stock = cls.cls_insert_location('STOCK')
 
         cls.arrival = Operation.Arrival.create(goods_type=cls.goods_type,
                                                location=cls.incoming_loc,
@@ -116,8 +207,7 @@ class WmsTestCaseWithGoods(SharedDataTestCase, WmsTestCase):
         assert len(cls.arrival.outcomes) == 1
         cls.avatar = cls.arrival.outcomes[0]
         cls.goods = cls.avatar.goods
-        cls.Goods = Wms.Goods
-        cls.Avatar = Wms.Goods.Avatar
+        cls.Avatar = cls.Goods.Avatar
 
 
 class ConcurrencyBlokTestCase(BlokTestCase):

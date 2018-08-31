@@ -16,13 +16,11 @@ class TestUnpack(WmsTestCase):
 
     def setUp(self):
         super(TestUnpack, self).setUp()
-        Wms = self.Wms = self.registry.Wms
-        self.Operation = Operation = Wms.Operation
-        self.Unpack = Operation.Unpack
-        self.Goods = Wms.Goods
-        self.Avatar = Wms.Goods.Avatar
+        self.Unpack = self.Operation.Unpack
+        self.Avatar = self.Goods.Avatar
 
-        self.stock = Wms.Location.insert(label="Stock")
+        self.stock = self.insert_location('STOCK')
+        self.default_quantity_location = self.stock
 
     def create_packs(self, type_behaviours=None, properties=None):
         self.packed_goods_type = self.Goods.Type.insert(
@@ -361,11 +359,10 @@ class TestUnpack(WmsTestCase):
             self.assertEqual(avatar.state, 'future')
             self.assertEqual(avatar.reason, unp)
 
-        self.assertEqual(
-            self.stock.quantity(self.packed_goods_type,
-                                at_datetime=self.dt_test2,
-                                additional_states=['future']),
-            0)
+        self.assert_quantity(0,
+                             goods_type=self.packed_goods_type,
+                             at_datetime=self.dt_test2,
+                             additional_states=['future'])
 
         self.packs.state = 'present'
         self.registry.flush()
@@ -375,11 +372,10 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(self.packs.state, 'past')
         self.assertEqual(self.packs.reason, unp)
 
-        self.assertEqual(
-            self.stock.quantity(self.packed_goods_type,
-                                at_datetime=self.dt_test2,
-                                additional_states=['future']),
-            0)
+        self.assert_quantity(0,
+                             goods_type=self.packed_goods_type,
+                             at_datetime=self.dt_test2,
+                             additional_states=['future']),
         self.assertEqual(
             self.Avatar.query().join(self.Avatar.goods).filter(
                 self.Goods.type == self.packed_goods_type,
@@ -484,9 +480,10 @@ class TestUnpack(WmsTestCase):
         assembly, _ = unp.plan_revert()
         assembly.execute()
 
-        quantity = self.Wms.quantity
-        self.assertEqual(quantity(goods_type=unpacked_type), 0)
-        self.assertEqual(quantity(goods_type=self.packed_goods_type), 1)
+        self.assert_quantity(0, location=None, goods_type=unpacked_type)
+        self.assert_quantity(1,
+                             location=None,
+                             goods_type=self.packed_goods_type)
 
     def test_revert_default_assembly_not_final(self):
         unpacked_type = self.Goods.Type.insert(code="GT")
@@ -511,7 +508,7 @@ class TestUnpack(WmsTestCase):
                                  dt_execution=self.dt_test2,
                                  input=self.packs)
         self.assertEqual(len(unp.outcomes), 2)  # just a reminder
-        other_loc = self.Wms.Location.insert(code='other')
+        other_loc = self.insert_location('other')
         first_outcome = unp.outcomes[0]
         self.Operation.Move.create(state='done',
                                    input=first_outcome,
@@ -526,9 +523,9 @@ class TestUnpack(WmsTestCase):
         move_back.execute()
         assembly.execute()
 
-        quantity = self.Wms.quantity
-        self.assertEqual(quantity(goods_type=unpacked_type), 0)
-        self.assertEqual(quantity(goods_type=self.packed_goods_type), 1)
+        self.assert_quantity(0, location=None, goods_type=unpacked_type)
+        self.assert_quantity(1,
+                             location=None, goods_type=self.packed_goods_type)
 
     def test_revert_specified_assembly(self):
         unpacked_type = self.Goods.Type.insert(label="Unpacked", code='PCK')
@@ -585,8 +582,7 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(
             Goods.query().filter(Goods.type == unpacked_type).count(),
             0)
-        self.assertEqual(
-            self.stock.quantity(self.packed_goods_type,
-                                additional_states=['future'],
-                                at_datetime=self.dt_test2),
-            1)
+        self.assert_quantity(1,
+                             goods_type=self.packed_goods_type,
+                             additional_states=['future'],
+                             at_datetime=self.dt_test2)

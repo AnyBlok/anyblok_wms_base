@@ -16,3 +16,4 @@ package names for readability in page titles.
    core/index
    reservation/index
    quantity/index
+   tests

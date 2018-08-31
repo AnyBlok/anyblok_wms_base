@@ -26,13 +26,10 @@ class TestAssembly(WmsTestCase):
 
     def setUp(self):
         super(TestAssembly, self).setUp()
-        Wms = self.registry.Wms
-        self.Operation = Operation = Wms.Operation
-        self.Assembly = Operation.Assembly
-        self.Goods = Wms.Goods
-        self.Avatar = Wms.Goods.Avatar
+        self.Assembly = self.Operation.Assembly
+        self.Avatar = self.Goods.Avatar
 
-        self.stock = Wms.Location.insert(label="Stock")
+        self.stock = self.insert_location('STOCK')
 
     def create_outcome_type(self, behaviour):
         self.outcome_type = self.Goods.Type.insert(
@@ -899,7 +896,8 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(exc.kwargs['name'], 'wrong')
 
         # several locations in inputs
-        other_loc = self.registry.Wms.Location.insert(code='other')
+        other_loc = self.Goods.insert(code='other',
+                                      type=self.stock.type)
         avatars[0].location = other_loc
         with self.assertRaises(OperationError) as arc:
             self.Assembly.create(inputs=avatars,

@@ -7,7 +7,9 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from sqlalchemy import or_
+from sqlalchemy import not_
 from sqlalchemy import func
+from sqlalchemy import orm
 from anyblok import Declarations
 from anyblok_wms_base.constants import DATE_TIME_INFINITY
 
@@ -33,9 +35,9 @@ class Wms:
                  goods_type=None,
                  additional_states=None,
                  at_datetime=None,
+                 additional_filter=None,
                  location=None,
-                 location_recurse=True,
-                 location_tag=_missing):
+                 location_recurse=True):
         """Compute the quantity of Goods meeting various criteria.
 
         The computation actually involves querying :class:`Avatars
@@ -51,11 +53,30 @@ class Wms:
             If ``True``, and ``location`` is specified, the Goods Avatars
             from sublocations of ``location`` will be taken recursively into
             account.
-        :param str location_tag:
-            If passed, only the Goods Avatars sitting in a Location having
-            or inheriting this tag will be taken into account (may seem only
-            useful if ``location_recurse`` is ``True``, yet the non-recursive
-            case behaves consistently).
+        :param additional_filter:
+           optional function to restrict the Goods Avatars to take into
+           account. It applies to the outer query, i.e., not within
+           the containers recursions.
+
+           The :meth:`restrict_container_types` and
+           :meth:`exclude_container_types` provided methods return functions
+           that are meant to be used with this parameter.
+
+           In general, the passed function must have the following signature::
+
+                def additional_filter(query):
+                   filtered_query = ...
+                   return filtered_query
+
+           where ``query`` is a query object involving Avatars.
+
+           .. seealso:: :meth:`filter_container_types` for a working example.
+
+
+           .. warning:: any JOINs that this function introduces
+                        *should be aliased* to avoid conflicting with the
+                        ones already present in ``query``.
+
         :param additional_states:
             Optionally, states of the Goods Avatar to take into account
             in addition to the ``present`` state.
@@ -86,24 +107,20 @@ class Wms:
         Let's get a DB with serious volume and datetimes first.
         """
         Goods = cls.registry.Wms.Goods
-        Location = cls.Location
         Avatar = Goods.Avatar
         query = cls.base_quantity_query()
         if goods_type is not None:
             query = query.filter(Goods.type == goods_type)
 
-        # location_tag needs the recursive CTE even if the
-        # quantity request is not recursive (so that tag is the correct one).
-        if ((location is not None and location_recurse) or
-                location_tag is not _missing):
-            cte = Location.flatten_subquery_with_tags(top=location)
-            query = query.join(cte, cte.c.id == Avatar.location_id)
-
-        if location is not None and not location_recurse:
-            query = query.filter(Avatar.location == location)
-
-        if location_tag is not _missing:
-            query = query.filter(cte.c.tag == location_tag)
+        if location is not None:
+            if location_recurse:
+                cte = Goods.flatten_containers_subquery(
+                    top=location,
+                    at_datetime=at_datetime,
+                    additional_states=additional_states)
+                query = query.join(cte, cte.c.id == Avatar.location_id)
+            else:
+                query = query.filter(Avatar.location == location)
 
         if additional_states is None:
             query = query.filter(Avatar.state == 'present')
@@ -122,6 +139,8 @@ class Wms:
             query = query.filter(Avatar.dt_from <= at_datetime,
                                  or_(Avatar.dt_until.is_(None),
                                      Avatar.dt_until > at_datetime))
+        if additional_filter is not None:
+            query = additional_filter(query)
         res = query.one()[0]
         return 0 if res is None else res
 
@@ -134,3 +153,65 @@ class Wms:
         """
         Avatar = cls.Goods.Avatar
         return Avatar.query(func.count(Avatar.id)).join(Avatar.goods)
+
+    @classmethod
+    def filter_container_types(cls, types):
+        """Allow restricting container types in quantity queries.
+
+        :return: a suitable filtering function that restricts the counted
+                 Avatars to those whose *direct* location is of the given
+                 types.
+        """
+        Goods = cls.registry.Wms.Goods
+        Avatar = Goods.Avatar
+        loc_goods = orm.aliased(Goods, name='location_goods')
+
+        def add_filter(query):
+            return query.join(loc_goods, Avatar.location).filter(
+                loc_goods.type_id.in_(set(t.id for t in types)))
+
+        return add_filter
+
+    @classmethod
+    def exclude_container_types(cls, types):
+        """Allow restricting container types in quantity queries.
+
+        :return: a suitable filtering function that restricts the counted
+                 Avatars to those whose *direct* location is not of
+                 the given types.
+        """
+        Goods = cls.registry.Wms.Goods
+        Avatar = Goods.Avatar
+        loc_goods = orm.aliased(Goods, name='location_goods')
+
+        def add_filter(query):
+            joined = query.join(loc_goods, Avatar.location)
+            if len(types) == 1:
+                # better for SQL indexes
+                return joined.filter(loc_goods.type_id != types[0].id)
+            else:
+                return joined.filter(
+                    not_(loc_goods.type_id.in_(set(t.id for t in types))))
+
+        return add_filter
+
+    @classmethod
+    def create_root_container(cls, container_type, **fields):
+        """Helper to create topmost containers.
+
+        Topmost containers must have themselves no surrounding container,
+        which means they can't have Avatars, and therefore can't be outcomes
+        of any Operations, which is quite exceptional in Anyblok / Wms Base.
+
+        On the other hand, at least one
+        such container is needed to root the containing hierarchy.
+
+        :param container_type: a :ref:`Goods Type <goods_type>` that's
+                               suitable for containers.
+        :return: the created container
+        """
+        if container_type is None or not container_type.is_container():
+            raise ValueError(
+                "Not a proper container type: %r " % container_type)
+        return cls.registry.Wms.Goods.insert(type=container_type,
+                                             **fields)

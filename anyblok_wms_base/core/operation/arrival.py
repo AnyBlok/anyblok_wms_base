@@ -12,6 +12,10 @@ from anyblok.column import Text
 from anyblok_postgres.column import Jsonb
 from anyblok.relationship import Many2One
 
+from anyblok_wms_base.exceptions import (
+    OperationContainerExpected,
+    )
+
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
 
@@ -65,7 +69,7 @@ class Arrival(Operation):
     Can be ``None`` in case the arrival process issues the code only
     at the time of actual arrival.
     """
-    location = Many2One(model='Model.Wms.Location')
+    location = Many2One(model='Model.Wms.Goods')
     """Will be the location of the initial Avatar."""
 
     inputs_number = 0
@@ -74,6 +78,17 @@ class Arrival(Operation):
     def specific_repr(self):
         return ("goods_type={self.goods_type!r}, "
                 "location={self.location!r}").format(self=self)
+
+    @classmethod
+    def check_create_conditions(cls, state, dt_execution, location=None,
+                                **kwargs):
+        """Ensure that ``location`` is indeed a container."""
+        super(Arrival, cls).check_create_conditions(state, dt_execution,
+                                                    **kwargs)
+        if location is None or not location.is_container():
+            raise OperationContainerExpected(
+                cls, "location field value {offender}",
+                offender=location)
 
     def after_insert(self):
         Goods = self.registry.Wms.Goods

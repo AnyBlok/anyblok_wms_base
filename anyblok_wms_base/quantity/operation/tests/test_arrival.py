@@ -16,8 +16,8 @@ class TestArrival(WmsTestCase):
         Wms = self.registry.Wms
         self.goods_type = Wms.Goods.Type.insert(label="My good type",
                                                 code='MyGT')
-        self.incoming_loc = Wms.Location.insert(label="Incoming location")
-        self.stock = Wms.Location.insert(label="Stock")
+        self.incoming_loc = self.insert_location('Incoming')
+        self.stock = self.insert_location('Stock')
         self.Arrival = Wms.Operation.Arrival
         self.Goods = Wms.Goods
         self.Avatar = self.Goods.Avatar
@@ -82,7 +82,9 @@ class TestArrival(WmsTestCase):
                                       goods_type=self.goods_type)
         arrival.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
-        self.assertEqual(self.Goods.query().count(), 0)
+        self.assertEqual(
+            self.Goods.query().filter_by(type=self.goods_type).count(),
+            0)
 
     def test_arrival_planned_execute_obliviate(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
@@ -96,7 +98,9 @@ class TestArrival(WmsTestCase):
         arrival.execute()
         arrival.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
-        self.assertEqual(self.Goods.query().count(), 0)
+        self.assertEqual(
+            self.Goods.query().filter_by(type=self.goods_type).count(),
+            0)
 
     def test_repr(self):
         arrival = self.Arrival(location=self.incoming_loc,
@@ -108,31 +112,3 @@ class TestArrival(WmsTestCase):
                                goods_type=self.goods_type)
         repr(arrival)
         str(arrival)
-
-
-class TestOperationBase(WmsTestCase):
-    """Test the Operation base class
-
-    In these test cases, Operation.Move is considered the canonical example
-    to test some corner cases in the base Operation model.
-    """
-
-    def setUp(self):
-        super(TestOperationBase, self).setUp()
-        Wms = self.registry.Wms
-        self.goods_type = Wms.Goods.Type.insert(label="My good type",
-                                                code='MyGT')
-        self.incoming_loc = Wms.Location.insert(label="Incoming location")
-        self.stock = Wms.Location.insert(label="Stock")
-        self.Arrival = Wms.Operation.Arrival
-        self.Goods = Wms.Goods
-
-    def test_execute_idempotency(self):
-        op = self.Arrival.create(location=self.incoming_loc,
-                                 quantity=3,
-                                 state='planned',
-                                 dt_execution=self.dt_test2,
-                                 goods_type=self.goods_type)
-        op.state = 'done'
-        op.execute_planned = lambda: self.fail("Should not be called")
-        op.execute()

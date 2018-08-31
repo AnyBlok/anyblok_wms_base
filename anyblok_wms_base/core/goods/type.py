@@ -128,6 +128,9 @@ class Type:
             return False
         return parent.is_sub_type(gt)
 
+    def is_container(self):
+        return self.get_behaviour('container') is not None
+
     def get_property(self, k, default=None):
         """Read a property value recursively.
 

@@ -66,6 +66,13 @@ class TestGoods(BlokTestCase):
         self.assertEqual(str(goods),
                          "(id=%d, type="
                          "(id=%d, code='MG'))" % (goods.id, gt.id))
+        goods.code = 'COCO'
+        self.assertEqual(repr(goods),
+                         "Wms.Goods(id=%d, code='COCO', type=%r)" % (
+                             goods.id, gt))
+        self.assertEqual(str(goods),
+                         "(id=%d, code=COCO, type=%s)" % (
+                             goods.id, gt))
 
     def test_prop_api_column(self):
         goods = self.Goods.insert(type=self.goods_type)

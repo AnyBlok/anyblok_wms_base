@@ -29,6 +29,12 @@ Model.Wms.Operation.Arrival
    .. automethod:: after_insert
    .. automethod:: execute_planned
 
+   .. raw:: html
+
+      <h3>Overridden methods of Operation</h3>
+
+   .. automethod:: check_create_conditions
+
 Model.Wms.Operation.Apparition
 ------------------------------
 .. autoclass:: anyblok_wms_base.core.operation.apparition.Apparition
@@ -57,3 +63,8 @@ Model.Wms.Operation.Apparition
    .. automethod:: check_create_conditions
    .. automethod:: after_insert
 
+   .. raw:: html
+
+      <h3>Overridden methods of Operation</h3>
+
+   .. automethod:: check_create_conditions

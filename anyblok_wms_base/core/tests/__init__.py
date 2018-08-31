@@ -19,7 +19,8 @@ class TestCore(BlokTestCase):
                                            code='MyGT')
         self.assertEqual(goods_type.label, "My good type")
 
-        loc = Wms.Location.insert(label="Root location")
+        location_type = Wms.Goods.Type.insert(code="LOC")
+        loc = Wms.Goods.insert(code="Root", type=location_type)
         arrival = Wms.Operation.Arrival.insert(goods_type=goods_type,
                                                location=loc,
                                                dt_execution=datetime.now(),
