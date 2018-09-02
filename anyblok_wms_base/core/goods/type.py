@@ -131,21 +131,19 @@ class Type:
         return parent.is_sub_type(gt)
 
     @classmethod
-    def query_subtypes(cls, ancestors, as_cte=False):
-        """Return a recursive SQL query for Type hierarchy.
+    def query_add_subtypes(cls, base, as_cte=False):
+        """Make a recursive SQL query out of a base query.
 
-        :param ancestors: the Type to start with (inclusive)
+        The base query is used as starting point of the iteration performed
+        by the database, which itself simply adds descendents.
+
+        :param base: Query object on ``cls``, with only one column: ``id``
         :param bool as_cte: if ``True``, instead of a directly usable query,
                             a CTE (WITH statement) is returned, that the
                             called may in turn use as they wish
-
-        The resulting query or CTE matches all Types that are descendents
-        (inclusive) of those in ``ancestors``.
         """
         session = cls.registry.session
-        cte = cls.query(cls.id).filter(
-            cls.id.in_(a.id for a in ancestors)).cte(name='subtypes',
-                                                     recursive=True)
+        cte = base.cte(name='subtypes', recursive=True)
         parent = orm.aliased(cte, name='subtypes_parent')
         child = orm.aliased(cls, name='subtypes_child')
         cte = cte.union_all(
@@ -156,6 +154,19 @@ class Type:
         # a working IN clause on the CTE (it would repeat the CTE contents and
         # use that), so let's do with a JOIN for the time being
         return cls.query().join(cte, cte.c.id == cls.id)
+
+    @classmethod
+    def query_subtypes(cls, ancestors, as_cte=False):
+        """Return a recursive SQL query for Type hierarchy.
+
+        :param ancestors: the Type to start with (inclusive)
+
+        The resulting query or CTE matches all Types that are descendents
+        (inclusive) of those in ``ancestors``.
+        """
+        return cls.query_add_subtypes(
+            cls.query(cls.id).filter(cls.id.in_(a.id for a in ancestors)),
+            as_cte=as_cte)
 
     def get_property(self, k, default=None):
         """Read a property value recursively.
@@ -188,21 +199,11 @@ class Type:
         # TODO factorize with query_subtypes
         # this is simply those that have the behaviour plus their descendents
         # i.e., only the non-recursive part differs
-        session = cls.registry.session
-        cte = cls.query(cls.id).filter(
-            cls.behaviours.has_key(  # noqa: pep8 thinks it's dict API
-                behaviour)).cte(name='typebeh', recursive=True)
-        parent = orm.aliased(cte, name='typebeh_parent')
-        child = orm.aliased(cls, name='typebeh_child')
-        cte = cte.union_all(
-            session.query(child.id).filter(
-                child.parent_id == parent.c.id))
-        if as_cte:
-            return cte
-        # TODO strangely enough, I can't see to have SQLAlchemy issuing
-        # a working IN clause on the CTE (it would repeat the CTE contents and
-        # use that), so let's do with a JOIN for the time being
-        return cls.query().join(cte, cte.c.id == cls.id)
+        return cls.query_add_subtypes(
+            cls.query(cls.id).filter(
+                cls.behaviours.has_key(  # noqa: pep8 thinks it's dict API
+                    behaviour)),
+            as_cte=as_cte)
 
     def merged_properties(self):
         """Return this Type properties, merged with its parent."""
