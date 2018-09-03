@@ -14,10 +14,8 @@ from . import operation
 
 def import_declarations(reload=None):
     from . import wms
-    from . import location
     if reload is not None:
         reload(wms)
-        reload(location)
     operation.import_declarations(reload=reload)
     goods.import_declarations(reload=reload)
 

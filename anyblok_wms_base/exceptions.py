@@ -120,6 +120,19 @@ class OperationGoodsReserved(OperationError):
     txn that doesn't own the reservation."""
 
 
+class OperationContainerExpected(OperationError):
+    """Raised by Operations involving containers / locations.
+
+    If some Operation expects something to be container (also thought as a
+    location) and it turns out not to be one, the Operation is supposed to
+    raise this exception.
+    """
+
+    def __init__(self, op, msg, offender=None, **kw):
+        fmt = msg + " was expected to be a container, but is not"
+        OperationError.__init__(self, op, fmt, offender=offender)
+
+
 class AssemblyInputNotMatched(OperationInputsError):
 
     def __init__(self, op_model_or_record, spec_item,

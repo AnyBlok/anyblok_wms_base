@@ -12,5 +12,8 @@ Model.Wms
 
       <h3>Methods</h3>
 
+   .. automethod:: create_root_container
    .. automethod:: quantity
    .. automethod:: base_quantity_query
+   .. automethod:: filter_container_types
+   .. automethod:: exclude_container_types

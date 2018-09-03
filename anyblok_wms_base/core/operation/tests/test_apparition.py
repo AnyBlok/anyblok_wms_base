@@ -10,6 +10,7 @@ from .testcase import WmsTestCase
 from anyblok_wms_base.exceptions import (
     OperationIrreversibleError,
     OperationForbiddenState,
+    OperationContainerExpected,
 )
 
 
@@ -20,7 +21,7 @@ class TestApparition(WmsTestCase):
         Wms = self.registry.Wms
         self.goods_type = Wms.Goods.Type.insert(label="My good type",
                                                 code='MGT')
-        self.stock = Wms.Location.insert(label="Stock")
+        self.stock = self.insert_location('Stock')
         self.Apparition = Wms.Operation.Apparition
         self.Goods = Wms.Goods
         self.Avatar = self.Goods.Avatar
@@ -49,7 +50,9 @@ class TestApparition(WmsTestCase):
 
         apparition.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
-        self.assertEqual(self.Goods.query().count(), 0)
+        self.assertEqual(
+            self.Goods.query().filter_by(type=self.goods_type).count(),
+            0)
 
     def test_create_done_several_obliviate(self):
         apparition = self.Apparition.create(
@@ -85,7 +88,9 @@ class TestApparition(WmsTestCase):
 
         apparition.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
-        self.assertEqual(self.Goods.query().count(), 0)
+        self.assertEqual(
+            self.Goods.query().filter_by(type=self.goods_type).count(),
+            0)
 
     def test_create_done_no_props(self):
         apparition = self.Apparition.create(
@@ -134,3 +139,15 @@ class TestApparition(WmsTestCase):
         repr(exc)
         str(exc)
         self.assertEqual(exc.kwargs.get('forbidden'), 'planned')
+
+    def test_not_a_container(self):
+        wrong_loc = self.Goods.insert(type=self.goods_type)
+        with self.assertRaises(OperationContainerExpected) as arc:
+            self.Apparition.create(
+                location=wrong_loc,
+                state='done',
+                goods_type=self.goods_type)
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs['offender'], wrong_loc)

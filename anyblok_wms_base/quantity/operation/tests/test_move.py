@@ -15,12 +15,8 @@ class TestMove(WmsTestCaseWithGoods):
 
     def setUp(self):
         super(TestMove, self).setUp()
-        Wms = self.registry.Wms
-        Operation = Wms.Operation
-        self.stock = Wms.Location.insert(label="Stock")
-
         self.avatar.dt_until = self.dt_test3
-        self.Move = Operation.Move
+        self.Move = self.Operation.Move
 
     def test_partial_done(self):
         self.avatar.update(state='present')

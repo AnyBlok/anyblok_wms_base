@@ -14,8 +14,18 @@ Core concepts
 All of these are implemented as Anyblok Models and are provided by
 :ref:`blok_wms_core`.
 
-There are three classes of concepts in :ref:`blok_wms_core`:
-:ref:`Goods <goods>`, :ref:`operation` and :ref:`location`.
+There are two classes of concepts in :ref:`blok_wms_core`:
+:ref:`Goods <goods>`, which really encompass anything that's a
+physical object, and :ref:`operation`.
+
+.. note::
+
+   .. versionadded:: 0.8.0
+
+   In Anyblok / WMS, there is no separate concept of location, i.e, a
+   Model that would represent where the :ref:`Goods <goods>` are, were or
+   will be. Rather, racks, shelves and even warehouses are themselves encoded
+   as :ref:`Goods <goods>`. See :ref:`location` for more details.
 
 .. _goods:
 
@@ -238,26 +248,62 @@ too volatile.
 
 .. _location:
 
-Location
-~~~~~~~~
-.. note:: This is an overview, see :class:`the code documentation
-          <anyblok_wms_base.core.location.Location>`
-          for more details.
+Containers and locations
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-Quickly said, the :class:`Location
-<anyblok_wms_base.core.location.Location>` Model represents
-where the Goods are. It provides methods to sum up Goods quantities.
+.. versionadded:: 0.8.0
 
-Locations form a hierarchical structure (a forest, to be pedantic):
-each location has a single optional "parent".
+Of course, in any stocks and logistics application, the question where
+the :ref:`Goods <goods>` are is a central and crucial one.
+In Anyblok / Wms Base, that is fulfilled by saying that :ref:`Physical
+Objects <goods>` can themselves contain other ones.
 
-.. note:: we may still decide to get rid of the hiearchical
-          structure, to replace it with a simpler and more efficient one.
+In other words, what one would think of as a location
+is nothing but a special case of Physical Object. We call them
+informally *containers*, because "location" without more context may
+be understood as something necessarily fixed, or even as coordinates.
 
-``wms-core`` does not provide coordinates for Locations, therefore
-they can be fixed (warehouses, alleys, shelves) or moving (boats,
-trucks, trolleys or even carrying boxes), or even represent some
-logical grouping (see also :ref:`improvement_location_name`).
+In many cases, containers will indeed be fixed
+(warehouses, alleys, shelves),
+yet moving containers (boats, trucks, trolleys or even carrying boxes)
+are also interesting cases.
+
+Technically, containers are characterized by the fact that their
+:ref:`Types <goods_type>` has the ``container`` behaviour. This
+behaviour can be itself refined by applications, for instance to
+specify what exactly a given container can hold.
+
+Like any other Physical Object, containers can have :ref:`Avatars
+<goods_avatar>`, meaning that they can themselves be inside a bigger
+container (at some point in time). Anyblok / Wms Base provides
+:meth:`quantity queries <anyblok_wms_base.core.wms.Wms.quantity>`
+that are able to recurse through this, optionally at a given point in time.
+
+.. warning:: topmost containers must be created by the
+             dedicated :meth:`helper method
+             <anyblok_wms_base.core.wms.Wms.create_root_container>`.
+
+             Other containers can be created by Operations such as
+             :ref:`op_arrival` or :ref:`op_apparition`, like any Goods.
+
+
+The fact that there is no strong distinction between Goods and their
+containers may seem surprising for some developers, but it has lots of
+interesting benefits:
+
+- containers can be moved in a way that the system is able to track
+  and take into account, e.g, in the quantity queries, whereas with a
+  separate model, we'd probably have a ``parent`` field, of which any change
+  of value would impact all times, present, future and event past.
+- containers are automatically typed and have properties, which can be
+  used to encode various functional aspects.
+- containers can be received (after all, warehouse hardware is also
+  purchased and delivered), shipped as a whole, broken, disappear, etc.
+
+.. seealso:: :ref:`the original thoughts that led to the disppearance
+             of the Location model <improvement_goods_location>`.
+
+.. seealso:: :ref:`avatars_containers_contents`
 
 .. _operation:
 

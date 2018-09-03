@@ -16,11 +16,27 @@ Model.Wms.Goods
 
    .. raw:: html
 
-      <h3>Methods</h3>
+      <h3>Type methods</h3>
+
+   .. automethod:: has_type
+
+   .. raw:: html
+
+      <h3>Property methods</h3>
 
    .. automethod:: get_property
+   .. automethod:: merged_properties
+   .. automethod:: has_property
+   .. automethod:: has_properties
+   .. automethod:: has_property_values
    .. automethod:: set_property
+   .. automethod:: update_properties
 
+   .. raw:: html
+
+      <h3>Containers methods</h3>
+
+   .. automethod:: flatten_containers_subquery
 
 Model.Wms.Goods.Type
 ~~~~~~~~~~~~~~~~~~~~

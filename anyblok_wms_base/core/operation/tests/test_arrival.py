@@ -8,18 +8,22 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 from .testcase import WmsTestCase
 
+from anyblok_wms_base.exceptions import (
+    OperationContainerExpected,
+)
+
 
 class TestArrival(WmsTestCase):
 
     def setUp(self):
         super(TestArrival, self).setUp()
-        Wms = self.registry.Wms
-        self.goods_type = Wms.Goods.Type.insert(label="My good type",
-                                                code='MGT')
-        self.incoming_loc = Wms.Location.insert(label="Incoming location")
-        self.stock = Wms.Location.insert(label="Stock")
-        self.Arrival = Wms.Operation.Arrival
-        self.Goods = Wms.Goods
+        Goods = self.Goods
+        self.goods_type = Goods.Type.insert(label="My good type",
+                                            code='MGT')
+        self.incoming_loc = self.insert_location('INCOMING')
+        self.stock = self.insert_location('STOCK')
+
+        self.Arrival = self.Operation.Arrival
         self.Avatar = self.Goods.Avatar
 
     def test_create_planned_execute(self):
@@ -77,7 +81,8 @@ class TestArrival(WmsTestCase):
                                       goods_type=self.goods_type)
         arrival.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
-        self.assertEqual(self.Goods.query().count(), 0)
+        self.assertEqual(
+            self.Goods.query().filter_by(type=self.goods_type).count(), 0)
 
     def test_arrival_planned_execute_obliviate(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
@@ -90,7 +95,8 @@ class TestArrival(WmsTestCase):
         arrival.execute()
         arrival.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
-        self.assertEqual(self.Goods.query().count(), 0)
+        self.assertEqual(
+            self.Goods.query().filter_by(type=self.goods_type).count(), 0)
 
     def test_repr(self):
         arrival = self.Arrival(location=self.incoming_loc,
@@ -101,3 +107,15 @@ class TestArrival(WmsTestCase):
                                goods_type=self.goods_type)
         repr(arrival)
         str(arrival)
+
+    def test_not_a_container(self):
+        wrong_loc = self.Goods.insert(type=self.goods_type)
+        with self.assertRaises(OperationContainerExpected) as arc:
+            self.Arrival.create(
+                location=wrong_loc,
+                state='done',
+                goods_type=self.goods_type)
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs['offender'], wrong_loc)

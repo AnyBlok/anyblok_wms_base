@@ -16,13 +16,11 @@ class TestUnpack(WmsTestCase):
 
     def setUp(self):
         super(TestUnpack, self).setUp()
-        Wms = self.registry.Wms
-        self.Operation = Operation = Wms.Operation
-        self.Unpack = Operation.Unpack
-        self.Goods = Wms.Goods
-        self.Avatar = Wms.Goods.Avatar
+        self.Unpack = self.Operation.Unpack
+        self.Avatar = self.Goods.Avatar
 
-        self.stock = Wms.Location.insert(label="Stock")
+        self.stock = self.insert_location('Stock')
+        self.default_quantity_location = self.stock
 
     def create_packs(self, type_behaviours=None, properties=None, quantity=5):
         self.packed_goods_type = self.Goods.Type.insert(
@@ -363,11 +361,10 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(avatar.state, 'future')
         self.assertEqual(avatar.reason, unp)
 
-        self.assertEqual(
-            self.stock.quantity(self.packed_goods_type,
-                                at_datetime=self.dt_test2,
-                                additional_states=['future']),
-            0)
+        self.assert_quantity(0,
+                             goods_type=self.packed_goods_type,
+                             at_datetime=self.dt_test2,
+                             additional_states=['future'])
 
         self.packs.state = 'present'
         self.registry.flush()
@@ -376,11 +373,10 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(self.packs.state, 'past')
         self.assertEqual(self.packs.reason, unp)
 
-        self.assertEqual(
-            self.stock.quantity(self.packed_goods_type,
-                                at_datetime=self.dt_test2,
-                                additional_states=['future']),
-            0)
+        self.assert_quantity(0,
+                             goods_type=self.packed_goods_type,
+                             at_datetime=self.dt_test2,
+                             additional_states=['future'])
         self.assertEqual(
             self.Avatar.query().join(self.Avatar.goods).filter(
                 self.Goods.type == self.packed_goods_type,
@@ -422,10 +418,10 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(avatar.reason, unp)
         self.assertEqual(avatar.state, 'future')
 
-        self.assertEqual(
-            self.stock.quantity(self.packed_goods_type,
-                                additional_states=['future'],
-                                at_datetime=self.dt_test2), 1)
+        self.assert_quantity(1,
+                             goods_type=self.packed_goods_type,
+                             additional_states=['future'],
+                             at_datetime=self.dt_test2)
 
         self.packs.state = 'present'
         unp.execute(dt_execution=self.dt_test3)
@@ -479,11 +475,10 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(
             Goods.query().filter(Goods.type == unpacked_type).count(),
             0)
-        self.assertEqual(
-            self.stock.quantity(self.packed_goods_type,
-                                additional_states=['future'],
-                                at_datetime=self.dt_test2),
-            5)
+        self.assert_quantity(5,
+                             goods_type=self.packed_goods_type,
+                             additional_states=['future'],
+                             at_datetime=self.dt_test2)
 
     def test_no_outcomes(self):
         """Unpacking with no outcomes should be hard errors."""

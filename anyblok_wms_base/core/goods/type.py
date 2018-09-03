@@ -205,6 +205,9 @@ class Type:
                     behaviour)),
             as_cte=as_cte)
 
+    def is_container(self):
+        return self.get_behaviour('container') is not None
+
     def merged_properties(self):
         """Return this Type properties, merged with its parent."""
         parent = self.parent

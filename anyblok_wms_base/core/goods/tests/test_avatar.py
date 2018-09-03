@@ -17,7 +17,6 @@ class TestAvatar(WmsTestCaseWithGoods):
 
     def test_str(self):
         avatar, goods = self.avatar, self.goods
-        gt = goods.type
         self.maxDiff = None
 
         # this below just to make sure. Actually, avatar.dt_from can be
@@ -29,25 +28,15 @@ class TestAvatar(WmsTestCaseWithGoods):
 
         self.assertEqual(
             repr(avatar),
-            "Wms.Goods.Avatar(id=%d, "
-            "goods=Wms.Goods(id=%d, "
-            "type=Wms.Goods.Type(id=%d, code='MyGT')), "
-            "state='future', "
-            "location=Wms.Location("
-            "id=%d, code=None, label='Incoming location'), "
-            "dt_range=[%r, None])" % (
-                avatar.id, goods.id, gt.id, self.incoming_loc.id,
-                avatar.dt_from))
+            "Wms.Goods.Avatar(id=%d, goods=%r, state='future', "
+            "location=%r, dt_range=[%r, None])" % (
+                avatar.id, goods, self.incoming_loc, avatar.dt_from))
 
         self.assertEqual(
             str(avatar),
-            "(id=%d, "
-            "goods=(id=%d, type=(id=%d, code='MyGT')), "
-            "state='future', "
-            "location=(id=%d, code=None, label='Incoming location'), "
+            "(id=%d, goods=%s, state='future', location=%s, "
             "dt_range=[%s, None])" % (
-                avatar.id, goods.id, gt.id, self.incoming_loc.id,
-                avatar.dt_from))
+                avatar.id, goods, self.incoming_loc, avatar.dt_from))
 
     def test_get_property(self):
         avatar = self.avatar

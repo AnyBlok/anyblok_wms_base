@@ -12,7 +12,10 @@ from anyblok.column import Text
 from anyblok_postgres.column import Jsonb
 from anyblok.relationship import Many2One
 
-from anyblok_wms_base.exceptions import OperationForbiddenState
+from anyblok_wms_base.exceptions import (
+    OperationForbiddenState,
+    OperationContainerExpected,
+)
 
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
@@ -57,7 +60,7 @@ class Apparition(Operation):
     """Observed :attr:`Goods code
     <anyblok_wms_base.core.goods.Goods.code>`.
     """
-    location = Many2One(model='Model.Wms.Location')
+    location = Many2One(model='Model.Wms.Goods')
     """Location of appeared Goods.
 
     This will be the location of the initial Avatars.
@@ -71,17 +74,27 @@ class Apparition(Operation):
                 "location={self.location!r}").format(self=self)
 
     @classmethod
-    def check_create_conditions(cls, state, dt_execution, **kwargs):
-        """Forbid creation with wrong states.
+    def check_create_conditions(cls, state, dt_execution, location=None,
+                                **kwargs):
+        """Forbid creation with wrong states, check location is a container.
 
         :raises: :class:`OperationForbiddenState
                  <anyblok_wms_base.exceptions.OperationForbiddenState>`
                  if state is not ``'done'``
+
+                 :class:`OperationContainerExpected
+                 <anyblok_wms_base.exceptions.OperationContainerExpected>`
+                 if location is not a container.
         """
         if state != 'done':
             raise OperationForbiddenState(
                 cls, "Apparition can exist only in the 'done' state",
                 forbidden=state)
+        if location is None or not location.is_container():
+            raise OperationContainerExpected(
+                cls, "location field value {offender}",
+                offender=location)
+
         super(Apparition, cls).check_create_conditions(
             state, dt_execution, **kwargs)
 

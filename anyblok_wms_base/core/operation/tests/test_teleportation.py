@@ -10,6 +10,7 @@ from anyblok_wms_base.testing import WmsTestCaseWithGoods
 from anyblok_wms_base.exceptions import (
     OperationIrreversibleError,
     OperationForbiddenState,
+    OperationContainerExpected,
 )
 
 
@@ -68,6 +69,19 @@ class TestTeleportation(WmsTestCaseWithGoods):
         repr(exc)
         str(exc)
         self.assertEqual(exc.kwargs.get('forbidden'), 'planned')
+
+    def test_not_a_container(self):
+        self.avatar.state = 'present'
+        wrong_loc = self.Goods.insert(type=self.goods_type)
+        with self.assertRaises(OperationContainerExpected) as arc:
+            self.Teleportation.create(
+                state='done',
+                new_location=wrong_loc,
+                input=self.avatar)
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs['offender'], wrong_loc)
 
 
 del WmsTestCaseWithGoods

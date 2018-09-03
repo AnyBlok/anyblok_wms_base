@@ -13,12 +13,9 @@ class TestDeparture(WmsTestCaseWithGoods):
 
     def setUp(self):
         super(TestDeparture, self).setUp()
-        Wms = self.registry.Wms
-        Operation = Wms.Operation
-        self.stock = Wms.Location.insert(label="Stock")
-        self.Departure = Operation.Departure
+        self.Departure = self.Operation.Departure
 
-    def assertQuantities(self, loc=None, **quantities):
+    def assert_quantities(self, loc=None, **quantities):
         if loc is None:
             loc = self.incoming_loc
         for state, info in quantities.items():
@@ -27,10 +24,10 @@ class TestDeparture(WmsTestCaseWithGoods):
             else:
                 qty, at_datetime = info
                 add_state = [state]
-            self.assertEqual(loc.quantity(self.goods_type,
-                                          additional_states=add_state,
-                                          at_datetime=at_datetime),
-                             qty)
+            self.assert_quantity(qty,
+                                 location=loc,
+                                 additional_states=add_state,
+                                 at_datetime=at_datetime)
 
     def test_whole_planned_execute(self):
         dep = self.Departure.create(state='planned',
@@ -42,9 +39,9 @@ class TestDeparture(WmsTestCaseWithGoods):
         self.assertEqual(self.avatar.dt_until, self.dt_test2)
 
         self.avatar.state = 'present'
-        self.assertQuantities(future=(0, self.dt_test2),
-                              present=1,
-                              past=(1, self.dt_test1))
+        self.assert_quantities(future=(0, self.dt_test2),
+                               present=1,
+                               past=(1, self.dt_test1))
 
         dep.execute(self.dt_test3)
         self.assertEqual(dep.state, 'done')
@@ -56,9 +53,9 @@ class TestDeparture(WmsTestCaseWithGoods):
         self.assertEqual(self.avatar.dt_until, self.dt_test3)
         self.assertEqual(sent.reason, dep)
 
-        self.assertQuantities(future=(0, self.dt_test2),
-                              present=0,
-                              past=(1, self.dt_test1))
+        self.assert_quantities(future=(0, self.dt_test2),
+                               present=0,
+                               past=(1, self.dt_test1))
 
     def test_whole_planned_execute_obliviate(self):
         self.avatar.state = 'present'
@@ -95,9 +92,9 @@ class TestDeparture(WmsTestCaseWithGoods):
 
         self.assertEqual(dep.follows, [self.arrival])
         self.assertEqual(dep.input, self.avatar)
-        self.assertQuantities(future=(0, self.dt_test2),
-                              present=0,
-                              past=(1, self.dt_test1))
+        self.assert_quantities(future=(0, self.dt_test2),
+                               present=0,
+                               past=(1, self.dt_test1))
         self.assertEqual(self.avatar.reason, dep)
         self.assertEqual(self.avatar.state, 'past')
         self.assertEqual(self.avatar.dt_until, self.dt_test2)
