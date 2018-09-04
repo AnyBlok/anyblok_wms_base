@@ -22,7 +22,7 @@ from anyblok_postgres.column import Jsonb
 
 from anyblok_wms_base.utils import dict_merge
 from anyblok_wms_base.constants import (
-    GOODS_STATES,
+    AVATAR_STATES,
     DATE_TIME_INFINITY,
 )
 
@@ -569,7 +569,7 @@ class Avatar:
     """The PhysObj of which this is an Avatar."""
 
     state = Selection(label="State of existence",
-                      selections=GOODS_STATES,
+                      selections=AVATAR_STATES,
                       nullable=False,
                       index=True)
     """State of existence in the premises.
