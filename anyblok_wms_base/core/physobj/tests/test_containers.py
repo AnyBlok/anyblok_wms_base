@@ -6,7 +6,6 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from sqlalchemy import or_
 from anyblok_wms_base.constants import DATE_TIME_INFINITY
 from anyblok_wms_base.testing import WmsTestCase
 
@@ -23,6 +22,7 @@ class TestContainers(WmsTestCase):
 
         self.stock = self.insert_location('STK')
 
+        # just a placeholder for subsequent Avatar insertions
         self.arrival = self.Operation.Arrival.insert(
             goods_type=self.physobj_type,
             location=self.stock,
@@ -40,47 +40,6 @@ class TestContainers(WmsTestCase):
                 dt_from=dt_from,
                 dt_until=until,
                 state=state)
-
-    def test_quantity(self):
-        self.insert_goods(2, 'present', self.dt_test1)
-        self.insert_goods(1, 'present', self.dt_test2)
-        self.insert_goods(4, 'future', self.dt_test3)
-        self.insert_goods(2, 'past', self.dt_test1, until=self.dt_test2)
-
-        self.assert_quantity(3)
-        self.assert_quantity(7, additional_states=['future'],
-                             at_datetime=self.dt_test3)
-
-        self.assert_quantity(3, additional_states=['future'],
-                             at_datetime=self.dt_test2)
-        # the 'past' and 'present' ones were already there
-        self.assert_quantity(4, additional_states=['past'],
-                             at_datetime=self.dt_test1)
-        # the 'past' one was not there anymore,
-        # but the two 'present' ones had already arrived
-        self.assert_quantity(3, additional_states=['past'],
-                             at_datetime=self.dt_test2)
-
-    def test_quantity_at_infinity(self):
-        self.insert_goods(2, 'present', self.dt_test1, until=self.dt_test2)
-        self.insert_goods(1, 'present', self.dt_test2)
-        self.insert_goods(3, 'future', self.dt_test2, until=self.dt_test3)
-        self.insert_goods(4, 'future', self.dt_test3)
-        self.insert_goods(2, 'past', self.dt_test1, until=self.dt_test2)
-
-        self.assert_quantity(1, at_datetime=DATE_TIME_INFINITY)
-        self.assert_quantity(5, additional_states=['future'],
-                             at_datetime=DATE_TIME_INFINITY)
-
-    def test_no_match(self):
-        """Test that quantity is not None if no PhysObj match the criteria."""
-        self.assert_quantity(0)
-
-    def test_at_datetime_required(self):
-        with self.assertRaises(ValueError):
-            self.assert_quantity(0, additional_states=['past'])
-        with self.assertRaises(ValueError):
-            self.assert_quantity(0, additional_states=['future'])
 
     def test_recursion(self):
         """Test flatten_containers_subquery recursion, demonstrating joins.
@@ -125,59 +84,48 @@ class TestContainers(WmsTestCase):
         self.assertIsNotNone(joined.filter(
             PhysObj.type == self.physobj_type).first())
 
-    def test_override_recursion(self):
-        """Demonstrate overriding of the flatten_containers_subquery method.
-
-        Of course, since this is a BlokTestCase,
-        instead of using the standard Anyblok overriding mechanism (we can't
-        want to install a Blok just for these purposes within the test),
-        we resort to monkey patching. The end result is still the same.
-
-        The overridden method demonstrates exactly quantity grouping
-        (hierarchy) based on the code prefix.
-        """
-        PhysObj = self.PhysObj
-        orig_meth = PhysObj.flatten_containers_subquery
-
-        @classmethod
-        def flatten_containers_subquery(cls, top=None, **kwargs):
-            """This is an example of flattening by code prefixing.
-
-            Not specifying ``top`` is not supported in this simple example
-
-            We also assume that locations don't move, and therefore ignore
-            the at_datetime and additional_states kwargs
-            """
-            prefix = top.code + '/'
-            query = PhysObj.query(PhysObj.id).filter(
-                or_(
-                    PhysObj.code.like(prefix + '%'),
-                    PhysObj.code == top.code))
-            return query.subquery()
-
+    def test_flatten_subquery_moved(self):
+        """Test the flatten subquery with planned Move of containers."""
+        Goods = self.PhysObj
+        stock = self.stock
+        loc = self.insert_location('sub', parent=stock)
+        loc_av = self.Avatar.query().filter_by(goods=loc).one()
         other = self.insert_location('other')
-        self.insert_goods(2, 'present', self.dt_test1)
-        self.insert_goods(1, 'present', self.dt_test1, location=other)
+        loc_move = self.Operation.Move.create(input=loc_av,
+                                              destination=other,
+                                              state='planned',
+                                              dt_execution=self.dt_test2)
 
-        sub = self.insert_location('STK/sub')
-        self.insert_goods(3, 'present', self.dt_test1, location=sub)
+        def assert_results(expected, **kwargs):
+            cte = Goods.flatten_containers_subquery(**kwargs)
+            self.assertEqual(
+                set(Goods.query().join(cte, cte.c.id == Goods.id).all()),
+                expected)
 
-        try:
-            PhysObj.flatten_containers_subquery = flatten_containers_subquery
-            self.assert_quantity(5)
-        finally:
-            PhysObj.flatten_containers_subquery = orig_meth
+        # starting point, just to check
+        assert_results({stock, loc}, top=stock)
+        assert_results({other}, top=other)
 
-    def test_quantity_recursive(self):
-        other = self.insert_location('other')
-        self.insert_goods(2, 'present', self.dt_test1)
-        self.insert_goods(1, 'present', self.dt_test1, location=other)
+        for dt in (self.dt_test2, self.dt_test3, DATE_TIME_INFINITY):
+            assert_results({stock},
+                           top=stock,
+                           additional_states=['future'],
+                           at_datetime=dt)
+            assert_results({other, loc},
+                           top=other,
+                           additional_states=['future'],
+                           at_datetime=dt)
 
-        sub = self.insert_location('sub', parent=self.stock)
-        self.insert_goods(3, 'present', self.dt_test1, location=sub)
+        loc_move.execute(dt_execution=self.dt_test2)
+        assert_results({stock}, top=stock)
+        assert_results({other, loc}, top=other)
 
-        self.assert_quantity(5)
+        assert_results({stock, loc},
+                       top=stock,
+                       additional_states=['past'],
+                       at_datetime=self.dt_test1)
 
-    def test_create_root_container_wrong_type(self):
-        with self.assertRaises(ValueError):
-            self.Wms.create_root_container(self.physobj_type)
+        assert_results({other},
+                       top=other,
+                       additional_states=['past'],
+                       at_datetime=self.dt_test1)
