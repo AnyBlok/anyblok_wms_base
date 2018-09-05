@@ -38,7 +38,7 @@ class TestQuantity(WmsTestCase):
         avatars = []
         for _ in range(qty):
             avatars.append(self.Avatar.insert(
-                goods=self.PhysObj.insert(type=self.goods_type),
+                obj=self.PhysObj.insert(type=self.goods_type),
                 reason=self.arrival,
                 location=self.stock if location is None else location,
                 dt_from=dt_from,
@@ -110,7 +110,7 @@ class TestQuantity(WmsTestCase):
     def test_dt_quantity_moved_loc(self):
         """Test quantity queries with PhysObj in a location that moves."""
         loc = self.insert_location('sub', parent=self.stock)
-        loc_av = self.Avatar.query().filter_by(goods=loc).one()
+        loc_av = self.Avatar.query().filter_by(obj=loc).one()
         other = self.insert_location('other')
         self.insert_goods(3, 'present', self.dt_test1, location=loc)
         loc_move = self.Operation.Move.create(input=loc_av,
@@ -151,7 +151,7 @@ class TestQuantity(WmsTestCase):
     def test_dt_quantity_moved_loc_and_goods(self):
         """Test quantity queries with both PhysObj and locations moving."""
         loc = self.insert_location('sub', parent=self.stock)
-        loc_av = self.Avatar.query().filter_by(goods=loc).one()
+        loc_av = self.Avatar.query().filter_by(obj=loc).one()
         other = self.insert_location('other')
         avatars = self.insert_goods(3, 'present', self.dt_test1)
         goods_move = self.Operation.Move.create(input=avatars[0],

@@ -54,7 +54,7 @@ class TestTeleportation(WmsTestCaseWithPhysObj):
         self.assertEqual(avatar.reason, self.arrival)
         self.assertIsNone(avatar.dt_until)
         self.assertEqual(
-            self.Avatar.query().filter_by(goods=avatar.goods).count(), 1)
+            self.Avatar.query().filter_by(obj=avatar.obj).count(), 1)
 
     def test_no_planned_state(self):
         avatar = self.avatar

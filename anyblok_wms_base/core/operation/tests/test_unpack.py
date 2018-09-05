@@ -48,7 +48,7 @@ class TestUnpack(WmsTestCase):
 
     def single_avatar(self, goods):
         return self.single_result(
-            self.Avatar.query().filter(self.Avatar.goods == goods))
+            self.Avatar.query().filter(self.Avatar.obj == goods))
 
     def test_done_one_unpacked_type_props(self):
         unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
@@ -104,11 +104,11 @@ class TestUnpack(WmsTestCase):
 
         for goods in self.assert_goods_records(2, unpacked_clone_type):
             self.assertEqual(goods.properties,
-                             self.packs.goods.properties)
+                             self.packs.obj.properties)
 
         for goods in self.assert_goods_records(3, unpacked_fwd_type):
             self.assertNotEqual(goods.properties,
-                                self.packs.goods.properties)
+                                self.packs.obj.properties)
             self.assertIsNone(goods.get_property('other'))
             self.assertEqual(goods.get_property('foo'), 3)
 
@@ -133,7 +133,7 @@ class TestUnpack(WmsTestCase):
 
         for goods in self.assert_goods_records(3, unpacked_type):
             self.assertEqual(goods.properties,
-                             self.packs.goods.properties)
+                             self.packs.obj.properties)
 
     def test_done_non_uniform(self):
         """Unpack with outcomes defined in pack properties.
@@ -292,7 +292,7 @@ class TestUnpack(WmsTestCase):
         # we don't have a create() returned value to compare
 
         # Having properties, still missing the required one
-        self.packs.goods.properties = self.PhysObj.Properties.insert(
+        self.packs.obj.properties = self.PhysObj.Properties.insert(
             flexible=dict(bar=1))
 
         with self.assertRaises(OperationInputsError) as arc:
@@ -377,7 +377,7 @@ class TestUnpack(WmsTestCase):
                              at_datetime=self.dt_test2,
                              additional_states=['future']),
         self.assertEqual(
-            self.Avatar.query().join(self.Avatar.goods).filter(
+            self.Avatar.query().join(self.Avatar.obj).filter(
                 self.PhysObj.type == self.packed_goods_type,
                 self.Avatar.state == 'future').count(),
             0)
@@ -551,10 +551,10 @@ class TestUnpack(WmsTestCase):
                                  input=self.packs)
         self.assertTrue(unp.is_reversible())
 
-        del self.packs.goods.type.behaviours['assembly']['bolt']
+        del self.packs.obj.type.behaviours['assembly']['bolt']
         self.assertFalse(unp.is_reversible())
 
-        del self.packs.goods.type.behaviours['assembly']
+        del self.packs.obj.type.behaviours['assembly']
         self.assertFalse(unp.is_reversible())
         # and that's enough testing: once the name is properly resolved
         # it works the same as in the default name case.

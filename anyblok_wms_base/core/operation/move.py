@@ -47,7 +47,7 @@ class Move(Mixin.WmsSingleInputOperation, Operation):
             dt_from=dt_exec,
             # copied fields:
             dt_until=to_move.dt_until,
-            goods=to_move.goods)
+            obj=to_move.obj)
 
         to_move.dt_until = dt_exec
         if state == 'done':

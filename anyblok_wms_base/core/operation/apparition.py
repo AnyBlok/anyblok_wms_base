@@ -112,11 +112,12 @@ class Apparition(Operation):
             props = PhysObj.Properties.create(**self_props)
 
         for _ in range(self.quantity):
-            goods = PhysObj.insert(type=self.goods_type,
-                                   properties=props,
-                                   code=self.goods_code)
-            PhysObj.Avatar.insert(goods=goods,
-                                  location=self.location,
-                                  reason=self,
-                                  state='present',
-                                  dt_from=self.dt_execution)
+            PhysObj.Avatar.insert(
+                obj=PhysObj.insert(
+                    type=self.goods_type,
+                    properties=props,
+                    code=self.goods_code),
+                location=self.location,
+                reason=self,
+                state='present',
+                dt_from=self.dt_execution)

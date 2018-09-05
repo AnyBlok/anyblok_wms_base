@@ -686,13 +686,13 @@ class Operation:
         """
         all_goods = set()
         for avatar in self.outcomes:
-            all_goods.add(avatar.goods)
+            all_goods.add(avatar.obj)
             avatar.delete()
         self.registry.flush()
         # TODO PERF probably more efficient in one query with GROUP BY + COUNT
         Avatar = self.registry.Wms.PhysObj.Avatar
         for goods in all_goods:
-            if not Avatar.query().filter(Avatar.goods == goods).count():
+            if not Avatar.query().filter(Avatar.obj == goods).count():
                 goods.delete()
 
     def cancel_single(self):

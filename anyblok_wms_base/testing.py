@@ -89,7 +89,7 @@ class WmsTestCase(BlokTestCase):
         """
         model = record.__registry_name__
         if model == 'Model.Wms.PhysObj.Avatar':
-            goods = record.goods
+            goods = record.obj
         elif model == 'Model.Wms.PhysObj':
             goods = record
         else:
@@ -149,7 +149,7 @@ class WmsTestCase(BlokTestCase):
             # (useful to debug Apparitiom itself if needed)
             if dt_from is None:
                 dt_from = cls.dt_test1
-            cls.PhysObj.Avatar.insert(goods=loc,
+            cls.PhysObj.Avatar.insert(obj=loc,
                                       state='present',
                                       location=parent,
                                       dt_from=dt_from,
@@ -207,7 +207,7 @@ class WmsTestCaseWithPhysObj(SharedDataTestCase, WmsTestCase):
 
         assert len(cls.arrival.outcomes) == 1
         cls.avatar = cls.arrival.outcomes[0]
-        cls.goods = cls.avatar.goods
+        cls.goods = cls.avatar.obj
         cls.Avatar = cls.PhysObj.Avatar
 
 

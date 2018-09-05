@@ -55,7 +55,7 @@ class TestOperation(WmsTestCase):
                                                 location=self.incoming_loc,
                                                 state='planned')
         Avatar = self.PhysObj.Avatar
-        goods = [Avatar.insert(goods=self.PhysObj.insert(type=self.goods_type),
+        goods = [Avatar.insert(obj=self.PhysObj.insert(type=self.goods_type),
                                location=self.incoming_loc,
                                dt_from=self.dt_test1,
                                state='future',
@@ -76,7 +76,7 @@ class TestOperation(WmsTestCase):
         Avatar = self.PhysObj.Avatar
         avatars = [
             Avatar.insert(
-                goods=self.PhysObj.insert(type=self.goods_type),
+                obj=self.PhysObj.insert(type=self.goods_type),
                 location=self.incoming_loc,
                 dt_from=self.dt_test1,
                 dt_until=dt,

@@ -316,13 +316,13 @@ class Assembly(Operation):
                 from_state, state,
                 ('forward', 'set'))
             for av_id in match_item:
-                goods = Avatar.query().get(av_id).goods
+                goods = Avatar.query().get(av_id).obj
                 for fp in itertools.chain(input_fwd, glob_fwd):
                     self.extract_property(forwarded, goods, fp,
                                           exc_details=(i, input_spec))
         for extra in self.extra_inputs:
             for fp in glob_fwd:
-                self.extract_property(forwarded, extra.goods, fp)
+                self.extract_property(forwarded, extra.obj, fp)
 
         return forwarded
 
@@ -352,7 +352,7 @@ class Assembly(Operation):
         )
 
         for avatar in self.inputs:
-            goods = avatar.goods
+            goods = avatar.obj
             if (not goods.has_properties(req_props) or
                     not goods.has_property_values(req_prop_values)):
                 raise AssemblyWrongInputProperties(
@@ -369,7 +369,7 @@ class Assembly(Operation):
                 ('required_values', 'dict'),
             )
             for av_id in match_item:
-                goods = Avatar.query().get(av_id).goods
+                goods = Avatar.query().get(av_id).obj
                 if (not goods.has_properties(req_props) or
                         not goods.has_property_values(req_prop_values)):
                     raise AssemblyWrongInputProperties(
@@ -422,7 +422,7 @@ class Assembly(Operation):
                 types_by_code[type_code] = gtype
             for _ in range(expected['quantity']):
                 for candidate in inputs:
-                    goods = candidate.goods
+                    goods = candidate.obj
                     if (not goods.has_type(gtype) or
                             not goods.has_properties(req_props) or
                             not goods.has_property_values(req_prop_values)):
@@ -868,7 +868,7 @@ class Assembly(Operation):
 
         # sorting here and later is for tests reproducibility
         for avatar in sorted(for_unpack, key=lambda av: av.id):
-            goods = avatar.goods
+            goods = avatar.obj
             props = goods.properties
             unpack_outcome = dict(
                 type=goods.type.code,
@@ -929,7 +929,7 @@ class Assembly(Operation):
         self.check_match_inputs(state, for_creation=True)
         PhysObj = self.registry.Wms.PhysObj
         PhysObj.Avatar.insert(
-            goods=PhysObj.insert(
+            obj=PhysObj.insert(
                 type=self.outcome_type,
                 properties=PhysObj.Properties.create(
                     **self.outcome_properties(state, for_creation=True))),
@@ -948,7 +948,7 @@ class Assembly(Operation):
             inp.state = 'past'
         outcome = self.outcomes[0]
 
-        outcome.goods.update_properties(self.outcome_properties('done'))
+        outcome.obj.update_properties(self.outcome_properties('done'))
         outcome.state = 'present'
 
     def eval_typed_expr(self, etype, expr):

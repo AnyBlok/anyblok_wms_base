@@ -707,4 +707,4 @@ class Avatar:
                     self=self)
 
     def get_property(self, k, default=None):
-        return self.goods.get_property(k, default=default)
+        return self.obj.get_property(k, default=default)

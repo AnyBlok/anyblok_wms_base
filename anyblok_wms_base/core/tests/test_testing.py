@@ -13,7 +13,7 @@ class TestWmsTestCase(WmsTestCaseWithPhysObj):
 
     def test_sorted_props(self):
         avatar = self.avatar
-        goods = avatar.goods
+        goods = avatar.obj
         goods.set_property('a', 3)
         goods.set_property('c', 'ok')
         for rec in (goods, avatar):
@@ -27,7 +27,7 @@ class TestWmsTestCase(WmsTestCaseWithPhysObj):
     def test_cls_insert_location(self):
         loc = self.cls_insert_location('other', parent=self.stock)
         av = self.assert_singleton(
-            self.Avatar.query().filter_by(goods=loc).all())
+            self.Avatar.query().filter_by(obj=loc).all())
         self.assertEqual(av.dt_from, self.dt_test1)
 
 

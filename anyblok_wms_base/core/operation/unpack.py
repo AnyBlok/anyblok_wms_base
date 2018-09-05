@@ -55,7 +55,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
             quantity=quantity,
             **kwargs)
 
-        goods_type = inputs[0].goods.type
+        goods_type = inputs[0].obj.type
         if 'unpack' not in goods_type.behaviours:
             raise OperationInputsError(
                 cls,
@@ -126,10 +126,10 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
             goods_fields = dict(type=outcome_types[outcome_spec['type']])
             clone = outcome_spec.get('forward_properties') == 'clone'
             if clone:
-                goods_fields['properties'] = packs.goods.properties
+                goods_fields['properties'] = packs.obj.properties
             for goods in self.create_unpacked_goods(goods_fields,
                                                     outcome_spec):
-                PhysObj.Avatar.insert(goods=goods,
+                PhysObj.Avatar.insert(obj=goods,
                                       location=packs.location,
                                       reason=self,
                                       dt_from=dt_execution,
@@ -180,7 +180,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         direct_props = spec.get('properties')
         if direct_props is not None and 'local_goods_ids' not in spec:
             outcome.update_properties(direct_props)
-        packs = self.input.goods
+        packs = self.input.obj
         fwd_props = spec.get('forward_properties', ())
         req_props = spec.get('required_properties')
 
@@ -265,7 +265,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         # to propagate mutability to the DB. Not sure how much of it
         # is necessary.
         packs = self.input
-        goods_type = packs.goods.type
+        goods_type = packs.obj.type
         behaviour = goods_type.get_behaviour('unpack')
         specs = behaviour.get('outcomes', [])[:]
         if behaviour.get('uniform_outcomes', False):
@@ -302,14 +302,14 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         # TODO PERF in two queries using RETURNING, or be braver and
         # make the avatars cascade
         for avatar in self.outcomes:
-            all_goods.add(avatar.goods)
+            all_goods.add(avatar.obj)
             avatar.delete()
         for goods in all_goods:
             goods.delete()
 
     def reverse_assembly_name(self):
         """Return the name of Assembly that can revert this Unpack."""
-        behaviour = self.input.goods.type.get_behaviour('unpack')
+        behaviour = self.input.obj.type.get_behaviour('unpack')
         default = 'pack'
         if behaviour is None:
             return default  # probably not useful, but that's consistent
@@ -323,7 +323,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         whose name is given by the ``reverse_assembly`` key in the behaviour,
         with a default: ``'pack'``
         """
-        gt = self.input.goods.type
+        gt = self.input.obj.type
         # TODO define a has_behaviour() API on goods_type
         ass_beh = gt.get_behaviour('assembly')
         if ass_beh is None:
@@ -353,7 +353,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         # for API clarity
         pack_inputs.extend(self.outcomes)
         return self.registry.Wms.Operation.Assembly.create(
-            outcome_type=self.input.goods.type,
+            outcome_type=self.input.obj.type,
             dt_execution=dt_execution,
             name=self.reverse_assembly_name(),
             inputs=pack_inputs)

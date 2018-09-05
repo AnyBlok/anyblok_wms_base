@@ -34,7 +34,7 @@ class TestContainers(WmsTestCase):
     def insert_goods(self, qty, state, dt_from, until=None, location=None):
         for _ in range(qty):
             self.Avatar.insert(
-                goods=self.PhysObj.insert(type=self.goods_type),
+                obj=self.PhysObj.insert(type=self.goods_type),
                 reason=self.arrival,
                 location=self.stock if location is None else location,
                 dt_from=dt_from,

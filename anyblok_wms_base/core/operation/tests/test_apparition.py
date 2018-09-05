@@ -37,7 +37,7 @@ class TestApparition(WmsTestCase):
             goods_type=self.goods_type)
         self.assertEqual(apparition.follows, [])
         avatar = self.assert_singleton(apparition.outcomes)
-        goods = avatar.goods
+        goods = avatar.obj
         self.assertEqual(avatar.state, 'present')
         self.assertEqual(avatar.location, self.stock)
         self.assertEqual(goods.type, self.goods_type)
@@ -67,7 +67,7 @@ class TestApparition(WmsTestCase):
         avatars = apparition.outcomes
         self.assertEqual(len(avatars), 3)
         for avatar in avatars:
-            goods = avatar.goods
+            goods = avatar.obj
             self.assertEqual(avatar.state, 'present')
             self.assertEqual(avatar.location, self.stock)
             self.assertEqual(goods.type, self.goods_type)
@@ -77,7 +77,7 @@ class TestApparition(WmsTestCase):
 
         # we really have three different PhysObj, but they share one Property
         # instance
-        all_goods = set(av.goods for av in avatars)
+        all_goods = set(av.obj for av in avatars)
         self.assertEqual(len(all_goods), 3)
 
         all_props = set(g.properties for g in all_goods)
@@ -101,7 +101,7 @@ class TestApparition(WmsTestCase):
             goods_type=self.goods_type)
         self.assertEqual(apparition.follows, [])
         avatar = self.assert_singleton(apparition.outcomes)
-        goods = avatar.goods
+        goods = avatar.obj
         self.assertEqual(avatar.state, 'present')
         self.assertEqual(avatar.location, self.stock)
         self.assertEqual(goods.type, self.goods_type)

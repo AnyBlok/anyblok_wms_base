@@ -152,7 +152,7 @@ class Wms:
                  wished quantity result (possibly ``None`` for 0)
         """
         Avatar = cls.PhysObj.Avatar
-        return Avatar.query(func.count(Avatar.id)).join(Avatar.goods)
+        return Avatar.query(func.count(Avatar.id)).join(Avatar.obj)
 
     @classmethod
     def filter_container_types(cls, types):
