@@ -17,7 +17,7 @@ from anyblok.tests.testcase import BlokTestCase
 
 try:
     from anyblok.tests.testcase import SharedDataTestCase
-except ImportError:
+except ImportError:  # pragma: no cover
     from .sdtestcase import SharedDataTestCase
 
 _missing = object()
