@@ -15,10 +15,7 @@ import anyblok.registry
 from anyblok.config import Configuration
 from anyblok.tests.testcase import BlokTestCase
 
-try:
-    from anyblok.tests.testcase import SharedDataTestCase
-except ImportError:  # pragma: no cover
-    from .sdtestcase import SharedDataTestCase
+from anyblok.tests.testcase import SharedDataTestCase
 
 _missing = object()
 
