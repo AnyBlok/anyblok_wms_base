@@ -72,7 +72,7 @@ class TestTeleportation(WmsTestCaseWithPhysObj):
 
     def test_not_a_container(self):
         self.avatar.state = 'present'
-        wrong_loc = self.PhysObj.insert(type=self.goods_type)
+        wrong_loc = self.PhysObj.insert(type=self.physobj_type)
         with self.assertRaises(OperationContainerExpected) as arc:
             self.Teleportation.create(
                 state='done',

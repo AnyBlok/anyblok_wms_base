@@ -62,7 +62,7 @@ class TestSplitterOperation(WmsTestCaseWithPhysObj):
         self.assertEqual(move.follows, [self.arrival])
         self.assertEqual(move.input, self.avatar)
         self.avatar.state = 'present'
-        self.goods.quantity = 2
+        self.physobj.quantity = 2
         self.registry.flush()
         with self.assertRaises(OperationQuantityError) as arc:
             move.execute()
@@ -100,7 +100,7 @@ class TestSplitterOperation(WmsTestCaseWithPhysObj):
                                 input=self.avatar)
         split = self.assert_singleton(move.follows)
         self.assertEqual(split.input, self.avatar)
-        self.goods.quantity = 1
+        self.physobj.quantity = 1
         self.avatar.state = 'present'
 
         with self.assertRaises(OperationQuantityError) as arc:

@@ -16,7 +16,7 @@ class TestAvatar(WmsTestCaseWithPhysObj):
         self.Avatar = self.registry.Wms.PhysObj.Avatar
 
     def test_str(self):
-        avatar, goods = self.avatar, self.goods
+        avatar, goods = self.avatar, self.physobj
         self.maxDiff = None
 
         # this below just to make sure. Actually, avatar.dt_from can be
@@ -41,7 +41,7 @@ class TestAvatar(WmsTestCaseWithPhysObj):
     def test_get_property(self):
         avatar = self.avatar
         self.assertIsNone(avatar.get_property('foo'))
-        self.goods.set_property('foo', [1])
+        self.physobj.set_property('foo', [1])
         self.assertEqual(avatar.get_property('foo'), [1])
         self.assertEqual(avatar.get_property('bar', default='graal'), 'graal')
 

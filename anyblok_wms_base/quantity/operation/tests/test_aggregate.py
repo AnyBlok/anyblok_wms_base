@@ -23,12 +23,12 @@ class TestAggregate(WmsTestCase):
     def setUp(self):
         super(TestAggregate, self).setUp()
         Operation = self.Operation
-        self.goods_type = self.PhysObj.Type.insert(label="My good type",
-                                                   code="MyGT")
+        self.physobj_type = self.PhysObj.Type.insert(label="My good type",
+                                                     code="MyGT")
         self.loc = self.insert_location('Incoming')
 
         # The arrival fields don't matter, we'll insert goods directly
-        self.arrival = Operation.Arrival.insert(goods_type=self.goods_type,
+        self.arrival = Operation.Arrival.insert(goods_type=self.physobj_type,
                                                 location=self.loc,
                                                 state='planned',
                                                 dt_execution=self.dt_test1,
@@ -37,7 +37,7 @@ class TestAggregate(WmsTestCase):
         Avatar = self.PhysObj.Avatar
         self.avatars = [
             Avatar.insert(goods=self.PhysObj.insert(quantity=qty,
-                                                    type=self.goods_type),
+                                                    type=self.physobj_type),
                           location=self.loc,
                           dt_from=self.dt_test1,
                           state='future',
@@ -118,7 +118,7 @@ class TestAggregate(WmsTestCase):
         self.assertEqual(set(g.quantity for g in new_goods), set((1, 2)))
 
         for avatar in self.PhysObj.Avatar.query().all():
-            self.assertEqual(avatar.goods.type, self.goods_type)
+            self.assertEqual(avatar.goods.type, self.physobj_type)
             self.assertEqual(avatar.location, self.loc)
             self.assertEqual(avatar.state, 'present')
             self.assertEqual(avatar.reason, self.arrival)
@@ -143,7 +143,7 @@ class TestAggregate(WmsTestCase):
         for record in self.avatars:
             record.state = 'present'
         Operation = self.registry.Wms.Operation
-        other_reason = Operation.Arrival.insert(goods_type=self.goods_type,
+        other_reason = Operation.Arrival.insert(goods_type=self.physobj_type,
                                                 location=self.loc,
                                                 state='done',
                                                 dt_execution=self.dt_test1,

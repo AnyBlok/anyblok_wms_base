@@ -48,7 +48,7 @@ class TestSplit(WmsTestCaseWithPhysObj):
             self.assertEqual(outcome.dt_from, self.dt_test2)
             self.assertEqual(outcome.location, self.incoming_loc)
             self.assertEqual(outcome.state, 'present')
-            self.assertEqual(outcome.goods.type, self.goods_type)
+            self.assertEqual(outcome.goods.type, self.physobj_type)
             # No need to test quantity > 0, we now have a constraint on that
 
     def test_create_planned_execute(self):
@@ -69,7 +69,7 @@ class TestSplit(WmsTestCaseWithPhysObj):
         # this will fail if me mangle the datetimes severely
         self.assertEqual(
             self.Wms.quantity(location=self.incoming_loc,
-                              goods_type=self.goods_type,
+                              goods_type=self.physobj_type,
                               additional_states=['future'],
                               at_datetime=self.dt_test3),
             3)
@@ -78,7 +78,7 @@ class TestSplit(WmsTestCaseWithPhysObj):
             self.assertEqual(outcome.dt_from, self.dt_test2)
             self.assertEqual(outcome.location, self.incoming_loc)
             self.assertEqual(outcome.state, 'future')
-            self.assertEqual(outcome.goods.type, self.goods_type)
+            self.assertEqual(outcome.goods.type, self.physobj_type)
         wished_outcome = split.wished_outcome
         self.assertEqual(wished_outcome.goods.quantity, 2)
         self.assertTrue(wished_outcome in all_outcomes)
@@ -89,7 +89,7 @@ class TestSplit(WmsTestCaseWithPhysObj):
             self.assertEqual(outcome.dt_until, None)
             self.assertEqual(outcome.location, self.incoming_loc)
             self.assertEqual(outcome.state, 'present')
-            self.assertEqual(outcome.goods.type, self.goods_type)
+            self.assertEqual(outcome.goods.type, self.physobj_type)
 
         # whatever the time we pick at the total quantity should still be
         # unchanged (using the right states, of course)
@@ -101,7 +101,7 @@ class TestSplit(WmsTestCaseWithPhysObj):
                                (['past'], self.dt_test3)):
             self.assertEqual(
                 self.Wms.quantity(location=self.incoming_loc,
-                                  goods_type=self.goods_type,
+                                  goods_type=self.physobj_type,
                                   additional_states=add_states,
                                   at_datetime=dt),
                 3)
@@ -118,9 +118,10 @@ class TestSplit(WmsTestCaseWithPhysObj):
 
     def test_irreversible(self):
         """A case in which Splits are irreversible."""
-        self.goods_type.behaviours = {SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR: True}
+        self.physobj_type.behaviours = {
+            SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR: True}
         # if that fails, then the issue is not in Split implementation:
-        self.assertEqual(self.goods_type.is_split_reversible(), False)
+        self.assertEqual(self.physobj_type.is_split_reversible(), False)
 
         self.avatar.state = 'present'
         split = self.Operation.Split.create(state='done',
@@ -161,8 +162,8 @@ class TestSplit(WmsTestCaseWithPhysObj):
         # TODO would be neat for the outcome to actually be self.goods,
         # i.e., the PhysObj record we started with
         self.assertEqual(new_avatar.location, self.avatar.location)
-        self.assertEqual(new_goods.type, self.goods.type)
-        self.assertEqual(new_goods.properties, self.goods.properties)
+        self.assertEqual(new_goods.type, self.physobj.type)
+        self.assertEqual(new_goods.properties, self.physobj.properties)
 
         # TODO we might actually want in case Splits have no meaning
         # in real life to simply forget an end-of-chain Split.
@@ -203,8 +204,8 @@ class TestSplit(WmsTestCaseWithPhysObj):
         # TODO would be neat for the outcome to actually be self.goods,
         # i.e., the PhysObj record we started with
         self.assertEqual(new_avatar.location, self.avatar.location)
-        self.assertEqual(new_goods.type, self.goods.type)
-        self.assertEqual(new_goods.properties, self.goods.properties)
+        self.assertEqual(new_goods.type, self.physobj.type)
+        self.assertEqual(new_goods.properties, self.physobj.properties)
 
         # no weird leftovers
         self.assertEqual(
@@ -225,16 +226,15 @@ class TestSplit(WmsTestCaseWithPhysObj):
         Avatar = self.PhysObj.Avatar
         restored_avatar = self.single_result(Avatar.query())
         restored_goods = self.single_result(self.PhysObj.query().filter_by(
-            type=self.goods_type))
+            type=self.physobj.type))
         self.assertEqual(restored_avatar.goods, restored_goods)
 
         self.assertEqual(restored_avatar.location, self.avatar.location)
         # TODO would be neat for the outcome to actually be self.goods,
         # i.e., the PhysObj record we started with
-        self.assertEqual(restored_goods, self.goods)
-        self.assertEqual(restored_goods.type, self.goods.type)
+        self.assertEqual(restored_goods, self.physobj)
         self.assertEqual(restored_goods.quantity, 3)
-        self.assertEqual(restored_goods.properties, self.goods.properties)
+        self.assertEqual(restored_goods.properties, self.physobj.properties)
 
 
 del WmsTestCaseWithPhysObj

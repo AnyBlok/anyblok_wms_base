@@ -85,7 +85,7 @@ class TestMove(WmsTestCaseWithPhysObj):
         self.assertBackToBeginning()
 
     def test_not_a_container(self):
-        wrong_loc = self.PhysObj.insert(type=self.goods_type)
+        wrong_loc = self.PhysObj.insert(type=self.physobj_type)
         with self.assertRaises(OperationContainerExpected) as arc:
             self.Move.create(
                 destination=wrong_loc,

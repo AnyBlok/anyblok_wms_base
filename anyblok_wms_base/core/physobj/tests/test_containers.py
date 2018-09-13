@@ -18,13 +18,13 @@ class TestContainers(WmsTestCase):
     def setUp(self):
         super(TestContainers, self).setUp()
         self.Avatar = self.PhysObj.Avatar
-        self.goods_type = self.PhysObj.Type.insert(label="My goods",
-                                                   code='MyGT')
+        self.physobj_type = self.PhysObj.Type.insert(label="My goods",
+                                                     code='MyGT')
 
         self.stock = self.insert_location('STK')
 
         self.arrival = self.Operation.Arrival.insert(
-            goods_type=self.goods_type,
+            goods_type=self.physobj_type,
             location=self.stock,
             dt_execution=self.dt_test1,
             state='done')
@@ -34,7 +34,7 @@ class TestContainers(WmsTestCase):
     def insert_goods(self, qty, state, dt_from, until=None, location=None):
         for _ in range(qty):
             self.Avatar.insert(
-                obj=self.PhysObj.insert(type=self.goods_type),
+                obj=self.PhysObj.insert(type=self.physobj_type),
                 reason=self.arrival,
                 location=self.stock if location is None else location,
                 dt_from=dt_from,
@@ -123,7 +123,7 @@ class TestContainers(WmsTestCase):
         # subquery to actually containers.
         self.insert_goods(1, 'present', self.dt_test1)
         self.assertIsNotNone(joined.filter(
-            PhysObj.type == self.goods_type).first())
+            PhysObj.type == self.physobj_type).first())
 
     def test_override_recursion(self):
         """Demonstrate overriding of the flatten_containers_subquery method.
@@ -180,4 +180,4 @@ class TestContainers(WmsTestCase):
 
     def test_create_root_container_wrong_type(self):
         with self.assertRaises(ValueError):
-            self.Wms.create_root_container(self.goods_type)
+            self.Wms.create_root_container(self.physobj_type)

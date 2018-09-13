@@ -75,7 +75,7 @@ class WmsTestCase(BlokTestCase):
         if location is _missing:
             location = self.default_quantity_location
         if goods_type is _missing:
-            goods_type = self.goods_type
+            goods_type = self.physobj_type
 
         self.assertEqual(self.Wms.quantity(location=location,
                                            goods_type=goods_type,
@@ -194,12 +194,13 @@ class WmsTestCaseWithPhysObj(SharedDataTestCase, WmsTestCase):
 
         Operation = cls.Operation
         PhysObj = cls.PhysObj
-        cls.goods_type = PhysObj.Type.insert(label="My good type", code='MyGT')
+        cls.physobj_type = PhysObj.Type.insert(label="My good type",
+                                               code='MyGT')
         cls.create_location_type()
         cls.incoming_loc = cls.cls_insert_location('INCOMING')
         cls.stock = cls.cls_insert_location('STOCK')
 
-        cls.arrival = Operation.Arrival.create(goods_type=cls.goods_type,
+        cls.arrival = Operation.Arrival.create(goods_type=cls.physobj_type,
                                                location=cls.incoming_loc,
                                                state='planned',
                                                dt_execution=cls.dt_test1,
@@ -207,7 +208,7 @@ class WmsTestCaseWithPhysObj(SharedDataTestCase, WmsTestCase):
 
         assert len(cls.arrival.outcomes) == 1
         cls.avatar = cls.arrival.outcomes[0]
-        cls.goods = cls.avatar.obj
+        cls.physobj = cls.avatar.obj
         cls.Avatar = cls.PhysObj.Avatar
 
 

@@ -17,11 +17,11 @@ class TestLocation(WmsTestCase):
     def setUp(self):
         super(TestLocation, self).setUp()
         self.Avatar = self.PhysObj.Avatar
-        self.goods_type = self.PhysObj.Type.insert(label="My goods",
-                                                   code='MyGT')
+        self.physobj_type = self.PhysObj.Type.insert(label="My goods",
+                                                     code='MyGT')
         self.stock = self.insert_location('STK')
         self.arrival = self.Operation.Arrival.insert(
-            goods_type=self.goods_type,
+            goods_type=self.physobj_type,
             location=self.stock,
             dt_execution=self.dt_test1,
             state='done',
@@ -31,7 +31,7 @@ class TestLocation(WmsTestCase):
 
     def insert_goods(self, qty, state, dt_from, until=None):
         self.Avatar.insert(
-            goods=self.PhysObj.insert(type=self.goods_type, quantity=qty),
+            goods=self.PhysObj.insert(type=self.physobj_type, quantity=qty),
             reason=self.arrival, location=self.stock,
             dt_from=dt_from,
             dt_until=until,
