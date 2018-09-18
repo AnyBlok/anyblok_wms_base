@@ -21,7 +21,7 @@ Wms = Declarations.Model.Wms
 
 def deprecation_warn_goods():
         warnings.warn("The 'goods' attribute of Model.Wms.Reservation.Avatar "
-                      "is deprecated, please rename to 'obj' before "
+                      "is deprecated, please rename to 'physobj' before "
                       "version 1.0 of Anyblok / WMS Base",
                       DeprecationWarning,
                       stacklevel=2)
