@@ -45,5 +45,28 @@ class TestAvatar(WmsTestCaseWithPhysObj):
         self.assertEqual(avatar.get_property('foo'), [1])
         self.assertEqual(avatar.get_property('bar', default='graal'), 'graal')
 
+    def test_compatibility_goods_field(self):
+        """Test compatibility function field for the rename goods->obj.
+
+        To be removed together with that function field once the deprecation
+        has expired.
+        """
+        avatar = self.avatar
+        phobj = avatar.obj
+        # reading
+        self.assertEqual(avatar.goods, phobj)
+
+        # writing
+        self.Avatar.insert(goods=phobj,
+                           state='present',
+                           dt_from=self.dt_test1,
+                           dt_until=None,
+                           reason=avatar.reason,
+                           location=avatar.location)
+
+        # querying
+        self.assertEqual(self.Avatar.query().filter_by(goods=phobj).count(),
+                         2)
+
 
 del WmsTestCaseWithPhysObj
