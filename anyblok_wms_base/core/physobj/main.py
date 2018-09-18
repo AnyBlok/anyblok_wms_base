@@ -7,6 +7,7 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from copy import deepcopy
+import warnings
 
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import orm
@@ -18,6 +19,7 @@ from anyblok.column import Selection
 from anyblok.column import Integer
 from anyblok.column import DateTime
 from anyblok.relationship import Many2One
+from anyblok.field import Function
 from anyblok_postgres.column import Jsonb
 
 from anyblok_wms_base.utils import dict_merge
@@ -311,7 +313,7 @@ class PhysObj:
         query = cls.registry.session.query
         cte = cls.query(cls.id)
         if top is None:
-            cte = cte.outerjoin(Avatar, Avatar.goods_id == cls.id).filter(
+            cte = cte.outerjoin(Avatar, Avatar.obj_id == cls.id).filter(
                 Avatar.location_id.is_(None))
         else:
             cte = cte.filter_by(id=top.id)
@@ -320,7 +322,7 @@ class PhysObj:
         parent = orm.aliased(cte, name='parent')
         child = orm.aliased(cls, name='child')
         tail = query(child.id).join(
-                         Avatar, Avatar.goods_id == child.id).filter(
+                         Avatar, Avatar.obj_id == child.id).filter(
                              Avatar.location_id == parent.c.id)
 
         # taking additional states and datetime query into account
@@ -553,6 +555,14 @@ class Properties:
         return k in flex
 
 
+def deprecation_warn_goods():
+        warnings.warn("The 'goods' attribute of Model.Wms.PhysObj.Avatar is "
+                      "deprecated, please rename to 'obj' before "
+                      "version 1.0 of Anyblok / WMS Base",
+                      DeprecationWarning,
+                      stacklevel=2)
+
+
 @register(Model.Wms.PhysObj)
 class Avatar:
     """PhysObj Avatar.
@@ -563,9 +573,9 @@ class Avatar:
     id = Integer(label="Identifier", primary_key=True)
     """Primary key."""
 
-    goods = Many2One(model=Model.Wms.PhysObj,
-                     index=True,
-                     nullable=False)
+    obj = Many2One(model=Model.Wms.PhysObj,
+                   index=True,
+                   nullable=False)
     """The PhysObj of which this is an Avatar."""
 
     state = Selection(label="State of existence",
@@ -658,15 +668,40 @@ class Avatar:
               with :attr:`dt_until` being theoretical in that case anyway.
     """
 
+    goods = Function(fget='_goods_get',
+                     fset='_goods_set',
+                     fexpr='_goods_expr')
+    """Compatibility wrapper.
+
+    Before the merge of Goods and Locations as PhysObj, :attr:`obj` was
+    ``goods``.
+
+    This does not extend to compatibility of the former low level ``goods_id``
+    column.
+    """
+
+    def _goods_get(self):
+        deprecation_warn_goods()
+        return self.obj
+
+    def _goods_set(self, value):
+        deprecation_warn_goods()
+        self.obj = value
+
+    @classmethod
+    def _goods_expr(cls):
+        deprecation_warn_goods()
+        return cls.obj
+
     def __str__(self):
-        return ("(id={self.id}, goods={self.goods}, state={self.state!r}, "
+        return ("(id={self.id}, obj={self.obj}, state={self.state!r}, "
                 "location={self.location}, "
                 "dt_range=[{self.dt_from}, "
                 "{self.dt_until}])".format(self=self))
 
     def __repr__(self):
         return ("Wms.PhysObj.Avatar(id={self.id}, "
-                "goods={self.goods!r}, state={self.state!r}, "
+                "obj={self.obj!r}, state={self.state!r}, "
                 "location={self.location!r}, "
                 "dt_range=[{self.dt_from!r}, {self.dt_until!r}])").format(
                     self=self)

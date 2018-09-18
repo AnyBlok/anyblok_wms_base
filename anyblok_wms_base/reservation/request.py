@@ -305,8 +305,8 @@ class RequestItem:
         # SELECT DISTINCT ON would be better
         # TODO provide ordering by Avatar state and/or dt_from
         query = PhysObj.query().join(Avatar.goods).outerjoin(
-            Reservation, Reservation.goods_id == PhysObj.id).filter(
-                Reservation.goods_id.is_(None),
+            Reservation, Reservation.physobj_id == PhysObj.id).filter(
+                Reservation.physobj_id.is_(None),
                 PhysObj.type == self.goods_type,
                 Avatar.state.in_(('present', 'future')))
         if self.properties:

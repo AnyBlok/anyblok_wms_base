@@ -28,13 +28,13 @@ class TestAvatar(WmsTestCaseWithPhysObj):
 
         self.assertEqual(
             repr(avatar),
-            "Wms.PhysObj.Avatar(id=%d, goods=%r, state='future', "
+            "Wms.PhysObj.Avatar(id=%d, obj=%r, state='future', "
             "location=%r, dt_range=[%r, None])" % (
                 avatar.id, goods, self.incoming_loc, avatar.dt_from))
 
         self.assertEqual(
             str(avatar),
-            "(id=%d, goods=%s, state='future', location=%s, "
+            "(id=%d, obj=%s, state='future', location=%s, "
             "dt_range=[%s, None])" % (
                 avatar.id, goods, self.incoming_loc, avatar.dt_from))
 
