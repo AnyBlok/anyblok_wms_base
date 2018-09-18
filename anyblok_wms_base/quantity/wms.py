@@ -16,7 +16,7 @@ class Wms:
 
     @classmethod
     def base_quantity_query(cls):
-        """Return a base query fit for summing PhysObj.Quantity."""
+        """Return a base query fit for summing PhysObj.quantity."""
         PhysObj = cls.registry.Wms.PhysObj
         Avatar = PhysObj.Avatar
         # TODO distinguish quantity on Avatars from those on PhysObj?

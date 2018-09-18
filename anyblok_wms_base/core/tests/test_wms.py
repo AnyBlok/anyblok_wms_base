@@ -13,7 +13,7 @@ from anyblok_wms_base.testing import BlokTestCase
 class TestWms(BlokTestCase):
     """Test Model.Wms methods not related to quantities.
 
-    For quantities of physical objects, see :mod:`test_goods_quantities`.
+    For quantities of physical objects, see :mod:`test_quantity`.
     """
 
     def setUp(self):

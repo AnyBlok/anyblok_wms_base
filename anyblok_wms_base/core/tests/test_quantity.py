@@ -86,8 +86,61 @@ class TestQuantity(WmsTestCase):
         self.assert_quantity(5, additional_states=['future'],
                              at_datetime=DATE_TIME_INFINITY)
 
+    def test_quantity_grouped(self):
+        other = self.insert_location('other')
+        self.insert_goods(2, 'present', self.dt_test1)
+        self.insert_goods(1, 'present', self.dt_test1, location=other)
+
+        sub = self.insert_location('sub', parent=self.stock)
+        self.insert_goods(3, 'present', self.dt_test1, location=sub)
+
+        gt = self.physobj_type
+
+        # not joined is the simplest to work
+        self.assertEqual(
+            set(self.Wms.grouped_quantity_query().all()),
+            set(((1, self.stock.id, sub.type.id),
+                 (2, self.stock.id, gt.id),
+                 (3, sub.id, gt.id),
+                 (1, other.id, gt.id),
+                 )))
+
+        # but joined is the easiest to read
+        self.assertEqual(
+            set(self.Wms.grouped_quantity_query(joined=True).all()),
+            set(((1, self.stock, sub.type),
+                 (2, self.stock, gt),
+                 (3, sub, gt),
+                 (1, other, gt),
+                 )))
+
+        # with actual recursion
+        self.assertEqual(
+            set(self.Wms.grouped_quantity_query(joined=True,
+                                                location=self.stock).all()),
+            set(((1, self.stock, sub.type),
+                 (2, self.stock, gt),
+                 (3, sub, gt),
+                 )))
+
+        # partial groupings
+        self.assertEqual(
+            set(self.Wms.grouped_quantity_query(joined=True,
+                                                goods_type=gt,
+                                                by_type=False).all()),
+            set(((2, self.stock),
+                 (3, sub),
+                 (1, other))))
+
+        self.assertEqual(
+            set(self.Wms.grouped_quantity_query(joined=True,
+                                                by_location=False).all()),
+            set(((1, sub.type),
+                 (6, gt),
+                 )))
+
     def test_no_match(self):
-        """Test that quantity is not None if no Goods match the criteria."""
+        """Test that quantity is not None if no PhysObj match the criteria."""
         self.assert_quantity(0)
 
     def test_at_datetime_required(self):
@@ -282,8 +335,8 @@ class TestQuantity(WmsTestCase):
         The overridden method demonstrates exactly quantity grouping
         (hierarchy) based on the code prefix.
         """
-        Goods = self.PhysObj
-        orig_meth = Goods.flatten_containers_subquery
+        PhysObj = self.PhysObj
+        orig_meth = PhysObj.flatten_containers_subquery
 
         @classmethod
         def flatten_containers_subquery(cls, top=None, **kwargs):
@@ -295,10 +348,10 @@ class TestQuantity(WmsTestCase):
             the at_datetime and additional_states kwargs
             """
             prefix = top.code + '/'
-            query = Goods.query(Goods.id).filter(
+            query = PhysObj.query(PhysObj.id).filter(
                 or_(
-                    Goods.code.like(prefix + '%'),
-                    Goods.code == top.code))
+                    PhysObj.code.like(prefix + '%'),
+                    PhysObj.code == top.code))
             return query.subquery()
 
         other = self.insert_location('other')
@@ -309,7 +362,7 @@ class TestQuantity(WmsTestCase):
         self.insert_goods(3, 'present', self.dt_test1, location=sub)
 
         try:
-            Goods.flatten_containers_subquery = flatten_containers_subquery
+            PhysObj.flatten_containers_subquery = flatten_containers_subquery
             self.assert_quantity(5, location=self.stock)
         finally:
-            Goods.flatten_containers_subquery = orig_meth
+            PhysObj.flatten_containers_subquery = orig_meth
