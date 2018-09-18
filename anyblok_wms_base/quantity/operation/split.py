@@ -120,7 +120,7 @@ class Split(SingleInput, Operation):
         <anyblok_wms_base.core.operation.base.Operation.outcomes>`
 
         :rtype: :class:`Wms.PhysObj
-                <anyblok_wms_base.core.goods.PhysObj>`
+                <anyblok_wms_base.core.physobj.PhysObj>`
         """
         PhysObj = self.registry.Wms.PhysObj
         Avatar = PhysObj.Avatar
@@ -159,7 +159,7 @@ class Split(SingleInput, Operation):
         """Reversibility depends on the relevant PhysObj Type.
 
         See :meth:`on Model.PhysObj.Type
-        <anyblok_wms_base.core.goods.Type.is_split_reversible>`
+        <anyblok_wms_base.core.physobj.Type.is_split_reversible>`
         """
         return self.input.goods.type.is_split_reversible()
 

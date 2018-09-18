@@ -40,7 +40,7 @@ class Apparition(Operation):
     """Primary key."""
     goods_type = Many2One(model='Model.Wms.PhysObj.Type')
     """Observed :class:`PhysObj Type
-    <anyblok_wms_base.core.goods.Type>`.
+    <anyblok_wms_base.core.physobj.Type>`.
     """
     quantity = Integer()
     """The number of identical PhysObj that have appeared.
@@ -49,16 +49,16 @@ class Apparition(Operation):
     """
     goods_properties = Jsonb()
     """Observed :class:`Properties
-    <anyblok_wms_base.core.goods.Properties>`.
+    <anyblok_wms_base.core.physobj.Properties>`.
 
     They are copied over to the newly created :class:`PhysObj
-    <anyblok_wms_base.core.goods.PhysObj>`. Then the Properties can evolve on
+    <anyblok_wms_base.core.physobj.PhysObj>`. Then the Properties can evolve on
     the PhysObj, while this Apparition field will keep the exact values
     that were observed during inventory.
     """
     goods_code = Text()
     """Observed :attr:`PhysObj code
-    <anyblok_wms_base.core.goods.PhysObj.code>`.
+    <anyblok_wms_base.core.physobj.PhysObj.code>`.
     """
     location = Many2One(model='Model.Wms.PhysObj')
     """Location of appeared PhysObj.

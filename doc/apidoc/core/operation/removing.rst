@@ -6,7 +6,7 @@ and have no outcomes.
 Of course, since Anyblok / Wms Base keeps the full history,
 technically, the incoming Avatars are not removed from the database.
 Rather, their :attr:`state
-<anyblok_wms_base.core.goods.goods.state>` field
+<anyblok_wms_base.core.physobj.main.state>` field
 is being set to ``past`` during execution.
 
 Model.Wms.Operation.Departure

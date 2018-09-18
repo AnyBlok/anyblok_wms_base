@@ -183,7 +183,7 @@ class Assembly(Operation):
 
     outcome_type = Many2One(model='Model.Wms.PhysObj.Type', nullable=False)
     """The :class:`PhysObj Type
-    <anyblok_wms_base.core.goods.Type>` to produce.
+    <anyblok_wms_base.core.physobj.Type>` to produce.
     """
 
     name = Text(nullable=False, default=DEFAULT_ASSEMBLY_NAME)
@@ -788,7 +788,7 @@ class Assembly(Operation):
                                   of the creation process, i.e, there's no
                                   previous state.
         :rtype: :class:`Model.Wms.PhysObj.Properties
-                <anyblok_wms_base.core.goods.Properties>`
+                <anyblok_wms_base.core.physobj.Properties>`
         :raises: :class:`AssemblyInputNotMatched` if one of the
                  :attr:`input specifications <specification>` is not
                  matched by ``self.inputs``,

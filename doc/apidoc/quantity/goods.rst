@@ -6,7 +6,7 @@ quantity.goods
 Model.Wms.PhysObj
 ~~~~~~~~~~~~~~~~~
 
-.. autoclass:: anyblok_wms_base.quantity.goods.PhysObj
+.. autoclass:: anyblok_wms_base.quantity.physobj.PhysObj
 
    .. raw:: html
 
@@ -18,7 +18,7 @@ Model.Wms.PhysObj
 Model.Wms.PhysObj.Type
 ~~~~~~~~~~~~~~~~~~~~~~
 
-.. autoclass:: anyblok_wms_base.quantity.goods.Type
+.. autoclass:: anyblok_wms_base.quantity.physobj.Type
 
    .. raw:: html
 

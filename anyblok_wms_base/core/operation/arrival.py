@@ -51,21 +51,21 @@ class Arrival(Operation):
     """Primary key."""
     goods_type = Many2One(model='Model.Wms.PhysObj.Type')
     """Expected :class:`PhysObj Type
-    <anyblok_wms_base.core.goods.Type>`.
+    <anyblok_wms_base.core.physobj.Type>`.
     """
     goods_properties = Jsonb(label="Properties of arrived PhysObj")
     """Expected :class:`Properties
-    <anyblok_wms_base.core.goods.Properties>`.
+    <anyblok_wms_base.core.physobj.Properties>`.
 
     They are copied over to the newly created :class:`PhysObj
-    <anyblok_wms_base.core.goods.PhysObj>` as soon as the Arrival
+    <anyblok_wms_base.core.physobj.PhysObj>` as soon as the Arrival
     is planned, and aren't updated by :meth:`execute`. Matching them with
     reality is the concern of separate validation processes, and this
     field can serve for later assessments after the fact.
     """
     goods_code = Text(label="Code to set on arrived PhysObj")
     """Expected :attr:`PhysObj code
-    <anyblok_wms_base.core.goods.PhysObj.code>`.
+    <anyblok_wms_base.core.physobj.PhysObj.code>`.
 
     Can be ``None`` in case the arrival process issues the code only
     at the time of actual arrival.

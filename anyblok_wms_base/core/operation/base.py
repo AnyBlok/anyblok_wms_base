@@ -65,7 +65,7 @@ class HistoryInput:
     aspects of Operations, as is exposed in the :attr:`Operation.follows`
     and :attr:`Operation.followers` attributes and, on the other hand, the
     preservation of :attr:`reason
-    <anyblok_wms_base.core.goods.Avatar.reason>` for restore if
+    <anyblok_wms_base.core.physobj.Avatar.reason>` for restore if
     needed, even after the :attr:`current operation <operation>` is done.
     """
 
@@ -206,8 +206,8 @@ class Operation:
     For Operations in states ``planned`` and ``started``,
     this represents the time at which the execution is supposed to complete.
     This has consequences on the :attr:`dt_from
-    <anyblok_wms_base.core.goods.Avatar.dt_from>` and :attr:`dt_until
-    <anyblok_wms_base.core.goods.Avatar.dt_until>` fields of
+    <anyblok_wms_base.core.physobj.Avatar.dt_from>` and :attr:`dt_until
+    <anyblok_wms_base.core.physobj.Avatar.dt_until>` fields of
     the :ref:`PhysObj Avatars <physobj_avatar>` affected by this Operation, to
     avoid summing up several :ref:`Avatars <physobj_avatar>` of the same
     physical goods while :meth:`peeking at quantities in the future
@@ -232,7 +232,7 @@ class Operation:
 
     .. note:: We will probably later on make use of this field in
               destructive Operations to update the :attr:`dt_until
-              <anyblok_wms_base.core.goods.Avatar.dt_until>` field
+              <anyblok_wms_base.core.physobj.Avatar.dt_until>` field
               of their inputs, meaning that they won't appear in
               present quantity queries anymore.
 

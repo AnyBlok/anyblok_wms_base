@@ -39,7 +39,7 @@ The PhysObj Model: Physical Objects
 .. versionchanged:: 0.7.0
 
 .. note:: This is an overview, see :class:`the code documentation
-          <anyblok_wms_base.core.goods.goods.PhysObj>` for more
+          <anyblok_wms_base.core.physobj.main.PhysObj>` for more
           details, notably for the API of properties.
 
 The ``Wms.PhysObj`` model represents all physical objects that are
@@ -165,7 +165,7 @@ common ancestor Type.
 Properties
 ----------
 .. note:: see :class:`the code documentation
-          <anyblok_wms_base.core.goods.goods.PhysObj>` for technical
+          <anyblok_wms_base.core.physobj.main.PhysObj>` for technical
           details. Notably, Properties have to be handled through a
           dedicated API.
 
@@ -248,7 +248,7 @@ hasn't changed (in this case, ``wms-core`` can decide of this for itself).
              <improvement_avatars>`, for more on the intended
              purposes, especially with reservation systems in mind,
              and :class:`the code documentation
-             <anyblok_wms_base.core.goods.goods.Avatar>` for a
+             <anyblok_wms_base.core.physobj.main.Avatar>` for a
              detailed description of their fields, with full semantics.
 
 .. _location:

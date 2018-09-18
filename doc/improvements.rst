@@ -413,7 +413,7 @@ possibilities:
     Goods Type, then it would be looked up recursively on its parent,
     meaning that direct access to the ``behaviours`` field in applicative code
     should be prohibited, in favour of the :meth:`get_behaviour()
-    <anyblok_wms_base.core.goods.type.Type.get_behaviour>` method,
+    <anyblok_wms_base.core.physobj.type.Type.get_behaviour>` method,
     that would take care of the inheritance.
 
     We could also allow *merging* of behaviours: a Goods Type could
@@ -444,11 +444,11 @@ possibilities:
     + define some Property to encode the specialization of a Goods
       Type relative to its parent.
     + have the :meth:`set_property()
-      <anyblok_wms_base.core.goods.goods.PhysObj.set_property>` method
+      <anyblok_wms_base.core.physobj.main.PhysObj.set_property>` method
       set the proper Goods Type automatically on changes of that
       Property. *(Not done for 0.7.0)*
     + have the :meth:`get_property()
-      <anyblok_wms_base.core.goods.goods.PhysObj.get_property>` method
+      <anyblok_wms_base.core.physobj.main.PhysObj.get_property>` method
       return the proper value for that Property, inferred from the
       actual Goods Type. *(This is actually a consequence of the Type
       Properties, also done for 0.7.0)*

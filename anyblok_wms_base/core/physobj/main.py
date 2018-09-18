@@ -262,7 +262,7 @@ class PhysObj:
 
         This subquery cannot be used directly: it is meant to be used as part
         of a wider query; see :mod:`unit tests
-        <anyblok_wms_base.core.goods.tests.test_containers>`) for nice
+        <anyblok_wms_base.core.physobj.tests.test_containers>`) for nice
         examples with or without joins.
 
         .. note:: This subquery itself does not restrict its results to

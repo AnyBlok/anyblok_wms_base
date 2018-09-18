@@ -8,7 +8,7 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok.blok import Blok
 from .. import version
-from . import goods
+from . import physobj
 from . import operation
 
 
@@ -17,7 +17,7 @@ def import_declarations(reload=None):
     if reload is not None:
         reload(wms)
     operation.import_declarations(reload=reload)
-    goods.import_declarations(reload=reload)
+    physobj.import_declarations(reload=reload)
 
 
 class WmsCore(Blok):

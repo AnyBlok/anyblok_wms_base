@@ -27,7 +27,8 @@ AVATAR_STATES = dict(past="wms_avatar_states_past",
                      future="wms_avatar_states_future"
                      )
 """This is the enumeration of possible values of the ``state`` column of
-the :class:`Wms.PhysObj.Avatar <anyblok_wms_base.core.physobj.Avatar>` Model.
+the :class:`Wms.PhysObj.Avatar <anyblok_wms_base.core.physobj.main Avatar>`
+Model.
 
 - ``present``:
         means that the physical objects are (supposed to be) currently
