@@ -86,7 +86,7 @@ class TestContainers(WmsTestCase):
 
     def test_flatten_subquery_moved(self):
         """Test the flatten subquery with planned Move of containers."""
-        Goods = self.PhysObj
+        PhysObj = self.PhysObj
         stock = self.stock
         loc = self.insert_location('sub', parent=stock)
         loc_av = self.Avatar.query().filter_by(goods=loc).one()
@@ -97,9 +97,9 @@ class TestContainers(WmsTestCase):
                                               dt_execution=self.dt_test2)
 
         def assert_results(expected, **kwargs):
-            cte = Goods.flatten_containers_subquery(**kwargs)
+            cte = PhysObj.flatten_containers_subquery(**kwargs)
             self.assertEqual(
-                set(Goods.query().join(cte, cte.c.id == Goods.id).all()),
+                set(PhysObj.query().join(cte, cte.c.id == PhysObj.id).all()),
                 expected)
 
         # starting point, just to check
