@@ -155,7 +155,7 @@ class Assembly(Operation):
     a single outcome is produced from the inputs, which must also be in the
     same Location.
 
-    The behaviour is specified on the :attr:`outcome's Goods Type
+    The behaviour is specified on the :attr:`outcome's PhysObj Type
     <outcome_type>` (see :attr:`Assembly specification <specification>`);
     it amounts to describe the expected inputs,
     and how to build the Properties of the outcome (see
@@ -181,9 +181,9 @@ class Assembly(Operation):
                  autoincrement=False,
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
 
-    outcome_type = Many2One(model='Model.Wms.Goods.Type', nullable=False)
-    """The :class:`Goods Type
-    <anyblok_wms_base.core.goods.Type>` to produce.
+    outcome_type = Many2One(model='Model.Wms.PhysObj.Type', nullable=False)
+    """The :class:`PhysObj Type
+    <anyblok_wms_base.core.physobj.Type>` to produce.
     """
 
     name = Text(nullable=False, default=DEFAULT_ASSEMBLY_NAME)
@@ -298,7 +298,7 @@ class Assembly(Operation):
                  changes an already set value.
         """
         spec = self.specification
-        Avatar = self.registry.Wms.Goods.Avatar
+        Avatar = self.registry.Wms.PhysObj.Avatar
         from_state = None if for_creation else self.state
 
         glob_fwd = merge_state_sub_parameters(spec.get('inputs_properties'),
@@ -316,13 +316,13 @@ class Assembly(Operation):
                 from_state, state,
                 ('forward', 'set'))
             for av_id in match_item:
-                goods = Avatar.query().get(av_id).goods
+                goods = Avatar.query().get(av_id).obj
                 for fp in itertools.chain(input_fwd, glob_fwd):
                     self.extract_property(forwarded, goods, fp,
                                           exc_details=(i, input_spec))
         for extra in self.extra_inputs:
             for fp in glob_fwd:
-                self.extract_property(forwarded, extra.goods, fp)
+                self.extract_property(forwarded, extra.obj, fp)
 
         return forwarded
 
@@ -352,13 +352,13 @@ class Assembly(Operation):
         )
 
         for avatar in self.inputs:
-            goods = avatar.goods
+            goods = avatar.obj
             if (not goods.has_properties(req_props) or
                     not goods.has_property_values(req_prop_values)):
                 raise AssemblyWrongInputProperties(
                     self, avatar, req_props, req_prop_values)
 
-        Avatar = self.registry.Wms.Goods.Avatar
+        Avatar = self.registry.Wms.PhysObj.Avatar
         for i, (match_item, input_spec) in enumerate(
                 zip(self.match, spec.get('inputs', ()))):
             req_props, req_prop_values = merge_state_sub_parameters(
@@ -369,7 +369,7 @@ class Assembly(Operation):
                 ('required_values', 'dict'),
             )
             for av_id in match_item:
-                goods = Avatar.query().get(av_id).goods
+                goods = Avatar.query().get(av_id).obj
                 if (not goods.has_properties(req_props) or
                         not goods.has_property_values(req_prop_values)):
                     raise AssemblyWrongInputProperties(
@@ -393,7 +393,7 @@ class Assembly(Operation):
         inputs = set(self.inputs)
         spec = self.specification
 
-        GoodsType = self.registry.Wms.Goods.Type
+        PhysObjType = self.registry.Wms.PhysObj.Type
         types_by_code = dict()
         from_state = None if for_creation else self.state
 
@@ -417,12 +417,12 @@ class Assembly(Operation):
 
             gtype = types_by_code.get(type_code)
             if gtype is None:
-                gtype = GoodsType.query().filter_by(
+                gtype = PhysObjType.query().filter_by(
                     code=type_code).one()
                 types_by_code[type_code] = gtype
             for _ in range(expected['quantity']):
                 for candidate in inputs:
-                    goods = candidate.goods
+                    goods = candidate.obj
                     if (not goods.has_type(gtype) or
                             not goods.has_properties(req_props) or
                             not goods.has_property_values(req_prop_values)):
@@ -542,8 +542,8 @@ class Assembly(Operation):
         **Inputs**
 
         The ``inputs`` part of the specification is primarily a list of
-        expected inputs, with various criteria (Goods Type, quantity,
-        Goods code and Properties).
+        expected inputs, with various criteria (PhysObj Type, quantity,
+        PhysObj code and Properties).
 
         Besides requiring them in the first place, these criteria are also
         used to :meth:`qualify (match) the inputs <match_inputs>`
@@ -563,12 +563,12 @@ class Assembly(Operation):
         client parcels with specified wrapping, a greetings card plus variable
         contents).
 
-        The ``type`` criterion applies the Goods Type hierarchy, hence it's
+        The ``type`` criterion applies the PhysObj Type hierarchy, hence it's
         possible to create a generic packing Assembly for a whole family of
-        Goods Types (e.g., adult trekking shoes).
+        PhysObj Types (e.g., adult trekking shoes).
 
         Similarly, all Property requirements take the properties inherited
-        from the Goods Types into account.
+        from the PhysObj Types into account.
 
         **Global Property specifications**
 
@@ -604,7 +604,7 @@ class Assembly(Operation):
 
         In that case, the Property requirements are used either as
         matching criteria on the inputs, or as a check on already matched
-        Goods, according to the value of the ``inputs_spec_type`` parameter
+        PhysObj, according to the value of the ``inputs_spec_type`` parameter
         (default is ``'match'`` in the ``planned`` Assembly state,
         and ``'check'`` in the other states).
 
@@ -633,7 +633,7 @@ class Assembly(Operation):
         the ordering of ``self.inputs`` itself is to be considered random.
 
         In case ``inputs_spec_type`` is ``'check'``, the checking is done
-        on the Goods matched by previous states, thus avoiding a potentially
+        on the PhysObj matched by previous states, thus avoiding a potentially
         costly rematching. In the above example, matching will be performed
         in the ``'planned'`` and ``'started'`` states, but a simple check
         will be done if going from the ``started`` to the ``done`` state.
@@ -708,15 +708,15 @@ class Assembly(Operation):
         *for_contents: possible values of second element:*
 
         * ``'descriptions'``:
-            include Goods' Types, those Properties that aren't recoverable by
+            include PhysObj' Types, those Properties that aren't recoverable by
             an Unpack from the Assembly outcome, together with appropriate
             ``forward_properties`` for those who are (TODO except those that
             come from a global ``forward`` in the Assembly specification)
         * ``'records'``:
             same as ``descriptions``, but also includes the record ids, so
             that an Unpack following the Assembly would not give rise to new
-            Goods records, but would reuse the existing ones, hence keep the
-            promise that the Goods records are meant to track the "sameness"
+            PhysObj records, but would reuse the existing ones, hence keep the
+            promise that the PhysObj records are meant to track the "sameness"
             of the physical objects.
 
         **Merging logic**
@@ -787,8 +787,8 @@ class Assembly(Operation):
         :param bool for_creation: if ``True``, means that this is part
                                   of the creation process, i.e, there's no
                                   previous state.
-        :rtype: :class:`Model.Wms.Goods.Properties
-                <anyblok_wms_base.core.goods.Properties>`
+        :rtype: :class:`Model.Wms.PhysObj.Properties
+                <anyblok_wms_base.core.physobj.Properties>`
         :raises: :class:`AssemblyInputNotMatched` if one of the
                  :attr:`input specifications <specification>` is not
                  matched by ``self.inputs``,
@@ -868,7 +868,7 @@ class Assembly(Operation):
 
         # sorting here and later is for tests reproducibility
         for avatar in sorted(for_unpack, key=lambda av: av.id):
-            goods = avatar.goods
+            goods = avatar.obj
             props = goods.properties
             unpack_outcome = dict(
                 type=goods.type.code,
@@ -927,11 +927,11 @@ class Assembly(Operation):
             inp.update(**input_upd)
 
         self.check_match_inputs(state, for_creation=True)
-        Goods = self.registry.Wms.Goods
-        Goods.Avatar.insert(
-            goods=Goods.insert(
+        PhysObj = self.registry.Wms.PhysObj
+        PhysObj.Avatar.insert(
+            obj=PhysObj.insert(
                 type=self.outcome_type,
-                properties=Goods.Properties.create(
+                properties=PhysObj.Properties.create(
                     **self.outcome_properties(state, for_creation=True))),
             location=self.inputs[0].location,
             reason=self,
@@ -948,7 +948,7 @@ class Assembly(Operation):
             inp.state = 'past'
         outcome = self.outcomes[0]
 
-        outcome.goods.update_properties(self.outcome_properties('done'))
+        outcome.obj.update_properties(self.outcome_properties('done'))
         outcome.state = 'present'
 
     def eval_typed_expr(self, etype, expr):

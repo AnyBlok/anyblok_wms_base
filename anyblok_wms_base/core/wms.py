@@ -38,23 +38,23 @@ class Wms:
                  additional_filter=None,
                  location=None,
                  location_recurse=True):
-        """Compute the quantity of Goods meeting various criteria.
+        """Compute the quantity of PhysObj meeting various criteria.
 
         The computation actually involves querying :class:`Avatars
-        <anyblok_wms_base.core.goods.Avatar>`, which hold the
+        <anyblok_wms_base.core.physobj.Avatar>`, which hold the
         information about location, states and date/time.
 
         :param goods_type:
-            if specified, restrict computation to Goods of this type
+            if specified, restrict computation to PhysObj of this type
         :param location:
-            if specified, restrict computation to Goods Avatars
+            if specified, restrict computation to PhysObj Avatars
             from that location (see also ``location_recurse`` below)
         :param bool location_recurse:
-            If ``True``, and ``location`` is specified, the Goods Avatars
+            If ``True``, and ``location`` is specified, the PhysObj Avatars
             from sublocations of ``location`` will be taken recursively into
             account.
         :param additional_filter:
-           optional function to restrict the Goods Avatars to take into
+           optional function to restrict the PhysObj Avatars to take into
            account. It applies to the outer query, i.e., not within
            the containers recursions.
 
@@ -78,15 +78,15 @@ class Wms:
                         ones already present in ``query``.
 
         :param additional_states:
-            Optionally, states of the Goods Avatar to take into account
+            Optionally, states of the PhysObj Avatar to take into account
             in addition to the ``present`` state.
 
             Hence, for ``additional_states=['past']``, we have the
-            Goods Avatars that were already there and still are,
+            PhysObj Avatars that were already there and still are,
             as well as those that aren't there any more,
             and similarly for 'future'.
         :param at_datetime:
-            take only into account Goods Avatar whose date-time range
+            take only into account PhysObj Avatar whose date-time range
             contains the specified value.
 
             ``anyblok_wms_base.constants.DATE_TIME_INFINITY``
@@ -95,26 +95,26 @@ class Wms:
 
             This parameter is mandatory if ``additional_states`` is specified.
 
-        TODO: provide filtering according to Goods properties (should become
+        TODO: provide filtering according to PhysObj properties (should become
         special PostgreSQL JSON clauses)
 
         TODO: provide a way to add more criteria from optional Bloks, e.g,
-        ``wms-reservation`` could add a way to filter only unreserved Goods.
+        ``wms-reservation`` could add a way to filter only unreserved PhysObj.
 
         TODO PERF: for timestamp ranges, use GiST indexes and the @> operator.
         See the comprehensive answer to `that question
         <https://dba.stackexchange.com/questions/39589>`_ for an entry point.
         Let's get a DB with serious volume and datetimes first.
         """
-        Goods = cls.registry.Wms.Goods
-        Avatar = Goods.Avatar
+        PhysObj = cls.registry.Wms.PhysObj
+        Avatar = PhysObj.Avatar
         query = cls.base_quantity_query()
         if goods_type is not None:
-            query = query.filter(Goods.type == goods_type)
+            query = query.filter(PhysObj.type == goods_type)
 
         if location is not None:
             if location_recurse:
-                cte = Goods.flatten_containers_subquery(
+                cte = PhysObj.flatten_containers_subquery(
                     top=location,
                     at_datetime=at_datetime,
                     additional_states=additional_states)
@@ -151,8 +151,8 @@ class Wms:
         :return: The query is assumed to produce exactly one row, with the
                  wished quantity result (possibly ``None`` for 0)
         """
-        Avatar = cls.Goods.Avatar
-        return Avatar.query(func.count(Avatar.id)).join(Avatar.goods)
+        Avatar = cls.PhysObj.Avatar
+        return Avatar.query(func.count(Avatar.id)).join(Avatar.obj)
 
     @classmethod
     def filter_container_types(cls, types):
@@ -162,9 +162,9 @@ class Wms:
                  Avatars to those whose *direct* location is of the given
                  types.
         """
-        Goods = cls.registry.Wms.Goods
-        Avatar = Goods.Avatar
-        loc_goods = orm.aliased(Goods, name='location_goods')
+        PhysObj = cls.registry.Wms.PhysObj
+        Avatar = PhysObj.Avatar
+        loc_goods = orm.aliased(PhysObj, name='location_goods')
 
         def add_filter(query):
             return query.join(loc_goods, Avatar.location).filter(
@@ -180,9 +180,9 @@ class Wms:
                  Avatars to those whose *direct* location is not of
                  the given types.
         """
-        Goods = cls.registry.Wms.Goods
-        Avatar = Goods.Avatar
-        loc_goods = orm.aliased(Goods, name='location_goods')
+        PhysObj = cls.registry.Wms.PhysObj
+        Avatar = PhysObj.Avatar
+        loc_goods = orm.aliased(PhysObj, name='location_goods')
 
         def add_filter(query):
             joined = query.join(loc_goods, Avatar.location)
@@ -206,12 +206,12 @@ class Wms:
         On the other hand, at least one
         such container is needed to root the containing hierarchy.
 
-        :param container_type: a :ref:`Goods Type <goods_type>` that's
+        :param container_type: a :ref:`PhysObj Type <physobj_type>` that's
                                suitable for containers.
         :return: the created container
         """
         if container_type is None or not container_type.is_container():
             raise ValueError(
                 "Not a proper container type: %r " % container_type)
-        return cls.registry.Wms.Goods.insert(type=container_type,
-                                             **fields)
+        return cls.registry.Wms.PhysObj.insert(type=container_type,
+                                               **fields)

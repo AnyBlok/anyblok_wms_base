@@ -6,17 +6,17 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok_wms_base.testing import WmsTestCaseWithGoods
+from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 
 
-class TestAvatar(WmsTestCaseWithGoods):
+class TestAvatar(WmsTestCaseWithPhysObj):
 
     def setUp(self):
         super(TestAvatar, self).setUp()
-        self.Avatar = self.registry.Wms.Goods.Avatar
+        self.Avatar = self.registry.Wms.PhysObj.Avatar
 
     def test_str(self):
-        avatar, goods = self.avatar, self.goods
+        avatar, goods = self.avatar, self.physobj
         self.maxDiff = None
 
         # this below just to make sure. Actually, avatar.dt_from can be
@@ -28,22 +28,22 @@ class TestAvatar(WmsTestCaseWithGoods):
 
         self.assertEqual(
             repr(avatar),
-            "Wms.Goods.Avatar(id=%d, goods=%r, state='future', "
+            "Wms.PhysObj.Avatar(id=%d, obj=%r, state='future', "
             "location=%r, dt_range=[%r, None])" % (
                 avatar.id, goods, self.incoming_loc, avatar.dt_from))
 
         self.assertEqual(
             str(avatar),
-            "(id=%d, goods=%s, state='future', location=%s, "
+            "(id=%d, obj=%s, state='future', location=%s, "
             "dt_range=[%s, None])" % (
                 avatar.id, goods, self.incoming_loc, avatar.dt_from))
 
     def test_get_property(self):
         avatar = self.avatar
         self.assertIsNone(avatar.get_property('foo'))
-        self.goods.set_property('foo', [1])
+        self.physobj.set_property('foo', [1])
         self.assertEqual(avatar.get_property('foo'), [1])
         self.assertEqual(avatar.get_property('bar', default='graal'), 'graal')
 
 
-del WmsTestCaseWithGoods
+del WmsTestCaseWithPhysObj

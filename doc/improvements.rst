@@ -340,7 +340,7 @@ We could :
 
 * remove the Location model
 * make the ``location`` field of Avatars point towards a Goods record
-* maybe add a flag in :ref:`goods_behaviours` to indicate that some Goods can
+* maybe add a flag in :ref:`physobj_behaviours` to indicate that some Goods can
   contain other ones.
 * think of the interplay of this with the ``contents`` propery
   (variable part of :ref:`op_unpack`) and with packing/unpacking in
@@ -396,7 +396,7 @@ Goods Type hierarchy and behaviour inheritance
 
 .. versionadded:: 0.7.0
 
-Some applications will have many of :ref:`Goods Types <goods_type>`,
+Some applications will have many of :ref:`Goods Types <physobj_type>`,
 which will be often mere variations of each other, for example clothes
 of different sizes.
 
@@ -404,16 +404,16 @@ It is therefore natural to group them in one way or another, both for
 direct consideration by applicative code, and to allow mutualisation
 of configuration within WMS Base.
 
-Namely, we could make the :ref:`goods_type` Model hierarchical, by
+Namely, we could make the :ref:`physobj_type` Model hierarchical, by
 means of a ``parent`` field. This would bring the following
 possibilities:
 
 * Behaviour inheritance:
-    If a :ref:`behaviour <goods_behaviours>` is not found on a given
+    If a :ref:`behaviour <physobj_behaviours>` is not found on a given
     Goods Type, then it would be looked up recursively on its parent,
     meaning that direct access to the ``behaviours`` field in applicative code
     should be prohibited, in favour of the :meth:`get_behaviour()
-    <anyblok_wms_base.core.goods.type.Type.get_behaviour>` method,
+    <anyblok_wms_base.core.physobj.type.Type.get_behaviour>` method,
     that would take care of the inheritance.
 
     We could also allow *merging* of behaviours: a Goods Type could
@@ -423,11 +423,11 @@ possibilities:
     complicated to specify.
 * Generic reference:
     In some cases, it'd be interesting to specify an intermediate node
-    in the :ref:`goods_type` hierarchy rather than the most precise
+    in the :ref:`physobj_type` hierarchy rather than the most precise
     one. This could be useful for instance in Assembly Operations.
 * (needs more thinking) Specialization:
-    Help resolve the hard choices between :ref:`goods_type` and
-    :ref:`goods_properties` by providing a way to convert the Type of
+    Help resolve the hard choices between :ref:`physobj_type` and
+    :ref:`physobj_properties` by providing a way to convert the Type of
     some Goods to a more precise one according to its Properties.
 
     The interesting thing is that this could be done without any
@@ -444,11 +444,11 @@ possibilities:
     + define some Property to encode the specialization of a Goods
       Type relative to its parent.
     + have the :meth:`set_property()
-      <anyblok_wms_base.core.goods.goods.Goods.set_property>` method
+      <anyblok_wms_base.core.physobj.main.PhysObj.set_property>` method
       set the proper Goods Type automatically on changes of that
       Property. *(Not done for 0.7.0)*
     + have the :meth:`get_property()
-      <anyblok_wms_base.core.goods.goods.Goods.get_property>` method
+      <anyblok_wms_base.core.physobj.main.PhysObj.get_property>` method
       return the proper value for that Property, inferred from the
       actual Goods Type. *(This is actually a consequence of the Type
       Properties, also done for 0.7.0)*
@@ -512,11 +512,11 @@ Quantity will often be a useless complexity
 
 .. versionadded:: 0.7.0
 
-.. note:: at the time of this writing, :ref:`goods_goods` had the
+.. note:: at the time of this writing, :ref:`physobj_model` had the
           ``quantity`` field that is now carried by
-          :ref:`wms-quantity <goods_quantity>`.
+          :ref:`wms-quantity <physobj_quantity>`.
 
-In the current state of the project, :ref:`goods_goods` records have a
+In the current state of the project, :ref:`physobj_model` records have a
 ``quantity`` field. There are several hints that this shouldn't be a part
 of the core, but should be moved to a distinct blok. Let's call it
 ``wms-aggregated-goods`` for the time being.
@@ -572,17 +572,19 @@ Goods Avatars
 
 .. versionadded:: 0.6.0
 
-.. note:: at the time of this writing, :ref:`Goods <goods_goods>` bore
-          all the fields that are now in :ref:`Avatars <goods_avatar>`
+.. note:: at the time of this writing, :ref:`PhysObj <physobj_model>`
+          was called "Goods", there was a separate Model for
+          locations, and Goods bore
+          all the fields that are now in :ref:`Avatars <physobj_avatar>`
 
 Due to the planning and historical features we want, in our system,
 the physical goods will give rise to many different records of
-:ref:`goods_goods`,
+Goods
 as non destructive operations, typically :ref:`Moves <op_move>`
 currently create new records, and obsolete the ones they got as input.
 
 This is a problem to design a reservation system, which should clearly
-not reserve some :ref:`goods_goods` in some precise state at some time in
+not reserve some Goods in some precise state at some time in
 some place, but only be attached to the mostly immutable part of their
 data.
 
@@ -594,7 +596,7 @@ delivery and shipping them to the final customer. Now, deciding at the
 last minute to put it in the adjacent AB/X/235 should not void the
 reservation. It should require at most :ref:`partial replanning
 <improvement_operation_superseding>`. Even if the end location is
-the planned one, but the :ref:`goods_goods` record isn't the same one,
+the planned one, but the Goods record isn't the same one,
 the system should not have to update its reservations to match it:
 that's an obvious source of conflicts, it's bad for performance, it
 contradicts many of our :ref:`design_goals` and, frankly speaking,
@@ -604,14 +606,14 @@ Simply arranging for :ref:`op_move` to create a new record in the
 ``past`` state, changing just location, times and state on the moved
 one  wouldn't be a solution, as it would require the even
 heavier update of all past history. And having :ref:`op_move` mutate all the
-:ref:`goods_goods` in place as we intended before realizing we could
+:ref:`physobj_model` in place as we intended before realizing we could
 provide :ref:`op_cancel_revert_obliviate` is not doable because of planning…
 
 So, the proposal is to introduce a new Model, *Goods Avatar*, that would
-bear the (very) mutable part of the current :ref:`goods_goods`.
+bear the (very) mutable part of the current Goods.
 This is what :ref:`Operations <operation>` would manipulate and reference.
 
-Now the :ref:`goods_goods` Model would express the otherwise not so
+Now the Goods Model would express the otherwise not so
 much well-defined idea of a physical object that stays "the same".
 We should even provide transforming :ref:`Operations <operation>` to
 resolve the question whether some given change (like engraving a
@@ -620,13 +622,13 @@ or not, as it's after all only a matter of perception that we can't
 decide in WMS Base.
 
 The future :ref:`reservation system(s) <blok_wms_reservation>` would then
-lock and/or refer to this skimmed down in the :ref:`goods_goods`
+lock and/or refer to this skimmed down in the Goods
 Model. In end applications, concrete
 schedulers/planners would also refer to them, and look for *Avatars* to
 create their planned :ref:`Operations <operation>`.
 
 This also probably means that the purposes of the separate
-:ref:`goods_properties` Model would boild down to deduplication (probably
+:ref:`physobj_properties` Model would boild down to deduplication (probably
 still very much useful).
 
 All of this is made utterly complicated by the :ref:`issue of

@@ -10,7 +10,7 @@ from anyblok.tests.testcase import BlokTestCase
 from .. import import_declarations
 
 
-class TestGoodsPackage(BlokTestCase):
+class TestPhysObjPackage(BlokTestCase):
 
     def test_reload(self):
         import sys

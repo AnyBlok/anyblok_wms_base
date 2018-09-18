@@ -21,7 +21,7 @@ Operation = Declarations.Model.Wms.Operation
 
 @register(Operation)
 class Aggregate(Operation):
-    """An aggregation of Goods record.
+    """An aggregation of PhysObj record.
 
     Aggregate is the converse of Split.
 
@@ -29,7 +29,7 @@ class Aggregate(Operation):
     that have to be considered internal details of wms_core, and are not
     guaranteed to exist in the future.
 
-    Aggregates replace some records of Goods
+    Aggregates replace some records of PhysObj
     sharing equal properties and type, with Avatars at the same location with
     a single one bearing the total quantity, and a new Avatar.
 
@@ -38,8 +38,8 @@ class Aggregate(Operation):
 
     Formal Aggregate Operations can always be reverted with Splits,
     but only some physical Aggregate Operations can be reverted, depending on
-    the Goods Type. See :class:`Model.Wms.Goods.Type` for a full discussion of
-    this, with use cases.
+    the PhysObj Type. See :class:`Model.Wms.PhysObj.Type` for a full
+    discussion of this, with use cases.
 
     In the formal case, we've decided to represent this as an Operation
     for the sake of consistency, and especially to avoid too much special
@@ -89,7 +89,7 @@ class Aggregate(Operation):
 
         This performs the check from superclasses, and then compares all
         fields from :attr:`UNIFROM_AVATAR_FIELDS` on the inputs (Avatars) and
-        :attr:`UNIFORM_GOODS_FIELDS` (on the underlying Goods).
+        :attr:`UNIFORM_GOODS_FIELDS` (on the underlying PhysObj).
         """
         super(Aggregate, cls).check_create_conditions(
             state, dt_execution, inputs=inputs, **kwargs)
@@ -122,12 +122,12 @@ class Aggregate(Operation):
     def after_insert(self):
         """Business logic after the inert insertion
         """
-        # TODO find a way to pass the actual wished Goods up to here, then
-        # use it (to maintain Goods record in case of reverts)
+        # TODO find a way to pass the actual wished PhysObj up to here, then
+        # use it (to maintain PhysObj record in case of reverts)
         self.registry.flush()
         inputs = self.inputs
         dt_exec = self.dt_execution
-        Goods = self.registry.Wms.Goods
+        PhysObj = self.registry.Wms.PhysObj
 
         outcome_dt_until = min_upper_bounds(g.dt_until for g in inputs)
 
@@ -144,11 +144,11 @@ class Aggregate(Operation):
                                 for field in self.UNIFORM_GOODS_FIELDS}
         uniform_avatar_fields = {field: getattr(tpl_avatar, field)
                                  for field in self.UNIFORM_AVATAR_FIELDS}
-        aggregated_goods = Goods.insert(
+        aggregated_goods = PhysObj.insert(
             quantity=sum(a.goods.quantity for a in inputs),
             **uniform_goods_fields)
 
-        return Goods.Avatar.insert(
+        return PhysObj.Avatar.insert(
             goods=aggregated_goods,
             reason=self,
             dt_from=dt_exec,
@@ -160,10 +160,12 @@ class Aggregate(Operation):
     def execute_planned(self):
         self.outcomes[0].update(state='present', dt_from=self.dt_execution)
         for record in self.inputs:
-            record.update(state='past', reason=self, dt_until=self.dt_execution)
+            record.update(state='past',
+                          reason=self,
+                          dt_until=self.dt_execution)
 
     def is_reversible(self):
-        """Reversibility depends on the relevant Goods Type.
+        """Reversibility depends on the relevant PhysObj Type.
 
         See :class:`Operation` for what reversibility exactly means in that
         context.

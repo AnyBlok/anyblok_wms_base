@@ -9,8 +9,8 @@
 from anyblok.blok import Blok
 
 
-class GoodsBatchRef(Blok):
-    """Adds an SQL column to Goods properties for testing purposes
+class PhysObjBatchRef(Blok):
+    """Adds an SQL column to PhysObj properties for testing purposes
     """
     version = '0.0.1'
     author = "Georges Racinet"

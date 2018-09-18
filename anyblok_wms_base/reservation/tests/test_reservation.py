@@ -7,7 +7,7 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok_wms_base.testing import WmsTestCase
-from anyblok_wms_base.exceptions import OperationGoodsReserved
+from anyblok_wms_base.exceptions import OperationPhysObjReserved
 
 
 class ReservationTestCase(WmsTestCase):
@@ -18,8 +18,8 @@ class ReservationTestCase(WmsTestCase):
         self.Operation = Wms.Operation
         self.Reservation = Wms.Reservation
 
-        self.goods_type = Wms.Goods.Type.insert(label="My good type",
-                                                code="MyGT")
+        self.goods_type = Wms.PhysObj.Type.insert(label="My good type",
+                                                  code="MyGT")
         self.incoming_loc = self.insert_location('INCOMING')
         self.stock = self.insert_location('STOCK')
 
@@ -40,7 +40,7 @@ class ReservationTestCase(WmsTestCase):
 
         # now it's reserved, and this txn hasn't authority, despite
         # being creator.
-        with self.assertRaises(OperationGoodsReserved) as arc:
+        with self.assertRaises(OperationPhysObjReserved) as arc:
             self.Operation.Departure.create(input=self.avatar,
                                             dt_execution=self.dt_test2)
         exc_kw = arc.exception.kwargs

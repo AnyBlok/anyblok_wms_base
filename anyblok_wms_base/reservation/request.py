@@ -45,7 +45,7 @@ class Request:
     chain of Operations to fulfill that purpose.
 
     Example: in a simple sales system, we would record a sale order
-    reference here, and the planner would then take the related Goods
+    reference here, and the planner would then take the related PhysObj
     and issue (planned) Moves and Departures for their 'present' or
     'future' Avatars.
     """
@@ -83,7 +83,7 @@ class Request:
 
         By calling this, the current transaction becomes responsible
         for all Request's reservations, meaning that it has the
-        liberty to issue any Operation affecting its Goods or their Avatars.
+        liberty to issue any Operation affecting its PhysObj or their Avatars.
 
         :return: id of claimed Request
         :param dict filter_by: direct filtering criteria to add to the
@@ -206,7 +206,7 @@ class Request:
         them by batches of ``batch_size``.
 
         Reservation is attempted for each request, in order, meaning that
-        each request will grab as much Goods as it can before the next one
+        each request will grab as much PhysObj as it can before the next one
         gets processed.
 
         :param int batch_size:
@@ -221,7 +221,7 @@ class Request:
            reservations. The caller can use this to implement controlled
            concurrency in the reservation process: several processes can
            focus on different Requests, as long as they don't compete for
-           Goods to reserve.
+           PhysObj to reserve.
 
         The transaction is committed for each batch.
         """
@@ -263,7 +263,7 @@ class RequestItem:
 
     request = Many2One(model=Wms.Reservation.Request)
 
-    goods_type = Many2One(model='Model.Wms.Goods.Type')
+    goods_type = Many2One(model='Model.Wms.PhysObj.Type')
 
     quantity = Integer(nullable=False)
 
@@ -276,42 +276,42 @@ class RequestItem:
         )
 
     def lookup(self, quantity):
-        """Try and find Goods matchin the specified conditions.
+        """Try and find PhysObj matchin the specified conditions.
 
-        :return: the matching Goods that were found and the quantity each
-                 accounts for. The Goods may not be of the requested type.
+        :return: the matching PhysObj that were found and the quantity each
+                 accounts for. The PhysObj may not be of the requested type.
                  What matters is how much of the requested quantity
                  each one represents.
 
-        :rtype: list(int, :class:`Goods
-                   <anyblok_wms_base/bloks/wms_core/goods.Goods`>)
+        :rtype: list(int, :class:`PhysObj
+                   <anyblok_wms_base/bloks/wms_core/goods.PhysObj`>)
 
         This method is where most business logic should lie.
 
         This default
-        implementation does only equal matching on Goods Type and each
-        property, and therefore is not able to return other Goods Type
+        implementation does only equal matching on PhysObj Type and each
+        property, and therefore is not able to return other PhysObj Type
         accounting for more than one of the wished.
         Downstream libraries and applications are welcome to override it.
         """
         Wms = self.registry.Wms
-        Goods = Wms.Goods
+        PhysObj = Wms.PhysObj
         Reservation = Wms.Reservation
-        Avatar = Goods.Avatar
-        Props = Goods.Properties
-        # TODO PERF this returns from the DB one Goods line per
+        Avatar = PhysObj.Avatar
+        Props = PhysObj.Properties
+        # TODO PERF this returns from the DB one PhysObj line per
         # Avatar, but SQLA reassembles them as exactly one (seen while
         # tracing the test_reserve_avatars_once() under pdb)
         # SELECT DISTINCT ON would be better
         # TODO provide ordering by Avatar state and/or dt_from
-        query = Goods.query().join(Avatar.goods).outerjoin(
-            Reservation, Reservation.goods_id == Goods.id).filter(
-                Reservation.goods_id.is_(None),
-                Goods.type == self.goods_type,
+        query = PhysObj.query().join(Avatar.goods).outerjoin(
+            Reservation, Reservation.physobj_id == PhysObj.id).filter(
+                Reservation.physobj_id.is_(None),
+                PhysObj.type == self.goods_type,
                 Avatar.state.in_(('present', 'future')))
         if self.properties:
             props = self.properties.copy()
-            query = query.join(Goods.properties)
+            query = query.join(PhysObj.properties)
             pfields = Props.fields_description()
             for p in set(props).intersection(pfields):
                 query = query.filter(getattr(Props, p) == props.pop(p))

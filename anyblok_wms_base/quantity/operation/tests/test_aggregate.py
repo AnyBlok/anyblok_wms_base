@@ -23,21 +23,21 @@ class TestAggregate(WmsTestCase):
     def setUp(self):
         super(TestAggregate, self).setUp()
         Operation = self.Operation
-        self.goods_type = self.Goods.Type.insert(label="My good type",
-                                                 code="MyGT")
+        self.physobj_type = self.PhysObj.Type.insert(label="My good type",
+                                                     code="MyGT")
         self.loc = self.insert_location('Incoming')
 
         # The arrival fields don't matter, we'll insert goods directly
-        self.arrival = Operation.Arrival.insert(goods_type=self.goods_type,
+        self.arrival = Operation.Arrival.insert(goods_type=self.physobj_type,
                                                 location=self.loc,
                                                 state='planned',
                                                 dt_execution=self.dt_test1,
                                                 quantity=17)
 
-        Avatar = self.Goods.Avatar
+        Avatar = self.PhysObj.Avatar
         self.avatars = [
-            Avatar.insert(goods=self.Goods.insert(quantity=qty,
-                                                  type=self.goods_type),
+            Avatar.insert(goods=self.PhysObj.insert(quantity=qty,
+                                                    type=self.physobj_type),
                           location=self.loc,
                           dt_from=self.dt_test1,
                           state='future',
@@ -53,7 +53,7 @@ class TestAggregate(WmsTestCase):
                                dt_execution=self.dt_test2)
 
     def test_create_done_same_props(self):
-        props = self.Goods.Properties.insert(flexible=dict(foo='bar'))
+        props = self.PhysObj.Properties.insert(flexible=dict(foo='bar'))
         for avatar in self.avatars:
             avatar.state = 'present'
             avatar.goods.properties = props
@@ -76,7 +76,7 @@ class TestAggregate(WmsTestCase):
         """Test equality check for different records of properties."""
         for avatar in self.avatars:
             avatar.state = 'present'
-            props = self.Goods.Properties.insert(flexible=dict(foo='bar'))
+            props = self.PhysObj.Properties.insert(flexible=dict(foo='bar'))
             avatar.goods.properties = props
         agg = self.Agg.create(inputs=self.avatars, state='done')
 
@@ -103,9 +103,9 @@ class TestAggregate(WmsTestCase):
         self.assertEqual(outcome.dt_from, self.dt_test3)
 
     def assertBackToBeginning(self, state='present', props=None):
-        Goods = self.Goods
-        new_goods = Goods.query().filter(
-            Goods.type != self.location_type).all()
+        PhysObj = self.PhysObj
+        new_goods = PhysObj.query().filter(
+            PhysObj.type != self.location_type).all()
         self.assertEqual(len(new_goods), 2)
         if props is not None:
             old_props = props.to_dict()
@@ -117,8 +117,8 @@ class TestAggregate(WmsTestCase):
                 self.assertEqual(new_props, old_props)
         self.assertEqual(set(g.quantity for g in new_goods), set((1, 2)))
 
-        for avatar in self.Goods.Avatar.query().all():
-            self.assertEqual(avatar.goods.type, self.goods_type)
+        for avatar in self.PhysObj.Avatar.query().all():
+            self.assertEqual(avatar.goods.type, self.physobj_type)
             self.assertEqual(avatar.location, self.loc)
             self.assertEqual(avatar.state, 'present')
             self.assertEqual(avatar.reason, self.arrival)
@@ -126,7 +126,7 @@ class TestAggregate(WmsTestCase):
     def test_create_done_equal_props_obliviate(self):
         for avatar in self.avatars:
             avatar.state = 'present'
-            props = self.Goods.Properties.insert(flexible=dict(foo='bar'))
+            props = self.PhysObj.Properties.insert(flexible=dict(foo='bar'))
             avatar.goods.properties = props
         agg = self.Agg.create(inputs=self.avatars, state='done')
         agg.obliviate()
@@ -136,14 +136,14 @@ class TestAggregate(WmsTestCase):
         """Test that oblivion doesn't shuffle original reasons.
 
         TODO this test has one chance over 2 to pass by accident.
-        make a better one, and label it as a MultipleGoods mixin test, by
+        make a better one, and label it as a MultiplePhysObj mixin test, by
         issuing more goods and reasons and pairing them randomly so that
         chances of passing by coincidence are really low.
         """
         for record in self.avatars:
             record.state = 'present'
         Operation = self.registry.Wms.Operation
-        other_reason = Operation.Arrival.insert(goods_type=self.goods_type,
+        other_reason = Operation.Arrival.insert(goods_type=self.physobj_type,
                                                 location=self.loc,
                                                 state='done',
                                                 dt_execution=self.dt_test1,
@@ -153,7 +153,7 @@ class TestAggregate(WmsTestCase):
                               dt_execution=self.dt_test2)
         self.assertEqual(set(agg.follows), set((self.arrival, other_reason)))
         agg.obliviate()
-        new_avatars = self.Goods.Avatar.query().all()
+        new_avatars = self.PhysObj.Avatar.query().all()
         self.assertEqual(len(new_avatars), 2)
         for avatar in new_avatars:
             if avatar.goods.quantity == 1:
@@ -178,7 +178,7 @@ class TestAggregate(WmsTestCase):
                          set((other_loc, self.loc)))
 
     def test_forbid_differences_goods(self):
-        """Forbid differences among avatars' Goods."""
+        """Forbid differences among avatars' PhysObj."""
         self.avatars[0].goods.code = 'AB'
         self.avatars[1].goods.code = 'CD'
         with self.assertRaises(OperationInputsError) as arc:
@@ -234,9 +234,9 @@ class TestAggregate(WmsTestCase):
     def test_execute(self):
         # TODO the test fails if properties are linked to self.avatars
         # records after creation of the operation, and that's actually
-        # a problem for all SingleGoods and MultipleGoods operations
+        # a problem for all SinglePhysObj and MultiplePhysObj operations
         # (link to properties created or changed after the op creation)
-        props = self.Goods.Properties.insert(flexible=dict(foo='bar'))
+        props = self.PhysObj.Properties.insert(flexible=dict(foo='bar'))
         for avatar in self.avatars:
             avatar.state = 'present'
             avatar.goods.properties = props
@@ -259,7 +259,7 @@ class TestAggregate(WmsTestCase):
             self.assertEqual(record.state, 'past')
             self.assertEqual(record.reason, agg)
 
-        Avatar = self.Goods.Avatar
+        Avatar = self.PhysObj.Avatar
         new_avatar = self.assert_singleton(
             Avatar.query().filter(
                 Avatar.reason == agg,
@@ -289,7 +289,7 @@ class TestAggregate(WmsTestCase):
         self.assertEqual(outcome.dt_from, dt_test4)
 
     def test_execute_obliviate(self):
-        props = self.Goods.Properties.insert(flexible=dict(foo='bar'))
+        props = self.PhysObj.Properties.insert(flexible=dict(foo='bar'))
         for avatar in self.avatars:
             avatar.state = 'present'
             avatar.goods.properties = props
@@ -307,13 +307,13 @@ class TestAggregate(WmsTestCase):
 
         agg.cancel()
         self.assertEqual(self.Agg.query().count(), 0)
-        Avatar = self.Goods.Avatar
+        Avatar = self.PhysObj.Avatar
         all_avatars = Avatar.query().join(Avatar.goods).filter(
-            self.Goods.type == self.avatars[0].goods.type).all()
+            self.PhysObj.type == self.avatars[0].goods.type).all()
         self.assertEqual(set(all_avatars), set(self.avatars))
 
-        all_goods = self.Goods.query().filter(
-            self.Goods.type == self.avatars[0].goods.type).all()
+        all_goods = self.PhysObj.query().filter(
+            self.PhysObj.type == self.avatars[0].goods.type).all()
         self.assertEqual(set(all_goods), set(av.goods for av in self.avatars))
 
     def test_reversibility(self):

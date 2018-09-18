@@ -96,8 +96,8 @@ Being Mixins, they can themselves be overridden in concrete
 applications, but this is not recommended except for quick bug fixing.
 
 
-Mixin.WmsSingleInputOperation: working on a single Goods record
----------------------------------------------------------------
+Mixin.WmsSingleInputOperation: working on a single input
+--------------------------------------------------------
 
 .. autoclass:: anyblok_wms_base.core.operation.single_input.WmsSingleInputOperation
 

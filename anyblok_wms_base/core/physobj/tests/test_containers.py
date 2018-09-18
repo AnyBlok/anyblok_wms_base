@@ -17,14 +17,14 @@ class TestContainers(WmsTestCase):
 
     def setUp(self):
         super(TestContainers, self).setUp()
-        self.Avatar = self.Goods.Avatar
-        self.goods_type = self.Goods.Type.insert(label="My goods",
-                                                 code='MyGT')
+        self.Avatar = self.PhysObj.Avatar
+        self.physobj_type = self.PhysObj.Type.insert(label="My goods",
+                                                     code='MyGT')
 
         self.stock = self.insert_location('STK')
 
         self.arrival = self.Operation.Arrival.insert(
-            goods_type=self.goods_type,
+            goods_type=self.physobj_type,
             location=self.stock,
             dt_execution=self.dt_test1,
             state='done')
@@ -34,7 +34,7 @@ class TestContainers(WmsTestCase):
     def insert_goods(self, qty, state, dt_from, until=None, location=None):
         for _ in range(qty):
             self.Avatar.insert(
-                goods=self.Goods.insert(type=self.goods_type),
+                obj=self.PhysObj.insert(type=self.physobj_type),
                 reason=self.arrival,
                 location=self.stock if location is None else location,
                 dt_from=dt_from,
@@ -73,7 +73,7 @@ class TestContainers(WmsTestCase):
                              at_datetime=DATE_TIME_INFINITY)
 
     def test_no_match(self):
-        """Test that quantity is not None if no Goods match the criteria."""
+        """Test that quantity is not None if no PhysObj match the criteria."""
         self.assert_quantity(0)
 
     def test_at_datetime_required(self):
@@ -85,9 +85,9 @@ class TestContainers(WmsTestCase):
     def test_recursion(self):
         """Test flatten_containers_subquery recursion, demonstrating joins.
         """
-        Goods = self.Goods
+        PhysObj = self.PhysObj
         sell_loc_type = self.location_type
-        nosell_loc_type = self.Wms.Goods.Type.insert(
+        nosell_loc_type = self.Wms.PhysObj.Type.insert(
             code='NOSELL',
             behaviours=dict(container={}))
         stock_q = self.insert_location('STK/Q', parent=self.stock,
@@ -98,7 +98,7 @@ class TestContainers(WmsTestCase):
                                         location_type=nosell_loc_type)
         stock_qok = self.insert_location('STK/QOK', parent=stock_q)
 
-        cte = Goods.flatten_containers_subquery(top=self.stock)
+        cte = PhysObj.flatten_containers_subquery(top=self.stock)
         self.assertEqual(
             set(r[0] for r in self.registry.session.query(cte.c.id).all()),
             {self.stock.id, stock_q.id, stock_2.id, stock_q1.id, stock_qok.id}
@@ -106,15 +106,16 @@ class TestContainers(WmsTestCase):
 
         # example with no 'top', also demonstrating how to join (in this
         # case against on Location, to get full instances
-        other = self.insert_location('foo',
-                                     location_type=self.Wms.Goods.Type.insert(
-                                         code='NOSELL-OTHER',
-                                         behaviours=dict(container={}))
-                                     )
-        cte = Goods.flatten_containers_subquery()
-        joined = Goods.query().join(cte, cte.c.id == Goods.id)
+        other = self.insert_location(
+            'foo',
+            location_type=self.Wms.PhysObj.Type.insert(
+                code='NOSELL-OTHER',
+                behaviours=dict(container={}))
+        )
+        cte = PhysObj.flatten_containers_subquery()
+        joined = PhysObj.query().join(cte, cte.c.id == PhysObj.id)
 
-        notsellable = set(joined.filter(Goods.type != sell_loc_type).all())
+        notsellable = set(joined.filter(PhysObj.type != sell_loc_type).all())
         self.assertEqual(notsellable, {stock_q, stock_q1, other})
 
         # Note that in this form, i.e. without joining on Avatars pointing to
@@ -122,7 +123,7 @@ class TestContainers(WmsTestCase):
         # subquery to actually containers.
         self.insert_goods(1, 'present', self.dt_test1)
         self.assertIsNotNone(joined.filter(
-            Goods.type == self.goods_type).first())
+            PhysObj.type == self.physobj_type).first())
 
     def test_override_recursion(self):
         """Demonstrate overriding of the flatten_containers_subquery method.
@@ -135,8 +136,8 @@ class TestContainers(WmsTestCase):
         The overridden method demonstrates exactly quantity grouping
         (hierarchy) based on the code prefix.
         """
-        Goods = self.Goods
-        orig_meth = Goods.flatten_containers_subquery
+        PhysObj = self.PhysObj
+        orig_meth = PhysObj.flatten_containers_subquery
 
         @classmethod
         def flatten_containers_subquery(cls, top=None, **kwargs):
@@ -148,10 +149,10 @@ class TestContainers(WmsTestCase):
             the at_datetime and additional_states kwargs
             """
             prefix = top.code + '/'
-            query = Goods.query(Goods.id).filter(
+            query = PhysObj.query(PhysObj.id).filter(
                 or_(
-                    Goods.code.like(prefix + '%'),
-                    Goods.code == top.code))
+                    PhysObj.code.like(prefix + '%'),
+                    PhysObj.code == top.code))
             return query.subquery()
 
         other = self.insert_location('other')
@@ -162,10 +163,10 @@ class TestContainers(WmsTestCase):
         self.insert_goods(3, 'present', self.dt_test1, location=sub)
 
         try:
-            Goods.flatten_containers_subquery = flatten_containers_subquery
+            PhysObj.flatten_containers_subquery = flatten_containers_subquery
             self.assert_quantity(5)
         finally:
-            Goods.flatten_containers_subquery = orig_meth
+            PhysObj.flatten_containers_subquery = orig_meth
 
     def test_quantity_recursive(self):
         other = self.insert_location('other')
@@ -179,4 +180,4 @@ class TestContainers(WmsTestCase):
 
     def test_create_root_container_wrong_type(self):
         with self.assertRaises(ValueError):
-            self.Wms.create_root_container(self.goods_type)
+            self.Wms.create_root_container(self.physobj_type)

@@ -19,12 +19,12 @@ class TestApparition(WmsTestCase):
     def setUp(self):
         super(TestApparition, self).setUp()
         Wms = self.registry.Wms
-        self.goods_type = Wms.Goods.Type.insert(label="My good type",
-                                                code='MGT')
+        self.goods_type = Wms.PhysObj.Type.insert(label="My good type",
+                                                  code='MGT')
         self.stock = self.insert_location('Stock')
         self.Apparition = Wms.Operation.Apparition
-        self.Goods = Wms.Goods
-        self.Avatar = self.Goods.Avatar
+        self.PhysObj = Wms.PhysObj
+        self.Avatar = self.PhysObj.Avatar
 
     def test_create_done_one_obliviate(self):
         apparition = self.Apparition.create(
@@ -37,7 +37,7 @@ class TestApparition(WmsTestCase):
             goods_type=self.goods_type)
         self.assertEqual(apparition.follows, [])
         avatar = self.assert_singleton(apparition.outcomes)
-        goods = avatar.goods
+        goods = avatar.obj
         self.assertEqual(avatar.state, 'present')
         self.assertEqual(avatar.location, self.stock)
         self.assertEqual(goods.type, self.goods_type)
@@ -51,7 +51,7 @@ class TestApparition(WmsTestCase):
         apparition.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
         self.assertEqual(
-            self.Goods.query().filter_by(type=self.goods_type).count(),
+            self.PhysObj.query().filter_by(type=self.goods_type).count(),
             0)
 
     def test_create_done_several_obliviate(self):
@@ -67,7 +67,7 @@ class TestApparition(WmsTestCase):
         avatars = apparition.outcomes
         self.assertEqual(len(avatars), 3)
         for avatar in avatars:
-            goods = avatar.goods
+            goods = avatar.obj
             self.assertEqual(avatar.state, 'present')
             self.assertEqual(avatar.location, self.stock)
             self.assertEqual(goods.type, self.goods_type)
@@ -75,9 +75,9 @@ class TestApparition(WmsTestCase):
             self.assertEqual(goods.get_property('foo'), 2)
             self.assertEqual(goods.get_property('monty'), 'python')
 
-        # we really have three different Goods, but they share one Property
+        # we really have three different PhysObj, but they share one Property
         # instance
-        all_goods = set(av.goods for av in avatars)
+        all_goods = set(av.obj for av in avatars)
         self.assertEqual(len(all_goods), 3)
 
         all_props = set(g.properties for g in all_goods)
@@ -89,7 +89,7 @@ class TestApparition(WmsTestCase):
         apparition.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
         self.assertEqual(
-            self.Goods.query().filter_by(type=self.goods_type).count(),
+            self.PhysObj.query().filter_by(type=self.goods_type).count(),
             0)
 
     def test_create_done_no_props(self):
@@ -101,7 +101,7 @@ class TestApparition(WmsTestCase):
             goods_type=self.goods_type)
         self.assertEqual(apparition.follows, [])
         avatar = self.assert_singleton(apparition.outcomes)
-        goods = avatar.goods
+        goods = avatar.obj
         self.assertEqual(avatar.state, 'present')
         self.assertEqual(avatar.location, self.stock)
         self.assertEqual(goods.type, self.goods_type)
@@ -141,7 +141,7 @@ class TestApparition(WmsTestCase):
         self.assertEqual(exc.kwargs.get('forbidden'), 'planned')
 
     def test_not_a_container(self):
-        wrong_loc = self.Goods.insert(type=self.goods_type)
+        wrong_loc = self.PhysObj.insert(type=self.goods_type)
         with self.assertRaises(OperationContainerExpected) as arc:
             self.Apparition.create(
                 location=wrong_loc,

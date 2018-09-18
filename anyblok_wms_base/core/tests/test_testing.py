@@ -6,14 +6,14 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok_wms_base.testing import WmsTestCaseWithGoods
+from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 
 
-class TestWmsTestCase(WmsTestCaseWithGoods):
+class TestWmsTestCase(WmsTestCaseWithPhysObj):
 
     def test_sorted_props(self):
         avatar = self.avatar
-        goods = avatar.goods
+        goods = avatar.obj
         goods.set_property('a', 3)
         goods.set_property('c', 'ok')
         for rec in (goods, avatar):
@@ -27,8 +27,8 @@ class TestWmsTestCase(WmsTestCaseWithGoods):
     def test_cls_insert_location(self):
         loc = self.cls_insert_location('other', parent=self.stock)
         av = self.assert_singleton(
-            self.Avatar.query().filter_by(goods=loc).all())
+            self.Avatar.query().filter_by(obj=loc).all())
         self.assertEqual(av.dt_from, self.dt_test1)
 
 
-del WmsTestCaseWithGoods
+del WmsTestCaseWithPhysObj

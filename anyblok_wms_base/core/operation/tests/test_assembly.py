@@ -27,19 +27,19 @@ class TestAssembly(WmsTestCase):
     def setUp(self):
         super(TestAssembly, self).setUp()
         self.Assembly = self.Operation.Assembly
-        self.Avatar = self.Goods.Avatar
+        self.Avatar = self.PhysObj.Avatar
 
         self.stock = self.insert_location('STOCK')
 
     def create_outcome_type(self, behaviour):
-        self.outcome_type = self.Goods.Type.insert(
+        self.outcome_type = self.PhysObj.Type.insert(
             code='assout',
             behaviours=dict(assembly=behaviour))
 
     def create_goods(self, spec, state='present', location=None):
-        """Create Goods and their avatars.
+        """Create PhysObj and their avatars.
 
-        :param spec: iterable of pairs (Goods Type, quantity)
+        :param spec: iterable of pairs (PhysObj Type, quantity)
         :return: list of Avatars following the same order as in ``spec``
         """
         Arrival = self.Operation.Arrival
@@ -57,8 +57,8 @@ class TestAssembly(WmsTestCase):
         return created
 
     def test_create_done_fixed(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
-        gt2 = self.Goods.Type.insert(code='GT2')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
+        gt2 = self.PhysObj.Type.insert(code='GT2')
         self.create_outcome_type(dict(default={
             'inputs': [
                 {'type': 'GT1', 'quantity': 2},
@@ -67,7 +67,7 @@ class TestAssembly(WmsTestCase):
             'for_contents': ['all', 'descriptions'],
         }))
         avatars = self.create_goods(((gt1, 2), (gt2, 1)))
-        avatars[0].goods.set_property('expiration_date', '2010-01-01')
+        avatars[0].obj.set_property('expiration_date', '2010-01-01')
 
         assembly = self.Assembly.create(inputs=avatars,
                                         outcome_type=self.outcome_type,
@@ -75,11 +75,11 @@ class TestAssembly(WmsTestCase):
                                         state='done')
 
         outcome = self.assert_singleton(assembly.outcomes)
-        self.assertEqual(outcome.goods.type, self.outcome_type)
+        self.assertEqual(outcome.obj.type, self.outcome_type)
         self.assertEqual(outcome.state, 'present')
         for av in avatars:
             self.assertEqual(av.state, 'past')
-        self.assertEqual(outcome.goods.get_property(CONTENTS_PROPERTY),
+        self.assertEqual(outcome.obj.get_property(CONTENTS_PROPERTY),
                          [dict(properties=dict(batch=None,
                                                expiration_date='2010-01-01'),
                                type='GT1',
@@ -91,11 +91,11 @@ class TestAssembly(WmsTestCase):
                           ])
 
     def test_create_done_fixed_generic_type(self):
-        parent = self.Goods.Type.insert(code='parent')
-        gt1 = self.Goods.Type.insert(code='GT1', parent=parent,
-                                     properties=dict(colour='blue', foo=3))
-        gt2 = self.Goods.Type.insert(code='GT2', parent=parent,
-                                     properties=dict(colour='red', foo=4))
+        parent = self.PhysObj.Type.insert(code='parent')
+        gt1 = self.PhysObj.Type.insert(code='GT1', parent=parent,
+                                       properties=dict(colour='blue', foo=3))
+        gt2 = self.PhysObj.Type.insert(code='GT2', parent=parent,
+                                       properties=dict(colour='red', foo=4))
         self.create_outcome_type(dict(default={
             'inputs': [
                 {'type': 'parent',
@@ -120,8 +120,8 @@ class TestAssembly(WmsTestCase):
             'for_contents': ['all', 'descriptions'],
         }))
         avatars = self.create_goods(((gt1, 1), (gt2, 1)))
-        avatars[0].goods.set_property('main', True)
-        avatars[0].goods.set_property('bar', 1)
+        avatars[0].obj.set_property('main', True)
+        avatars[0].obj.set_property('bar', 1)
 
         assembly = self.Assembly.create(inputs=avatars,
                                         outcome_type=self.outcome_type,
@@ -129,11 +129,11 @@ class TestAssembly(WmsTestCase):
                                         state='done')
 
         outcome = self.assert_singleton(assembly.outcomes)
-        self.assertEqual(outcome.goods.type, self.outcome_type)
+        self.assertEqual(outcome.obj.type, self.outcome_type)
         self.assertEqual(outcome.state, 'present')
         for av in avatars:
             self.assertEqual(av.state, 'past')
-        self.assertEqual(outcome.goods.get_property(CONTENTS_PROPERTY),
+        self.assertEqual(outcome.obj.get_property(CONTENTS_PROPERTY),
                          [dict(forward_properties=['bar'],
                                properties=dict(batch=None, main=True),
                                type='GT1',
@@ -141,9 +141,9 @@ class TestAssembly(WmsTestCase):
                           dict(type='GT2',
                                quantity=1),
                           ])
-        self.assertEqual(outcome.goods.get_property('colour'), 'blue')
-        self.assertEqual(outcome.goods.get_property('foo'), 4)
-        self.assertEqual(outcome.goods.get_property('bar'), 1)
+        self.assertEqual(outcome.obj.get_property('colour'), 'blue')
+        self.assertEqual(outcome.obj.get_property('foo'), 4)
+        self.assertEqual(outcome.obj.get_property('bar'), 1)
 
     def test_create_done_required_props_match(self):
         """required_properties should be a matching rule, not an aftercheck.
@@ -153,12 +153,12 @@ class TestAssembly(WmsTestCase):
         only from the input that has the 'foo' property, and 'baz' only from
         the one that hasn't.
 
-        Then we'll create two Goods, one with 'foo' the other without it and
+        Then we'll create two PhysObj, one with 'foo' the other without it and
         fetch them to Assemblies in the two possible orderings (in real
         applicative code, since it comes from the DB, the ordering has
         to be considered random).
         """
-        gt1 = self.Goods.Type.insert(code='GT1')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
 
         self.create_outcome_type(dict(default={
             'inputs': [
@@ -181,12 +181,12 @@ class TestAssembly(WmsTestCase):
             ],
         }))
         avatars = self.create_goods(((gt1, 1), (gt1, 1)))
-        avatars[0].goods.set_property('foo', 3)
-        avatars[0].goods.set_property('bar', 5)
-        avatars[0].goods.set_property('bar2', 6)
-        avatars[1].goods.set_property('foo2', 4)
-        avatars[1].goods.set_property('bar', 2)
-        avatars[1].goods.set_property('bar2', 7)
+        avatars[0].obj.set_property('foo', 3)
+        avatars[0].obj.set_property('bar', 5)
+        avatars[0].obj.set_property('bar2', 6)
+        avatars[1].obj.set_property('foo2', 4)
+        avatars[1].obj.set_property('bar', 2)
+        avatars[1].obj.set_property('bar2', 7)
 
         # if the ordering in implementation is a function of the orderings
         # inputs, then any selection based on type followed by a later check
@@ -200,14 +200,14 @@ class TestAssembly(WmsTestCase):
                                             state='done')
 
             outcome = self.assert_singleton(assembly.outcomes)
-            self.assertEqual(outcome.goods.get_property('bar'), 5)
-            self.assertEqual(outcome.goods.get_property('bar2'), 7)
+            self.assertEqual(outcome.obj.get_property('bar'), 5)
+            self.assertEqual(outcome.obj.get_property('bar2'), 7)
 
             # for next run in the loop
             assembly.obliviate()
 
     def test_create_done_required_props_match_with_values(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
 
         self.create_outcome_type(dict(default={
             'inputs': [
@@ -230,12 +230,12 @@ class TestAssembly(WmsTestCase):
             ],
         }))
         avatars = self.create_goods(((gt1, 1), (gt1, 1)))
-        avatars[0].goods.set_property('foo', 1)
-        avatars[0].goods.set_property('bar', 5)
-        avatars[0].goods.set_property('bar2', 6)
-        avatars[1].goods.set_property('foo', 2)
-        avatars[1].goods.set_property('bar', 2)
-        avatars[1].goods.set_property('bar2', 7)
+        avatars[0].obj.set_property('foo', 1)
+        avatars[0].obj.set_property('bar', 5)
+        avatars[0].obj.set_property('bar2', 6)
+        avatars[1].obj.set_property('foo', 2)
+        avatars[1].obj.set_property('bar', 2)
+        avatars[1].obj.set_property('bar2', 7)
 
         # if the ordering in implementation is a function of the orderings
         # inputs, then any selection based on type followed by a later check
@@ -249,15 +249,15 @@ class TestAssembly(WmsTestCase):
                                             state='done')
 
             outcome = self.assert_singleton(assembly.outcomes)
-            self.assertEqual(outcome.goods.get_property('bar'), 5)
-            self.assertEqual(outcome.goods.get_property('bar2'), 7)
+            self.assertEqual(outcome.obj.get_property('bar'), 5)
+            self.assertEqual(outcome.obj.get_property('bar2'), 7)
 
             # for next run in the loop
             assembly.obliviate()
 
     def test_create_done_fwd_contents(self):
         """Forwarding contents should be possible."""
-        gt1 = self.Goods.Type.insert(code='GT1')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
         self.create_outcome_type(dict(default={
             'inputs': [
                 {'type': 'GT1', 'quantity': 1},
@@ -270,9 +270,9 @@ class TestAssembly(WmsTestCase):
         }))
         avatars = self.create_goods([(gt1, 1)])
 
-        self.Goods.Type.insert(code='GT2')
-        avatars[0].goods.set_property(CONTENTS_PROPERTY,
-                                      dict(type='GT2', quantity=4))
+        self.PhysObj.Type.insert(code='GT2')
+        avatars[0].obj.set_property(CONTENTS_PROPERTY,
+                                    dict(type='GT2', quantity=4))
 
         assembly = self.Assembly.create(inputs=avatars,
                                         outcome_type=self.outcome_type,
@@ -280,12 +280,12 @@ class TestAssembly(WmsTestCase):
                                         state='done')
 
         outcome = self.assert_singleton(assembly.outcomes)
-        self.assertEqual(outcome.goods.get_property(CONTENTS_PROPERTY),
+        self.assertEqual(outcome.obj.get_property(CONTENTS_PROPERTY),
                          dict(type='GT2', quantity=4))
 
     def test_create_done_forward_props_per_inputs_spec_revert(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
-        gt2 = self.Goods.Type.insert(code='GT2')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
+        gt2 = self.PhysObj.Type.insert(code='GT2')
         self.create_outcome_type(dict(default={
             'inputs': [
                 {'type': 'GT1', 'quantity': 2,
@@ -309,11 +309,11 @@ class TestAssembly(WmsTestCase):
         self.outcome_type.behaviours['unpack'] = {}
         avatars = self.create_goods(((gt1, 2), (gt2, 1)))
         for av in avatars:
-            av.goods.set_property('foo', 2018)
-        avatars[1].goods.set_property('foo', 2018)
-        avatars[0].goods.set_property('qa', 'ok')
-        avatars[1].goods.set_property('qa', 'ok')
-        avatars[2].goods.set_property('bar', 17)
+            av.obj.set_property('foo', 2018)
+        avatars[1].obj.set_property('foo', 2018)
+        avatars[0].obj.set_property('qa', 'ok')
+        avatars[1].obj.set_property('qa', 'ok')
+        avatars[2].obj.set_property('bar', 17)
 
         assembly = self.Assembly.create(inputs=avatars,
                                         outcome_type=self.outcome_type,
@@ -322,7 +322,7 @@ class TestAssembly(WmsTestCase):
 
         pack = self.assert_singleton(assembly.outcomes)
         self.assertEqual(
-            pack.goods.properties.as_dict(),
+            pack.obj.properties.as_dict(),
             dict(foo=2018,
                  bar=17,
                  # The 'batch' property is there in all our tests,
@@ -350,7 +350,7 @@ class TestAssembly(WmsTestCase):
 
         # before reversal, it's possible that the pack Properties have
         # changed. That is legitimate
-        pack.goods.set_property('bar', 18)
+        pack.obj.set_property('bar', 18)
         reversal = assembly.plan_revert()[0]
         reversal.execute()
 
@@ -359,7 +359,7 @@ class TestAssembly(WmsTestCase):
         self.assertTrue(pack.state, 'past')
         new_avatars = reversal.outcomes
         # since we used the 'description' option in for_outcomes,
-        # we also have new Goods records
+        # we also have new PhysObj records
         self.assertEqual(len(new_avatars), 3)
         for av in new_avatars:
             self.assertEqual(av.state, 'present')
@@ -373,8 +373,8 @@ class TestAssembly(WmsTestCase):
             ])
 
     def test_create_done_forward_props_revert_same_goods(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
-        gt2 = self.Goods.Type.insert(code='GT2')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
+        gt2 = self.PhysObj.Type.insert(code='GT2')
         self.create_outcome_type(dict(default={
             'inputs': [
                 {'type': 'GT1', 'quantity': 2,
@@ -398,11 +398,11 @@ class TestAssembly(WmsTestCase):
         self.outcome_type.behaviours['unpack'] = {}
         avatars = self.create_goods(((gt1, 2), (gt2, 1)))
         for av in avatars:
-            av.goods.set_property('foo', 2018)
-        avatars[1].goods.set_property('foo', 2018)
-        avatars[0].goods.set_property('qa', 'ok')
-        avatars[1].goods.set_property('qa', 'ok')
-        avatars[2].goods.set_property('bar', 17)
+            av.obj.set_property('foo', 2018)
+        avatars[1].obj.set_property('foo', 2018)
+        avatars[0].obj.set_property('qa', 'ok')
+        avatars[1].obj.set_property('qa', 'ok')
+        avatars[2].obj.set_property('bar', 17)
 
         assembly = self.Assembly.create(inputs=avatars,
                                         outcome_type=self.outcome_type,
@@ -413,7 +413,7 @@ class TestAssembly(WmsTestCase):
 
         # before reversal, it's possible that the pack Properties have
         # changed. That is legitimate
-        pack.goods.set_property('bar', 18)
+        pack.obj.set_property('bar', 18)
 
         reversal = assembly.plan_revert()[0]
         reversal.execute()
@@ -427,9 +427,9 @@ class TestAssembly(WmsTestCase):
             self.assertEqual(av.state, 'present')
 
         # since we used the 'all' option in for_contents,
-        # the new Avatars are for the existing Goods records
-        self.assertEqual(set(av.goods for av in new_avatars),
-                         set(av.goods for av in avatars))
+        # the new Avatars are for the existing PhysObj records
+        self.assertEqual(set(av.obj for av in new_avatars),
+                         set(av.obj for av in avatars))
         self.assertEqual(
             list(sorted(self.sorted_props(av) for av in new_avatars)),
             [
@@ -439,8 +439,8 @@ class TestAssembly(WmsTestCase):
             ])
 
     def test_create_done_forward_props_global_spec(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
-        gt2 = self.Goods.Type.insert(code='GT2')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
+        gt2 = self.PhysObj.Type.insert(code='GT2')
         self.create_outcome_type(dict(screwing={
             'outcome_properties': {
                 'planned': {'bar': ('const', 3)},
@@ -461,17 +461,17 @@ class TestAssembly(WmsTestCase):
             'for_contents': ['all', 'descriptions'],
         }))
         avatars = self.create_goods(((gt1, 1), (gt2, 2)))
-        common_props = self.Goods.Properties.create(foo=12, qa='ok')
+        common_props = self.PhysObj.Properties.create(foo=12, qa='ok')
         for av in avatars[:2]:
-            av.goods.properties = common_props
-        avatars[2].goods.set_property('qa', 'ok')
+            av.obj.properties = common_props
+        avatars[2].obj.set_property('qa', 'ok')
 
         assembly = self.Assembly.create(inputs=avatars,
                                         outcome_type=self.outcome_type,
                                         name='screwing',
                                         state='done')
 
-        outprops = self.assert_singleton(assembly.outcomes).goods.properties
+        outprops = self.assert_singleton(assembly.outcomes).obj.properties
         self.assertEqual(
             outprops.as_dict(),
             dict(foo=12,
@@ -500,8 +500,8 @@ class TestAssembly(WmsTestCase):
         This also demonstrates how to set the minimum of differing values
         from input properties.
         """
-        gt1 = self.Goods.Type.insert(code='GT1')
-        gt2 = self.Goods.Type.insert(code='GT2')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
+        gt2 = self.PhysObj.Type.insert(code='GT2')
 
         def hook(op, assembled, state, for_creation=False):
             # demonstrates that this is indeed called last
@@ -514,7 +514,7 @@ class TestAssembly(WmsTestCase):
             self.assertEqual(len(op.match[1]), 2)
             # op would be called 'self' if the method would be
             # defined by normal subclassing
-            return [('by_hook', min(inp.goods.get_property('expiry')
+            return [('by_hook', min(inp.obj.get_property('expiry')
                                     for inp in op.inputs))]
         self.Assembly.outcome_properties_pack = hook
 
@@ -536,12 +536,12 @@ class TestAssembly(WmsTestCase):
             'for_contents': ['all', 'descriptions'],
         }))
         avatars = self.create_goods(((gt1, 1), (gt2, 2)))
-        common_props = self.Goods.Properties.create(foo=12, qa='ok')
+        common_props = self.PhysObj.Properties.create(foo=12, qa='ok')
         for av in avatars[:2]:
-            av.goods.properties = common_props
+            av.obj.properties = common_props
         for i, av in enumerate(avatars):
-            av.goods.set_property('expiry', 2015 + i)
-            av.goods.set_property('qa', 'ok')
+            av.obj.set_property('expiry', 2015 + i)
+            av.obj.set_property('qa', 'ok')
 
         try:
             assembly = self.Assembly.create(inputs=avatars,
@@ -551,7 +551,7 @@ class TestAssembly(WmsTestCase):
         finally:
             del self.Assembly.outcome_properties_pack
 
-        outprops = self.assert_singleton(assembly.outcomes).goods.properties
+        outprops = self.assert_singleton(assembly.outcomes).obj.properties
         self.assertEqual(
             outprops.as_dict(),
             dict(foo=12,
@@ -582,8 +582,8 @@ class TestAssembly(WmsTestCase):
                            ]))
 
     def test_create_planned_execute_fixed(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
-        gt2 = self.Goods.Type.insert(code='GT2')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
+        gt2 = self.PhysObj.Type.insert(code='GT2')
         self.create_outcome_type(dict(default={
             'outcome_properties': {
                 'planned': {'foo': ('const', 'bar')},
@@ -603,9 +603,9 @@ class TestAssembly(WmsTestCase):
                                         state='planned')
 
         outcome = self.assert_singleton(assembly.outcomes)
-        self.assertEqual(outcome.goods.type, self.outcome_type)
+        self.assertEqual(outcome.obj.type, self.outcome_type)
         self.assertEqual(outcome.state, 'future')
-        props = outcome.goods.properties
+        props = outcome.obj.properties
         self.assertEqual(props.get('foo'), 'bar')
         self.assertFalse('at_exec' in props)
 
@@ -621,8 +621,8 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(props.get('at_exec'), "it is done")
 
     def test_create_planned_execute_fixed_hook(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
-        gt2 = self.Goods.Type.insert(code='GT2')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
+        gt2 = self.PhysObj.Type.insert(code='GT2')
         self.create_outcome_type(dict(pack={
             'outcome_properties': {
                 'planned': {'bar': ('const', 'bar')},
@@ -650,7 +650,7 @@ class TestAssembly(WmsTestCase):
                                             dt_execution=self.dt_test2,
                                             state='planned')
             outcome = self.assert_singleton(assembly.outcomes)
-            props = outcome.goods.properties
+            props = outcome.obj.properties
             self.assertEqual(props.get('by_hook'),
                              'at planned (for_creation=True)')
 
@@ -661,8 +661,8 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(props.get('by_hook'), 'at done (for_creation=False)')
 
     def test_create_planned_inputs_spec_fwd(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
-        gt2 = self.Goods.Type.insert(code='GT2')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
+        gt2 = self.PhysObj.Type.insert(code='GT2')
         self.create_outcome_type(dict(default={
             'inputs': [
                 {'type': 'GT1', 'quantity': 1,
@@ -673,7 +673,7 @@ class TestAssembly(WmsTestCase):
             ]
         }))
         avatars = self.create_goods(((gt1, 1), (gt2, 1)))
-        avatars[0].goods.set_property('foo', 23)
+        avatars[0].obj.set_property('foo', 23)
 
         assembly = self.Assembly.create(inputs=avatars,
                                         outcome_type=self.outcome_type,
@@ -682,9 +682,9 @@ class TestAssembly(WmsTestCase):
                                         state='planned')
 
         outcome = self.assert_singleton(assembly.outcomes)
-        self.assertEqual(outcome.goods.type, self.outcome_type)
+        self.assertEqual(outcome.obj.type, self.outcome_type)
         self.assertEqual(outcome.state, 'future')
-        props = outcome.goods.properties
+        props = outcome.obj.properties
         self.assertEqual(props.get('foo'), 23)
         self.assertFalse('bar' in props)
 
@@ -693,7 +693,7 @@ class TestAssembly(WmsTestCase):
 
         # foo's value changes before execution (imagine there's
         # an Observation happening in between)
-        avatars[0].goods.update_properties(dict(foo=-1, bar='ok'))
+        avatars[0].obj.update_properties(dict(foo=-1, bar='ok'))
 
         assembly.execute()
         self.assertEqual(outcome.state, 'present')
@@ -704,8 +704,8 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(props.get('bar'), 'ok')
 
     def test_create_done_extra_forbidden(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
-        gt2 = self.Goods.Type.insert(code='GT2')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
+        gt2 = self.PhysObj.Type.insert(code='GT2')
         self.create_outcome_type(dict(default={
             'inputs': [{'type': 'GT1', 'quantity': 2}],
         }))
@@ -723,8 +723,8 @@ class TestAssembly(WmsTestCase):
         repr(exc)
 
     def test_create_done_extra_allowed(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
-        gt2 = self.Goods.Type.insert(code='GT2')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
+        gt2 = self.PhysObj.Type.insert(code='GT2')
 
         self.create_outcome_type(dict(default={
             'inputs_properties': {
@@ -736,7 +736,7 @@ class TestAssembly(WmsTestCase):
             'allow_extra_inputs': True,
         }))
         avatars = self.create_goods(((gt1, 2), (gt2, 1)))
-        avatars[-1].goods.set_property('foo', 17)
+        avatars[-1].obj.set_property('foo', 17)
 
         assembly = self.Assembly.create(inputs=avatars,
                                         outcome_type=self.outcome_type,
@@ -744,23 +744,23 @@ class TestAssembly(WmsTestCase):
                                         state='done')
 
         outcome = self.assert_singleton(assembly.outcomes)
-        self.assertEqual(outcome.goods.type, self.outcome_type)
+        self.assertEqual(outcome.obj.type, self.outcome_type)
         # property has been forwarded from the extra
-        self.assertEqual(outcome.goods.get_property('foo'), 17)
+        self.assertEqual(outcome.obj.get_property('foo'), 17)
         self.assertEqual(outcome.state, 'present')
-        self.assertEqual(outcome.goods.get_property(CONTENTS_PROPERTY),
+        self.assertEqual(outcome.obj.get_property(CONTENTS_PROPERTY),
                          [dict(type='GT2',
                                forward_properties=['foo'],
                                properties=dict(batch=None),
                                quantity=1,
-                               local_goods_ids=[avatars[-1].goods.id])])
+                               local_goods_ids=[avatars[-1].obj.id])])
         self.assertEqual(len(assembly.match), 1)
         self.assertEqual(set(assembly.match[0]),
                          set(av.id for av in avatars[:2]))
 
     def test_create_done_extra_no_contents_prop(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
-        gt2 = self.Goods.Type.insert(code='GT2')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
+        gt2 = self.PhysObj.Type.insert(code='GT2')
 
         self.create_outcome_type(dict(default={
             'inputs': [{'type': 'GT1', 'quantity': 2}],
@@ -775,12 +775,12 @@ class TestAssembly(WmsTestCase):
                                         state='done')
 
         outcome = self.assert_singleton(assembly.outcomes)
-        self.assertEqual(outcome.goods.type, self.outcome_type)
+        self.assertEqual(outcome.obj.type, self.outcome_type)
         self.assertEqual(outcome.state, 'present')
-        self.assertIsNone(outcome.goods.get_property(CONTENTS_PROPERTY))
+        self.assertIsNone(outcome.obj.get_property(CONTENTS_PROPERTY))
 
     def test_create_done_extra_parameters(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
 
         self.create_outcome_type(dict(default={
             'inputs': [
@@ -810,10 +810,10 @@ class TestAssembly(WmsTestCase):
         avatars = self.create_goods(((gt1, 3), ))
         for i, av in enumerate(avatars):
             for foo in range(1, 4):
-                av.goods.set_property('foo%d' % foo, 'av%d' % i)
-        avatars[0].goods.code = 'HOP'
+                av.obj.set_property('foo%d' % foo, 'av%d' % i)
+        avatars[0].obj.code = 'HOP'
 
-        av1_id = avatars[1].goods.id
+        av1_id = avatars[1].obj.id
         extra_params = dict(inputs=[dict(id=av1_id),
                                     dict(code='HOP'),
                                     {},
@@ -853,7 +853,7 @@ class TestAssembly(WmsTestCase):
                   },
                  ])
 
-            outcome_goods = self.assert_singleton(assembly.outcomes).goods
+            outcome_goods = self.assert_singleton(assembly.outcomes).obj
 
             self.assertEqual(outcome_goods.get_property('foo1'), 'av1')
             self.assertEqual(outcome_goods.get_property('foo2'), 'av0')
@@ -861,13 +861,13 @@ class TestAssembly(WmsTestCase):
             assembly.cancel()
 
     def test_create_basic_errors(self):
-        gt = self.Goods.Type.insert(code='GT1')
+        gt = self.PhysObj.Type.insert(code='GT1')
 
         avatars = self.create_goods(((gt, 2), ))
 
         # with no assembly behaviour
-        no_assembly = self.Goods.Type.insert(code='noass',
-                                             behaviours=dict(foo='bar'))
+        no_assembly = self.PhysObj.Type.insert(code='noass',
+                                               behaviours=dict(foo='bar'))
         with self.assertRaises(OperationError) as arc:
             self.Assembly.create(inputs=avatars,
                                  outcome_type=no_assembly,
@@ -896,8 +896,8 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(exc.kwargs['name'], 'wrong')
 
         # several locations in inputs
-        other_loc = self.Goods.insert(code='other',
-                                      type=self.stock.type)
+        other_loc = self.PhysObj.insert(code='other',
+                                        type=self.stock.type)
         avatars[0].location = other_loc
         with self.assertRaises(OperationError) as arc:
             self.Assembly.create(inputs=avatars,
@@ -911,7 +911,7 @@ class TestAssembly(WmsTestCase):
                          {self.stock, other_loc})
 
     def test_unmatched_required_properties(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
 
         self.create_outcome_type(dict(default={
             'inputs': [
@@ -937,7 +937,7 @@ class TestAssembly(WmsTestCase):
             ],
         }))
         avatars = self.create_goods(((gt1, 1), (gt1, 1)))
-        avatars[0].goods.set_property('qa', 'ok')
+        avatars[0].obj.set_property('qa', 'ok')
 
         with self.assertRaises(AssemblyInputNotMatched) as arc:
             self.Assembly.create(inputs=avatars,
@@ -961,7 +961,7 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(exc.kwargs['to_state'], 'done')
 
     def test_unmatched_required_property_value(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
 
         self.create_outcome_type(dict(default={
             'inputs': [
@@ -976,7 +976,7 @@ class TestAssembly(WmsTestCase):
             ],
         }))
         avatars = self.create_goods(((gt1, 1), ))
-        avatars[0].goods.set_property('qa', 'broken')
+        avatars[0].obj.set_property('qa', 'broken')
 
         with self.assertRaises(AssemblyInputNotMatched) as arc:
             self.Assembly.create(inputs=avatars,
@@ -1000,7 +1000,7 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(exc.kwargs['to_state'], 'done')
 
     def test_unmatched_global_required_property_value(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
 
         self.create_outcome_type(dict(default={
             'inputs_properties': {
@@ -1015,7 +1015,7 @@ class TestAssembly(WmsTestCase):
             ],
         }))
         avatars = self.create_goods(((gt1, 1), ))
-        avatars[0].goods.set_property('qa', 'broken')
+        avatars[0].obj.set_property('qa', 'broken')
 
         assembly = self.Assembly.create(inputs=avatars,
                                         outcome_type=self.outcome_type,
@@ -1033,7 +1033,7 @@ class TestAssembly(WmsTestCase):
         self.assertEqual(exc.kwargs['avatar'], avatars[0])
 
     def test_unmatched_per_input_required_property_value(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
 
         self.create_outcome_type(dict(default={
             'inputs_properties': {
@@ -1050,7 +1050,7 @@ class TestAssembly(WmsTestCase):
             ],
         }))
         avatars = self.create_goods(((gt1, 1), ))
-        avatars[0].goods.set_property('qa', 'broken')
+        avatars[0].obj.set_property('qa', 'broken')
 
         assembly = self.Assembly.create(inputs=avatars,
                                         outcome_type=self.outcome_type,
@@ -1076,7 +1076,7 @@ class TestAssembly(WmsTestCase):
                                       required_values=dict(qa='ok')))))
 
     def test_unmatched_code(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
 
         self.create_outcome_type(dict(default={
             'inputs': [
@@ -1087,7 +1087,7 @@ class TestAssembly(WmsTestCase):
             ],
         }))
         avatars = self.create_goods(((gt1, 1), ))
-        goods = avatars[0].goods
+        goods = avatars[0].obj
 
         with self.assertRaises(AssemblyInputNotMatched) as arc:
             self.Assembly.create(inputs=avatars,
@@ -1134,15 +1134,15 @@ class TestAssembly(WmsTestCase):
                               code='brian'))
 
     def test_inconsistent_forwarding_one_spec(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
 
         self.create_outcome_type(dict(default=dict(
             inputs=[dict(type='GT1', quantity=2,
                          properties=dict(done=dict(forward=['bar'])))],
             )))
         avatars = self.create_goods([(gt1, 2)])
-        avatars[0].goods.set_property('bar', 1)
-        avatars[1].goods.set_property('bar', 2)
+        avatars[0].obj.set_property('bar', 1)
+        avatars[1].obj.set_property('bar', 2)
 
         with self.assertRaises(AssemblyPropertyConflict) as arc:
             self.Assembly.create(inputs=avatars,
@@ -1163,7 +1163,7 @@ class TestAssembly(WmsTestCase):
                               properties=dict(done=dict(forward=['bar']))))
 
     def test_inconsistent_forwarding_extra(self):
-        gt1 = self.Goods.Type.insert(code='GT1')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
 
         # This exception raising happens only for extra inputs
         # as the requirements on the matching ones (global or per input spec)
@@ -1176,8 +1176,8 @@ class TestAssembly(WmsTestCase):
             allow_extra_inputs=True,
             )))
         avatars = self.create_goods([(gt1, 2)])
-        avatars[0].goods.set_property('bar', 1)
-        avatars[1].goods.set_property('bar', 2)
+        avatars[0].obj.set_property('bar', 1)
+        avatars[1].obj.set_property('bar', 2)
 
         with self.assertRaises(AssemblyPropertyConflict) as arc:
             self.Assembly.create(inputs=avatars,
@@ -1198,8 +1198,8 @@ class TestAssembly(WmsTestCase):
         This also demonstrates that the input specs are treated into order,
         therefore "existing" and "candidate" are deterministic.
         """
-        gt1 = self.Goods.Type.insert(code='GT1')
-        gt2 = self.Goods.Type.insert(code='GT2')
+        gt1 = self.PhysObj.Type.insert(code='GT1')
+        gt2 = self.PhysObj.Type.insert(code='GT2')
 
         self.create_outcome_type(dict(default=dict(
             inputs=[dict(type='GT1', quantity=1,
@@ -1209,8 +1209,8 @@ class TestAssembly(WmsTestCase):
                     ]
             )))
         avatars = self.create_goods([(gt1, 1), (gt2, 1)])
-        avatars[0].goods.set_property('bar', 1)
-        avatars[1].goods.set_property('bar', 2)
+        avatars[0].obj.set_property('bar', 1)
+        avatars[1].obj.set_property('bar', 2)
 
         with self.assertRaises(AssemblyPropertyConflict) as arc:
             self.Assembly.create(inputs=avatars,
@@ -1394,7 +1394,7 @@ class TestTypedExpression(BlokTestCase):
         # whose details don't matter.
         Wms = self.registry.Wms
         self.operation = Wms.Operation.Assembly.insert(
-            outcome_type=Wms.Goods.Type.insert(code='whatever'),
+            outcome_type=Wms.PhysObj.Type.insert(code='whatever'),
             dt_execution=datetime.now(),
             state='planned')
         self.eval_typed_expr = self.operation.eval_typed_expr

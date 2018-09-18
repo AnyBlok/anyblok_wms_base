@@ -6,7 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok_wms_base.testing import WmsTestCaseWithGoods
+from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 from anyblok_wms_base.exceptions import (
     OperationIrreversibleError,
     OperationForbiddenState,
@@ -14,7 +14,7 @@ from anyblok_wms_base.exceptions import (
 )
 
 
-class TestTeleportation(WmsTestCaseWithGoods):
+class TestTeleportation(WmsTestCaseWithPhysObj):
 
     def setUp(self):
         super(TestTeleportation, self).setUp()
@@ -54,7 +54,7 @@ class TestTeleportation(WmsTestCaseWithGoods):
         self.assertEqual(avatar.reason, self.arrival)
         self.assertIsNone(avatar.dt_until)
         self.assertEqual(
-            self.Avatar.query().filter_by(goods=avatar.goods).count(), 1)
+            self.Avatar.query().filter_by(obj=avatar.obj).count(), 1)
 
     def test_no_planned_state(self):
         avatar = self.avatar
@@ -72,7 +72,7 @@ class TestTeleportation(WmsTestCaseWithGoods):
 
     def test_not_a_container(self):
         self.avatar.state = 'present'
-        wrong_loc = self.Goods.insert(type=self.goods_type)
+        wrong_loc = self.PhysObj.insert(type=self.physobj_type)
         with self.assertRaises(OperationContainerExpected) as arc:
             self.Teleportation.create(
                 state='done',
@@ -84,4 +84,4 @@ class TestTeleportation(WmsTestCaseWithGoods):
         self.assertEqual(exc.kwargs['offender'], wrong_loc)
 
 
-del WmsTestCaseWithGoods
+del WmsTestCaseWithPhysObj

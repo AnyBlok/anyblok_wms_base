@@ -6,10 +6,10 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok_wms_base.testing import WmsTestCaseWithGoods
+from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 
 
-class TestMove(WmsTestCaseWithGoods):
+class TestMove(WmsTestCaseWithPhysObj):
 
     arrival_kwargs = dict(quantity=3)
 
@@ -63,7 +63,7 @@ class TestMove(WmsTestCaseWithGoods):
         self.assertEqual(self.avatar.dt_from, self.dt_test1)
         self.assertEqual(self.avatar.dt_until, self.dt_test2)
 
-        # the moved Goods are not considered an outcome of the Split,
+        # the moved PhysObj are not considered an outcome of the Split,
         # because the Move is now its reason
         not_moved = self.assert_singleton(split.outcomes)
         self.assertEqual(not_moved.goods.quantity, 2)
@@ -77,4 +77,4 @@ class TestMove(WmsTestCaseWithGoods):
         self.assertEqual(after_move.state, 'present')
 
 
-del WmsTestCaseWithGoods
+del WmsTestCaseWithPhysObj

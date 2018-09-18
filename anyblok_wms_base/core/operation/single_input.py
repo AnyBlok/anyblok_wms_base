@@ -6,7 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-"""Mixins for Operations that take exactly on Goods record as input.
+"""Mixins for Operations that take exactly on PhysObj record as input.
 """
 
 from anyblok import Declarations
@@ -22,7 +22,7 @@ Wms = Model.Wms
 
 @Declarations.register(Mixin)
 class WmsSingleInputOperation:
-    """Mixin for Operations that apply to a single record of Goods.
+    """Mixin for Operations that apply to a single record of PhysObj.
 
     This is synctactical sugar, allowing to work with such Operations as if
     Operations weren't meant in general for multiple inputs.

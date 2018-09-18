@@ -21,13 +21,13 @@ class TestQuantity(WmsTestCase):
 
     def setUp(self):
         super(TestQuantity, self).setUp()
-        self.Avatar = self.Goods.Avatar
+        self.Avatar = self.PhysObj.Avatar
 
-        self.goods_type = self.Goods.Type.insert(label="My goods",
-                                                 code='MyGT')
+        self.physobj_type = self.PhysObj.Type.insert(label="My goods",
+                                                     code='MyGT')
         self.stock = self.insert_location('STK')
         self.arrival = self.Operation.Arrival.insert(
-            goods_type=self.goods_type,
+            goods_type=self.physobj_type,
             location=self.stock,
             dt_execution=self.dt_test1,
             state='done')
@@ -38,7 +38,7 @@ class TestQuantity(WmsTestCase):
         avatars = []
         for _ in range(qty):
             avatars.append(self.Avatar.insert(
-                goods=self.Goods.insert(type=self.goods_type),
+                obj=self.PhysObj.insert(type=self.physobj_type),
                 reason=self.arrival,
                 location=self.stock if location is None else location,
                 dt_from=dt_from,
@@ -55,8 +55,9 @@ class TestQuantity(WmsTestCase):
         self.insert_goods(2, 'past', self.dt_test1, until=self.dt_test2)
 
         self.assert_quantity(3)
-        self.assert_quantity(3, goods_type=self.goods_type)
-        self.assert_quantity(0, goods_type=self.Goods.Type.insert(code='other'))
+        self.assert_quantity(3, goods_type=self.physobj_type)
+        self.assert_quantity(0, goods_type=self.PhysObj.Type.insert(
+            code='other'))
 
         self.assert_quantity(7, additional_states=['future'],
                              at_datetime=self.dt_test3)
@@ -77,16 +78,16 @@ class TestQuantity(WmsTestCase):
         self.insert_goods(2, 'present', self.dt_test1, location=sub)
         self.insert_goods(1, 'present', self.dt_test1, location=self.stock)
 
-        self.assert_quantity(1, goods_type=self.goods_type,
+        self.assert_quantity(1, goods_type=self.physobj_type,
                              location=self.stock,
                              location_recurse=False)
-        self.assert_quantity(2, goods_type=self.goods_type,
+        self.assert_quantity(2, goods_type=self.physobj_type,
                              location=sub,
                              location_recurse=False)
 
     def test_additional_filters(self):
-        special_loc_type = self.Goods.Type.insert(code='SPECIAL-LOC',
-                                                  parent=self.location_type)
+        special_loc_type = self.PhysObj.Type.insert(code='SPECIAL-LOC',
+                                                    parent=self.location_type)
         special_loc = self.insert_location('special', parent=self.stock,
                                            location_type=special_loc_type)
 
@@ -107,9 +108,9 @@ class TestQuantity(WmsTestCase):
                              additional_filter=exclude_all)
 
     def test_dt_quantity_moved_loc(self):
-        """Test quantity queries with Goods in a location that moves."""
+        """Test quantity queries with PhysObj in a location that moves."""
         loc = self.insert_location('sub', parent=self.stock)
-        loc_av = self.Avatar.query().filter_by(goods=loc).one()
+        loc_av = self.Avatar.query().filter_by(obj=loc).one()
         other = self.insert_location('other')
         self.insert_goods(3, 'present', self.dt_test1, location=loc)
         loc_move = self.Operation.Move.create(input=loc_av,
@@ -148,9 +149,9 @@ class TestQuantity(WmsTestCase):
                                  at_datetime=dt)
 
     def test_dt_quantity_moved_loc_and_goods(self):
-        """Test quantity queries with both Goods and locations moving."""
+        """Test quantity queries with both PhysObj and locations moving."""
         loc = self.insert_location('sub', parent=self.stock)
-        loc_av = self.Avatar.query().filter_by(goods=loc).one()
+        loc_av = self.Avatar.query().filter_by(obj=loc).one()
         other = self.insert_location('other')
         avatars = self.insert_goods(3, 'present', self.dt_test1)
         goods_move = self.Operation.Move.create(input=avatars[0],

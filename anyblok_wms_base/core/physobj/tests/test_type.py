@@ -9,10 +9,10 @@
 from anyblok.tests.testcase import BlokTestCase
 
 
-class TestGoodsType(BlokTestCase):
+class TestPhysObjType(BlokTestCase):
 
     def setUp(self):
-        self.Type = self.registry.Wms.Goods.Type
+        self.Type = self.registry.Wms.PhysObj.Type
 
     def test_get_behaviour(self):
         gt = self.Type.insert(code='gtc')

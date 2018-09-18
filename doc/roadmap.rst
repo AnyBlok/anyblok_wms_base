@@ -4,14 +4,6 @@ Roadmap
 This is not a promise, rather an expression of intent… This will get
 updated along the way.
 
-0.6
-~~~
-* Unification of the relationship between Goods and Operations,
-  together with the operational history
-* :ref:`Avatars <improvement_avatars>`
-* work begins on :ref:`blok_wms_reservation`
-* doc: architecture suggestions (reserver, planner)
-
 0.7
 ~~~
 * First release pushed on PyPI and advertised a bit

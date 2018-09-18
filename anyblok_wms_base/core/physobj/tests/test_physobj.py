@@ -9,18 +9,19 @@
 from anyblok.tests.testcase import BlokTestCase
 
 
-class TestGoods(BlokTestCase):
+class TestPhysObj(BlokTestCase):
 
     def setUp(self):
-        super(TestGoods, self).setUp()
+        super(TestPhysObj, self).setUp()
         Wms = self.registry.Wms
 
-        self.Goods = Wms.Goods
-        self.goods_type = self.Goods.Type.insert(label="My goods", code="MG")
+        self.PhysObj = Wms.PhysObj
+        self.goods_type = self.PhysObj.Type.insert(label="My goods",
+                                                   code="MG")
 
     def test_has_type(self):
-        parent = self.Goods.Type.insert(code='parent')
-        goods = self.Goods.insert(type=self.goods_type)
+        parent = self.PhysObj.Type.insert(code='parent')
+        goods = self.PhysObj.insert(type=self.goods_type)
 
         self.assertTrue(goods.has_type(self.goods_type))
         self.assertFalse(goods.has_type(parent))
@@ -29,7 +30,7 @@ class TestGoods(BlokTestCase):
         self.assertTrue(goods.has_type(parent))
 
     def test_prop_api(self):
-        goods = self.Goods.insert(type=self.goods_type)
+        goods = self.PhysObj.insert(type=self.goods_type)
         self.assertIsNone(goods.get_property('foo'))
         self.assertEqual(goods.get_property('foo', default=-1), -1)
 
@@ -58,52 +59,52 @@ class TestGoods(BlokTestCase):
 
     def test_str(self):
         gt = self.goods_type
-        goods = self.Goods.insert(type=gt)
+        goods = self.PhysObj.insert(type=gt)
         self.assertEqual(repr(goods),
-                         "Wms.Goods(id=%d, type="
-                         "Wms.Goods.Type(id=%d, code='MG'))" % (
+                         "Wms.PhysObj(id=%d, type="
+                         "Wms.PhysObj.Type(id=%d, code='MG'))" % (
                              goods.id, gt.id))
         self.assertEqual(str(goods),
                          "(id=%d, type="
                          "(id=%d, code='MG'))" % (goods.id, gt.id))
         goods.code = 'COCO'
         self.assertEqual(repr(goods),
-                         "Wms.Goods(id=%d, code='COCO', type=%r)" % (
+                         "Wms.PhysObj(id=%d, code='COCO', type=%r)" % (
                              goods.id, gt))
         self.assertEqual(str(goods),
                          "(id=%d, code=COCO, type=%s)" % (
                              goods.id, gt))
 
     def test_prop_api_column(self):
-        goods = self.Goods.insert(type=self.goods_type)
+        goods = self.PhysObj.insert(type=self.goods_type)
         goods.set_property('batch', '12345')
         self.assertEqual(goods.get_property('batch'), '12345')
 
     def test_prop_api_duplication(self):
-        goods = self.Goods.insert(type=self.goods_type)
+        goods = self.PhysObj.insert(type=self.goods_type)
 
         goods.set_property('batch', '12345')
         self.assertEqual(goods.get_property('batch'), '12345')
 
-        goods2 = self.Goods.insert(type=self.goods_type,
-                                   properties=goods.properties)
+        goods2 = self.PhysObj.insert(type=self.goods_type,
+                                     properties=goods.properties)
         goods2.set_property('batch', '6789')
         self.assertEqual(goods.get_property('batch'), '12345')
         self.assertEqual(goods2.get_property('batch'), '6789')
 
     def test_prop_api_duplication_not_needed(self):
-        goods = self.Goods.insert(type=self.goods_type)
+        goods = self.PhysObj.insert(type=self.goods_type)
 
         goods.set_property('batch', '12345')
         self.assertEqual(goods.get_property('batch'), '12345')
 
-        goods2 = self.Goods.insert(type=self.goods_type,
-                                   properties=goods.properties)
+        goods2 = self.PhysObj.insert(type=self.goods_type,
+                                     properties=goods.properties)
         goods2.set_property('batch', '12345')
         self.assertEqual(goods.properties, goods2.properties)
 
     def test_prop_api_update_duplication(self):
-        goods = self.Goods.insert(type=self.goods_type)
+        goods = self.PhysObj.insert(type=self.goods_type)
 
         # this tests in particular the case with no Properties to begin
         # with
@@ -112,24 +113,24 @@ class TestGoods(BlokTestCase):
         self.assertEqual(goods.properties.as_dict(),
                          dict(foo=3, batch=None, bar='xy'))
 
-        goods2 = self.Goods.insert(type=self.goods_type,
-                                   properties=goods.properties)
+        goods2 = self.PhysObj.insert(type=self.goods_type,
+                                     properties=goods.properties)
         goods2.update_properties(dict(foo=4))
         self.assertNotEqual(goods.properties, goods2.properties)
         self.assertEqual(goods2.get_property('foo'), 4)
 
     def test_prop_api_update_duplication_not_needed(self):
-        goods = self.Goods.insert(type=self.goods_type)
+        goods = self.PhysObj.insert(type=self.goods_type)
         upd = dict(foo=3, bar='xy')
         goods.update_properties(upd)
 
-        goods2 = self.Goods.insert(type=self.goods_type,
-                                   properties=goods.properties)
+        goods2 = self.PhysObj.insert(type=self.goods_type,
+                                     properties=goods.properties)
         goods2.update_properties(upd)
         self.assertEqual(goods.properties, goods2.properties)
 
     def test_prop_api_reserved_property_names(self):
-        goods = self.Goods.insert(type=self.goods_type)
+        goods = self.PhysObj.insert(type=self.goods_type)
 
         with self.assertRaises(ValueError):
             goods.set_property('id', 1)
@@ -138,8 +139,8 @@ class TestGoods(BlokTestCase):
 
     def test_merged_properties(self):
         parent = self.goods_type
-        child = self.Goods.Type.insert(code='child', parent=parent)
-        goods = self.Goods.insert(type=child)
+        child = self.PhysObj.Type.insert(code='child', parent=parent)
+        goods = self.PhysObj.insert(type=child)
         goods.set_property('holy', 'grail')
         self.assertEqual(goods.merged_properties(),
                          dict(holy='grail',
@@ -155,9 +156,9 @@ class TestGoods(BlokTestCase):
 
     def test_merged_properties_type_only(self):
         parent = self.goods_type
-        child = self.Goods.Type.insert(code='child', parent=parent)
+        child = self.PhysObj.Type.insert(code='child', parent=parent)
 
-        goods = self.Goods.insert(type=child)
+        goods = self.PhysObj.insert(type=child)
         self.assertEqual(goods.merged_properties(), {})
 
         parent.properties = dict(holy='arthur')
@@ -167,22 +168,22 @@ class TestGoods(BlokTestCase):
                               bar=2))
 
     def test_prop_api_internal(self):
-        """Internal implementation details of Goods dict API.
+        """Internal implementation details of PhysObj dict API.
 
         Separated to ease maintenance of tests in case it changes in
         the future.
         """
-        goods = self.Goods.insert(type=self.goods_type)
+        goods = self.PhysObj.insert(type=self.goods_type)
         goods.set_property('foo', 2)
         self.assertEqual(goods.properties.flexible, dict(foo=2))
 
     def test_prop_api_column_internal(self):
-        """Internal implementation details of Goods dict API (case of column)
+        """Internal implementation details of PhysObj dict API (case of column)
 
         Separated to ease maintenance of tests in case it changes in
         the future.
         """
-        goods = self.Goods.insert(type=self.goods_type)
+        goods = self.PhysObj.insert(type=self.goods_type)
 
         goods.set_property('batch', '2')
         self.assertEqual(goods.properties.flexible, {})
