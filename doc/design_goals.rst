@@ -86,10 +86,11 @@ software bugs or human errors.
 
 Anybox WMS Base provides different set of features for these purposes:
 
-* :ref:`flexible properties <goods_properties>` allow to represent
-  what can be variable amond Goods of a given Type
+* :ref:`flexible properties <physobj_properties>` allow to represent
+  what can be variable amond Physical Objects of a given Type
 * full historical data about operations
-* ability to query the Goods in the past and in the (theoretical) future
+* ability to query Physical Objects in the past and in the
+  (theoretical) future
 
 .. _goal_flexibility:
 
@@ -107,10 +108,10 @@ to forward the needed flexibility to functional administrators of the system.
 
 To that effect, we currently have :
 
-* :ref:`goods_properties`, already mentioned in
+* :ref:`physobj_properties`, already mentioned in
   :ref:`goal_traceability`
 * Behaviours in operations: the fine details of what operations should
-  do of some given :ref:`goods_type` are customisable by this means.
+  do of some given :ref:`physobj_type` are customisable by this means.
 
   This is true. for instance, of :ref:`op_unpack`, whose outcomes are
   entirely defined in those behaviours. This is also how the core decides if
@@ -126,13 +127,13 @@ Taking real life into account
 As an obvious fact, Stock and Logistics applications can but
 *represent* what happens in the real world. This implies that they
 should be rich enough to encompass events of the real world, such as
-the accidental destruction of some goods.
+the accidental destruction of some physical objects.
 
 This also implies that care must be taken to define what the data
 should actually mean. We're trying to be very explicit about that, but it's
 all about intents, as it also depends on the usage the concrete application
 will make of that library. For a concrete example, see the meaning of the
-data about Goods that :ref:`op_arrival` operation carries.
+data about Physical Objects that :ref:`op_arrival` operation carries.
 
 Logistics systems also try and predict or planify the future, yet
 reality can be really stubborn.

@@ -18,16 +18,16 @@ Wms = Declarations.Model.Wms
 @register(Wms)
 class Reservation:
 
-    goods = Many2One(model=Wms.Goods, primary_key=True, index=True)
+    goods = Many2One(model=Wms.PhysObj, primary_key=True, index=True)
     quantity = Integer()
     """The quantity that this Reservation provides.
 
-    If the Goods in the application have ``quantity`` field
+    If the PhysObj in the application have ``quantity`` field
     (see :ref:`improvement_no_quantities`), this is not necessarily its value
     within :attr:`goods`. Instead, it is the quantity within the
     :attr:`request_item` that the current Reservation provides.
 
-    Use-case some Goods being sold either as packs of 10 or by
+    Use-case some PhysObj being sold either as packs of 10 or by
     the unit. If one wants to reserve 13 of them,
     it should be expressable as one pack of 10 and 3 units.
     Then maybe (depending on the needs), would it be actually

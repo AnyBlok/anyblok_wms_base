@@ -6,7 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok_wms_base.testing import WmsTestCaseWithGoods
+from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 from anyblok_wms_base.exceptions import (
     OperationError,
     OperationInputsError,
@@ -14,7 +14,7 @@ from anyblok_wms_base.exceptions import (
 )
 
 
-class TestSingleInputOperation(WmsTestCaseWithGoods):
+class TestSingleInputOperation(WmsTestCaseWithPhysObj):
     """Test the WmsSingleInputOperation mixin
 
     In these test cases, Operation.Move is considered the canonical example of
@@ -91,4 +91,4 @@ class TestSingleInputOperation(WmsTestCaseWithGoods):
         self.assertEqual(exc.kwargs.get('record'), self.avatar)
 
 
-del WmsTestCaseWithGoods
+del WmsTestCaseWithPhysObj

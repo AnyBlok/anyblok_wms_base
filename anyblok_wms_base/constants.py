@@ -27,7 +27,7 @@ GOODS_STATES = dict(past="wms_goods_states_past",
                     future="wms_goods_states_future"
                     )
 """This is the enumeration of possible values of the ``state`` column of
-the :class:`Wms.Goods <anyblok_wms_base.core.goods.Goods>` Model.
+the :class:`Wms.PhysObj <anyblok_wms_base.core.goods.PhysObj>` Model.
 
 - ``present``:
         means that the represented goods are (supposed to be) actually
@@ -95,11 +95,11 @@ See :class:`Wms.Operation.Assembly
 """
 
 CONTENTS_PROPERTY = 'contents'
-"""Standard property used for containing Goods.
+"""Standard property used for containing PhysObj.
 
 This is used in :ref:`Unpack Operation <op_unpack>` to specify variable
 expected outcomes, i.e., those that aren't specified by the
-:ref:`Type behaviour <goods_behaviours>`.
+:ref:`Type behaviour <physobj_behaviours>`.
 
 This is also used in the :ref:`Assembly Operation <op_assembly>` to record the
 components of the outcome.

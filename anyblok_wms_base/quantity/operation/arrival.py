@@ -21,7 +21,7 @@ class Arrival:
     """
 
     quantity = Decimal(default=1)
-    """Quantity of the Goods to be created.
+    """Quantity of the PhysObj to be created.
 
     It defaults to 1 to help adding ``wms-quantity`` to a codebase.
     """
@@ -39,18 +39,18 @@ class Arrival:
 
     def after_insert(self):
         # TODO reduce duplication
-        Goods = self.registry.Wms.Goods
+        PhysObj = self.registry.Wms.PhysObj
         self_props = self.goods_properties
         if self_props is None:
             props = None
         else:
-            props = Goods.Properties.create(**self_props)
+            props = PhysObj.Properties.create(**self_props)
 
-        goods = Goods.insert(type=self.goods_type,
-                             properties=props,
-                             quantity=self.quantity,
-                             code=self.goods_code)
-        Goods.Avatar.insert(
+        goods = PhysObj.insert(type=self.goods_type,
+                               properties=props,
+                               quantity=self.quantity,
+                               code=self.goods_code)
+        PhysObj.Avatar.insert(
             goods=goods,
             location=self.location,
             reason=self,

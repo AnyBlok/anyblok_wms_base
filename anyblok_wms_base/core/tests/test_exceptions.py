@@ -6,7 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok_wms_base.testing import WmsTestCaseWithGoods
+from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 from anyblok_wms_base.exceptions import (
     OperationError,
     OperationInputsError,
@@ -15,7 +15,7 @@ from anyblok_wms_base.exceptions import (
     )
 
 
-class TestOperationError(WmsTestCaseWithGoods):
+class TestOperationError(WmsTestCaseWithPhysObj):
 
     def setUp(self):
         super(TestOperationError, self).setUp()
@@ -71,4 +71,4 @@ class TestOperationError(WmsTestCaseWithGoods):
                          "incorrect 'planned'")
 
 
-del WmsTestCaseWithGoods
+del WmsTestCaseWithPhysObj

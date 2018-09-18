@@ -3,10 +3,10 @@ quantity.goods
 
 .. py:module:: anyblok_wms_base.quantity.goods
 
-Model.Wms.Goods
-~~~~~~~~~~~~~~~
+Model.Wms.PhysObj
+~~~~~~~~~~~~~~~~~
 
-.. autoclass:: anyblok_wms_base.quantity.goods.Goods
+.. autoclass:: anyblok_wms_base.quantity.goods.PhysObj
 
    .. raw:: html
 
@@ -15,8 +15,8 @@ Model.Wms.Goods
    .. autoattribute:: quantity
 
 
-Model.Wms.Goods.Type
-~~~~~~~~~~~~~~~~~~~~
+Model.Wms.PhysObj.Type
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: anyblok_wms_base.quantity.goods.Type
 

@@ -35,17 +35,17 @@ Model = Declarations.Model
 
 
 @register(Model.Wms)
-class Goods:
+class PhysObj:
     """Main data type to represent physical objects managed by the system.
 
     The instances of this model are also
-    the ultimate representation of the Goods "staying the same" or "becoming
+    the ultimate representation of the PhysObj "staying the same" or "becoming
     different" under the Operations, which is, ultimately, a subjective
     decision that has to be left to downstream libraires and applications, or
     even end users.
 
     For instance, everybody agrees that moving something around does not make
-    it different. Therefore, the Move Operation uses the same Goods record
+    it different. Therefore, the Move Operation uses the same PhysObj record
     in its outcome as in its input.
     On the other hand, changing a property could be considered enough an
     alteration of the physical object to consider it different, or not (think
@@ -54,31 +54,31 @@ class Goods:
     id = Integer(label="Identifier", primary_key=True)
     """Primary key."""
 
-    type = Many2One(model='Model.Wms.Goods.Type', nullable=False, index=True)
-    """The :class:`Goods Type <.type.Type>`"""
+    type = Many2One(model='Model.Wms.PhysObj.Type', nullable=False, index=True)
+    """The :class:`PhysObj Type <.type.Type>`"""
 
     code = Text(label="Identifying code",
                 index=True)
     """Uniquely identifying code.
 
     This should be about what one is ready to display as a barcode for handling
-    the Goods. It's also meant to be shared with other applications if needed
+    the PhysObj. It's also meant to be shared with other applications if needed
     (rather than ids which are only locally unique).
     """
 
     properties = Many2One(label="Properties",
                           index=True,
-                          model='Model.Wms.Goods.Properties')
+                          model='Model.Wms.PhysObj.Properties')
     """Link to :class:`Properties`.
 
-    .. seealso:: :ref:`goods_properties` for functional aspects.
+    .. seealso:: :ref:`physobj_properties` for functional aspects.
 
     .. warning:: don't ever mutate the contents of :attr:`properties` directly,
-                 unless what you want is precisely to affect all the Goods
+                 unless what you want is precisely to affect all the PhysObj
                  records that use them directly.
 
     Besides their :attr:`type` and the fields meant for the Wms Base
-    bloks logic, the Goods Model bears flexible data,
+    bloks logic, the PhysObj Model bears flexible data,
     called *properties*, that are to be
     manipulated as key/value pairs through the :meth:`get_property` and
     :meth:`set_property` methods.
@@ -87,10 +87,10 @@ class Goods:
     type, yet downstream applications and libraries can choose to make them
     direct fields of the :class:`Properties` model.
 
-    Properties can be shared among several Goods records, for efficiency.
+    Properties can be shared among several PhysObj records, for efficiency.
     The :meth:`set_property` implements the necessary Copy-on-Write
     mechanism to avoid unintentionnally modify the properties of many
-    Goods records.
+    PhysObj records.
 
     Technically, this data is deported into the :class:`Properties`
     Model (see there on how to add additional properties). The properties
@@ -110,11 +110,11 @@ class Goods:
 
     def __repr__(self):
         if self.code is None:
-            fmt = "Wms.Goods(id={self.id}, type={self.type!r})"
+            fmt = "Wms.PhysObj(id={self.id}, type={self.type!r})"
         else:
             # I expect direct assignment onto string litteral to be more
             # efficient than a string manipulation
-            fmt = ("Wms.Goods(id={self.id}, code={self.code!r}, "
+            fmt = ("Wms.PhysObj(id={self.id}, code={self.code!r}, "
                    "type={self.type!r})")
         return fmt.format(self=self)
 
@@ -160,7 +160,7 @@ class Goods:
     def _maybe_duplicate_props(self):
         """Internal method to duplicate Properties
 
-        Duplication occurs iff there are other Goods with the same
+        Duplication occurs iff there are other PhysObj with the same
         Properties instance.
 
         The caller must have already checked that ``self.properties`` is not
@@ -179,12 +179,12 @@ class Goods:
         See remarks on :meth:`get_property`.
 
         This method implements a simple Copy-on-Write mechanism. Namely,
-        if the properties are referenced by other Goods records, it
+        if the properties are referenced by other PhysObj records, it
         will duplicate them before actually setting the wished value.
         """
         existing_props = self.properties
         if existing_props is None:
-            self.properties = self.registry.Wms.Goods.Properties(
+            self.properties = self.registry.Wms.PhysObj.Properties(
                 flexible=dict())
         elif existing_props.get(k) != v:
             self._maybe_duplicate_props()
@@ -197,7 +197,7 @@ class Goods:
                         (key, value) pairs
 
         This method implements a simple Copy-on-Write mechanism. Namely,
-        if the properties are referenced by other Goods records, it
+        if the properties are referenced by other PhysObj records, it
         will duplicate them before actually setting the wished value.
         """
         items_meth = getattr(mapping, 'items', None)
@@ -208,7 +208,7 @@ class Goods:
 
         existing_props = self.properties
         if existing_props is None:
-            self.properties = self.registry.Wms.Goods.Properties.create(
+            self.properties = self.registry.Wms.PhysObj.Properties.create(
                 **{k: v for k, v in items})
             return
 
@@ -254,7 +254,7 @@ class Goods:
                                     additional_states=None, at_datetime=None):
         """Return an SQL subquery flattening the containment graph.
 
-        Containing Goods can themselves be placed within a container
+        Containing PhysObj can themselves be placed within a container
         through the standard mechanism: by having an Avatar whose location is
         the surrounding container.
         This default implementation issues a recursive CTE (``WITH RECURSIVE``)
@@ -322,9 +322,11 @@ class Goods:
         tail = query(child.id).join(
                          Avatar, Avatar.goods_id == child.id).filter(
                              Avatar.location_id == parent.c.id)
+
         # taking additional states and datetime query into account
         # TODO, this location part is very redundant with what's done in
-        # Wms.quantity() itself for the Goods been counted, we should refactor
+        # Wms.quantity() itself for the PhysObj been counted,
+        # we should refactor
         if additional_states is None:
             tail = tail.filter(Avatar.state == 'present')
         else:
@@ -347,12 +349,12 @@ class Goods:
 _empty_dict = {}
 
 
-@register(Model.Wms.Goods)
+@register(Model.Wms.PhysObj)
 class Properties:
-    """Properties of Goods.
+    """Properties of PhysObj.
 
     This is kept in a separate Model (and SQL table) to provide sharing
-    among several :class:`Goods` instances, as they can turn out to be
+    among several :class:`PhysObj` instances, as they can turn out to be
     identical for a large number of them.
 
     Use-case: receive a truckload of milk bottles that all have the same
@@ -363,11 +365,11 @@ class Properties:
     Applications are welcome to overload this model to add new fields rather
     than storing their meaningful information in the :attr:`flexible` field,
     if it has added value for performance or programmming tightness reasons.
-    This has the obvious drawback of defining some properties for all Goods,
+    This has the obvious drawback of defining some properties for all PhysObj,
     regardless of their Types, so it should not be abused.
 
-    On :class:`Goods`, the :meth:`get_property <Goods.get_property>` /
-    :meth:`set_property <Goods.set_property>` API will treat
+    On :class:`PhysObj`, the :meth:`get_property <PhysObj.get_property>` /
+    :meth:`set_property <PhysObj.set_property>` API will treat
     direct fields and top-level keys of :attr:`flexible` uniformely,
     that, as long as all pieces of code use only this API to handle properties,
     flexible keys can be replaced with proper fields transparently at any time
@@ -551,20 +553,20 @@ class Properties:
         return k in flex
 
 
-@register(Model.Wms.Goods)
+@register(Model.Wms.PhysObj)
 class Avatar:
-    """Goods Avatar.
+    """PhysObj Avatar.
 
-    See in :ref:`Core Concepts <goods_avatar>` for a functional description.
+    See in :ref:`Core Concepts <physobj_avatar>` for a functional description.
     """
 
     id = Integer(label="Identifier", primary_key=True)
     """Primary key."""
 
-    goods = Many2One(model=Model.Wms.Goods,
+    goods = Many2One(model=Model.Wms.PhysObj,
                      index=True,
                      nullable=False)
-    """The Goods of which this is an Avatar."""
+    """The PhysObj of which this is an Avatar."""
 
     state = Selection(label="State of existence",
                       selections=GOODS_STATES,
@@ -577,10 +579,10 @@ class Avatar:
     This may become an ENUM once Anyblok supports them.
     """
 
-    location = Many2One(model=Model.Wms.Goods,
+    location = Many2One(model=Model.Wms.PhysObj,
                         nullable=False,
                         index=True)
-    """Where the Goods are/will be/were.
+    """Where the PhysObj are/will be/were.
 
     See :class:`Location <anyblok_wms_base.core.location.Location>`
     for a discussion of what this should actually mean.
@@ -602,13 +604,13 @@ class Avatar:
 
     + In the ``future`` state, this is completely theoretical, and
       ``wms-core`` doesn't do much about it, besides using it to avoid
-      counting several :ref:`goods_avatar` of the same physical goods
+      counting several :ref:`physobj_avatar` of the same physical goods
       while :meth:`peeking at quantities in the future
       <anyblok_wms_base.core.location.Location.quantity>`.
       If the end application does serious time prediction, it can use it
       freely.
 
-    In all cases, this doesn't mean that the very same Goods aren't present
+    In all cases, this doesn't mean that the very same PhysObj aren't present
     at an earlier time with the same state, location, etc. That earlier time
     range would simply be another Avatar (use case: moving back and forth).
     """
@@ -663,7 +665,7 @@ class Avatar:
                 "{self.dt_until}])".format(self=self))
 
     def __repr__(self):
-        return ("Wms.Goods.Avatar(id={self.id}, "
+        return ("Wms.PhysObj.Avatar(id={self.id}, "
                 "goods={self.goods!r}, state={self.state!r}, "
                 "location={self.location!r}, "
                 "dt_range=[{self.dt_from!r}, {self.dt_until!r}])").format(

@@ -37,7 +37,7 @@ class WmsTestCase(BlokTestCase):
         super(WmsTestCase, cls).setUpClass()
         cls.Wms = Wms = cls.registry.Wms
         cls.Operation = Wms.Operation
-        cls.Goods = Wms.Goods
+        cls.PhysObj = Wms.PhysObj
 
     def setUp(self):
         tz = self.tz = FixedOffsetTimezone(0)
@@ -82,23 +82,24 @@ class WmsTestCase(BlokTestCase):
                                            **kwargs), quantity)
 
     def sorted_props(self, record):
-        """Extract Goods Properties, as a sorted tuple.
+        """Extract PhysObj Properties, as a sorted tuple.
 
-        :param record: either a Wms.Goods or Wms.Goods.Avatar instance
+        :param record: either a Wms.PhysObj or Wms.PhysObj.Avatar instance
         The tuple is hashable, and sorting it removes randomness
         """
         model = record.__registry_name__
-        if model == 'Model.Wms.Goods.Avatar':
+        if model == 'Model.Wms.PhysObj.Avatar':
             goods = record.goods
-        elif model == 'Model.Wms.Goods':
+        elif model == 'Model.Wms.PhysObj':
             goods = record
         else:
-            self.fail("%r is neither a Goods nor an Avatar instance" % record)
+            self.fail("%r is neither a PhysObj"
+                      " nor an Avatar instance" % record)
         return tuple(sorted(goods.properties.as_dict().items()))
 
     @classmethod
     def create_location_type(cls):
-        loc_type = cls.location_type = cls.Wms.Goods.Type.insert(
+        loc_type = cls.location_type = cls.Wms.PhysObj.Type.insert(
             code="LOC",
             behaviours=dict(container={}))
         return loc_type
@@ -148,22 +149,22 @@ class WmsTestCase(BlokTestCase):
             # (useful to debug Apparitiom itself if needed)
             if dt_from is None:
                 dt_from = cls.dt_test1
-            cls.Goods.Avatar.insert(goods=loc,
-                                    state='present',
-                                    location=parent,
-                                    dt_from=dt_from,
-                                    dt_until=None,
-                                    reason=cls.Operation.Apparition.insert(
-                                        goods_type=location_type,
-                                        quantity=1,
-                                        location=parent,
-                                        dt_execution=dt_from,
-                                        state='done'))
+            cls.PhysObj.Avatar.insert(goods=loc,
+                                      state='present',
+                                      location=parent,
+                                      dt_from=dt_from,
+                                      dt_until=None,
+                                      reason=cls.Operation.Apparition.insert(
+                                          goods_type=location_type,
+                                          quantity=1,
+                                          location=parent,
+                                          dt_execution=dt_from,
+                                          state='done'))
         return loc
 
 
-class WmsTestCaseWithGoods(SharedDataTestCase, WmsTestCase):
-    """Same as WmsTestCase with a prebaked Goods and Avatar.
+class WmsTestCaseWithPhysObj(SharedDataTestCase, WmsTestCase):
+    """Same as WmsTestCase with a prebaked PhysObj and Avatar.
 
     Creating an Avatar requires a reason, a location, so we have actually
     quite a few attributes:
@@ -192,8 +193,8 @@ class WmsTestCaseWithGoods(SharedDataTestCase, WmsTestCase):
         cls.dt_test3 = datetime(2018, 1, 3, tzinfo=tz)
 
         Operation = cls.Operation
-        Goods = cls.Goods
-        cls.goods_type = Goods.Type.insert(label="My good type", code='MyGT')
+        PhysObj = cls.PhysObj
+        cls.goods_type = PhysObj.Type.insert(label="My good type", code='MyGT')
         cls.create_location_type()
         cls.incoming_loc = cls.cls_insert_location('INCOMING')
         cls.stock = cls.cls_insert_location('STOCK')
@@ -207,7 +208,7 @@ class WmsTestCaseWithGoods(SharedDataTestCase, WmsTestCase):
         assert len(cls.arrival.outcomes) == 1
         cls.avatar = cls.arrival.outcomes[0]
         cls.goods = cls.avatar.goods
-        cls.Avatar = cls.Goods.Avatar
+        cls.Avatar = cls.PhysObj.Avatar
 
 
 class ConcurrencyBlokTestCase(BlokTestCase):

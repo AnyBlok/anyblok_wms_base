@@ -16,8 +16,8 @@ class Wms:
 
     @classmethod
     def base_quantity_query(cls):
-        """Return a base query fit for summing Goods.Quantity."""
-        Goods = cls.registry.Wms.Goods
-        Avatar = Goods.Avatar
-        # TODO distinguish quantity on Avatars from those on Goods?
-        return Avatar.query(func.sum(Goods.quantity)).join(Avatar.goods)
+        """Return a base query fit for summing PhysObj.Quantity."""
+        PhysObj = cls.registry.Wms.PhysObj
+        Avatar = PhysObj.Avatar
+        # TODO distinguish quantity on Avatars from those on PhysObj?
+        return Avatar.query(func.sum(PhysObj.quantity)).join(Avatar.goods)

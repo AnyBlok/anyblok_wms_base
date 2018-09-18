@@ -6,18 +6,18 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-"""Tests of Wms.Goods.Properties.
+"""Tests of Wms.PhysObj.Properties.
 
-This is not about tests of Wms.Goods involving properties
+This is not about tests of Wms.PhysObj involving properties
 (for these, see test_goods).
 """
 
 from anyblok.tests.testcase import BlokTestCase
 
 
-class TestGoodsProperties(BlokTestCase):
+class TestPhysObjProperties(BlokTestCase):
     def setUp(self):
-        self.Props = self.registry.Wms.Goods.Properties
+        self.Props = self.registry.Wms.PhysObj.Properties
 
     def test_get_set(self):
         props = self.Props.insert()

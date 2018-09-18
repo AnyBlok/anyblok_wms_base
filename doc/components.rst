@@ -23,9 +23,9 @@ Anyblok / Wms.
 wms-reservation
 ---------------
 
-This Blok provides facilities to reserve :ref:`goods_goods`.
+This Blok provides facilities to reserve :ref:`physobj_model`.
 
-Reservations bind :ref:`goods_goods` to some purpose
+Reservations bind :ref:`physobj_model` to some purpose
 (typically a final delivery, or a manufacturing action), that
 typically gets fulfilled through a *chain* of operations.
 
@@ -39,8 +39,8 @@ typically gets fulfilled through a *chain* of operations.
 wms-quantity
 ------------
 
-This Blok adds a ``quantity`` field on the :ref:`Wms.Goods
-<goods_goods>` model, to represent goods handled in bulk or several
+This Blok adds a ``quantity`` field on the :ref:`Wms.PhysObj
+<physobj_model>` model, to represent goods handled in bulk or several
 identical items in one record.
 
 .. seealso:: :doc:`goods_quantity`

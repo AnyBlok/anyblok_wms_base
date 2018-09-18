@@ -6,14 +6,14 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok_wms_base.testing import WmsTestCaseWithGoods
+from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 
 
-class TestAvatar(WmsTestCaseWithGoods):
+class TestAvatar(WmsTestCaseWithPhysObj):
 
     def setUp(self):
         super(TestAvatar, self).setUp()
-        self.Avatar = self.registry.Wms.Goods.Avatar
+        self.Avatar = self.registry.Wms.PhysObj.Avatar
 
     def test_str(self):
         avatar, goods = self.avatar, self.goods
@@ -28,7 +28,7 @@ class TestAvatar(WmsTestCaseWithGoods):
 
         self.assertEqual(
             repr(avatar),
-            "Wms.Goods.Avatar(id=%d, goods=%r, state='future', "
+            "Wms.PhysObj.Avatar(id=%d, goods=%r, state='future', "
             "location=%r, dt_range=[%r, None])" % (
                 avatar.id, goods, self.incoming_loc, avatar.dt_from))
 
@@ -46,4 +46,4 @@ class TestAvatar(WmsTestCaseWithGoods):
         self.assertEqual(avatar.get_property('bar', default='graal'), 'graal')
 
 
-del WmsTestCaseWithGoods
+del WmsTestCaseWithPhysObj

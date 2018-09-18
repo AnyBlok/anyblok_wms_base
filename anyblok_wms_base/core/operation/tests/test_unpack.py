@@ -17,13 +17,13 @@ class TestUnpack(WmsTestCase):
     def setUp(self):
         super(TestUnpack, self).setUp()
         self.Unpack = self.Operation.Unpack
-        self.Avatar = self.Goods.Avatar
+        self.Avatar = self.PhysObj.Avatar
 
         self.stock = self.insert_location('STOCK')
         self.default_quantity_location = self.stock
 
     def create_packs(self, type_behaviours=None, properties=None):
-        self.packed_goods_type = self.Goods.Type.insert(
+        self.packed_goods_type = self.PhysObj.Type.insert(
             label="Pack",
             code='PACK',
             behaviours=type_behaviours)
@@ -37,12 +37,12 @@ class TestUnpack(WmsTestCase):
         self.packs = self.assert_singleton(self.arrival.outcomes)
 
     def assert_goods_records(self, count, goods_type):
-        """Assert count of Goods with given type and return them.
+        """Assert count of PhysObj with given type and return them.
 
-        This is primarily meant for Goods produced by the Unpack
+        This is primarily meant for PhysObj produced by the Unpack
         """
-        records = self.Goods.query().filter(
-            self.Goods.type == goods_type).all()
+        records = self.PhysObj.query().filter(
+            self.PhysObj.type == goods_type).all()
         self.assertEqual(len(records), count)
         return records
 
@@ -51,7 +51,7 @@ class TestUnpack(WmsTestCase):
             self.Avatar.query().filter(self.Avatar.goods == goods))
 
     def test_done_one_unpacked_type_props(self):
-        unpacked_type = self.Goods.Type.insert(code='Unpacked')
+        unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
         self.create_packs(
             type_behaviours=dict(unpack=dict(
                 outcomes=[
@@ -74,10 +74,10 @@ class TestUnpack(WmsTestCase):
             self.assertEqual(unpacked_goods.type, unpacked_type)
 
     def test_done_clone_one_not_clone(self):
-        unpacked_clone_type = self.Goods.Type.insert(
+        unpacked_clone_type = self.PhysObj.Type.insert(
             code='clone',
             label="Unpacked, clone props")
-        unpacked_fwd_type = self.Goods.Type.insert(
+        unpacked_fwd_type = self.PhysObj.Type.insert(
             code='fwd',
             label="Unpacked, fwd one prop")
         self.create_packs(
@@ -113,7 +113,7 @@ class TestUnpack(WmsTestCase):
             self.assertEqual(goods.get_property('foo'), 3)
 
     def test_done_one_unpacked_type_uniform(self):
-        unpacked_type = self.Goods.Type.insert(code='Unpacked')
+        unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
         self.create_packs(
             type_behaviours=dict(unpack=dict(
                 uniform_outcomes=True,
@@ -139,9 +139,9 @@ class TestUnpack(WmsTestCase):
         """Unpack with outcomes defined in pack properties.
 
         Properties after unpack are forwarded according to configuration
-        on the packs' Goods Type and on the packs' properties.
+        on the packs' PhysObj Type and on the packs' properties.
         """
-        unpacked_type = self.Goods.Type.insert(code='Unpacked')
+        unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
         self.create_packs(
             type_behaviours=dict(unpack=dict(
                 forward_properties=['foo', 'bar'],
@@ -174,16 +174,16 @@ class TestUnpack(WmsTestCase):
     def test_done_non_uniform_local_id(self):
         """Unpack with local_goods_ids in pack properties.
 
-        The unpacked Goods are directly picked by the specified values of
+        The unpacked PhysObj are directly picked by the specified values of
         ``local_goods_ids``.
 
         Properties after unpack are still forwarded according to configuration
-        on the packs' Goods Type and on the packs' properties.
+        on the packs' PhysObj Type and on the packs' properties.
         """
-        unpacked_type = self.Goods.Type.insert(code='Unpacked')
-        outcome1 = self.Goods.insert(type=unpacked_type)
+        unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
+        outcome1 = self.PhysObj.insert(type=unpacked_type)
         outcome1.set_property('grade', 'best')
-        outcome2 = self.Goods.insert(type=unpacked_type)
+        outcome2 = self.PhysObj.insert(type=unpacked_type)
         outcome2.set_property('grade', 'regular')
 
         self.create_packs(
@@ -226,8 +226,8 @@ class TestUnpack(WmsTestCase):
     def test_done_non_uniform_local_id_wrong_qty(self):
         """Unpack with local_goods_ids in pack properties, wrong quantity
         """
-        unpacked_type = self.Goods.Type.insert(code='Unpacked')
-        outcome1 = self.Goods.insert(type=unpacked_type)
+        unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
+        outcome1 = self.PhysObj.insert(type=unpacked_type)
 
         self.create_packs(
             type_behaviours=dict(unpack=dict(
@@ -259,7 +259,7 @@ class TestUnpack(WmsTestCase):
                               required_properties=['foo']))
 
     def test_done_one_unpacked_type_missing_props(self):
-        unpacked_type = self.Goods.Type.insert(code='Unpacked')
+        unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
         self.create_packs(
             type_behaviours=dict(unpack=dict(
                 outcomes=[
@@ -292,7 +292,7 @@ class TestUnpack(WmsTestCase):
         # we don't have a create() returned value to compare
 
         # Having properties, still missing the required one
-        self.packs.goods.properties = self.Goods.Properties.insert(
+        self.packs.goods.properties = self.PhysObj.Properties.insert(
             flexible=dict(bar=1))
 
         with self.assertRaises(OperationInputsError) as arc:
@@ -305,7 +305,7 @@ class TestUnpack(WmsTestCase):
 
     def test_done_one_unpacked_type_no_props(self):
         """Unpacking operation, forwarding no properties."""
-        unpacked_type = self.Goods.Type.insert(code='Unpacked')
+        unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
         self.create_packs(type_behaviours=dict(unpack=dict(
                 outcomes=[
                     dict(type=unpacked_type.code,
@@ -330,7 +330,7 @@ class TestUnpack(WmsTestCase):
     def test_plan_execute(self):
         """Plan an Unpack (non uniform scenario), then execute it
         """
-        unpacked_type = self.Goods.Type.insert(code='Unpacked')
+        unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
         self.create_packs(
             type_behaviours=dict(unpack=dict(
                 forward_properties=['foo', 'bar'],
@@ -378,7 +378,7 @@ class TestUnpack(WmsTestCase):
                              additional_states=['future']),
         self.assertEqual(
             self.Avatar.query().join(self.Avatar.goods).filter(
-                self.Goods.type == self.packed_goods_type,
+                self.PhysObj.type == self.packed_goods_type,
                 self.Avatar.state == 'future').count(),
             0)
 
@@ -420,7 +420,7 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(list(exc_kwargs.get('inputs')), [self.packs])
 
     def test_repr(self):
-        unpacked_type = self.Goods.Type.insert(code='Unpacked')
+        unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
         self.create_packs(
             type_behaviours=dict(unpack=dict(
                 uniform_outcomes=True,
@@ -437,7 +437,7 @@ class TestUnpack(WmsTestCase):
         str(unp)
 
     def test_assembly_name_no_behaviour(self):
-        unpacked_type = self.Goods.Type.insert(code='Unpacked')
+        unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
         self.create_packs(
             type_behaviours=dict(unpack=dict(
                 uniform_outcomes=True,
@@ -455,7 +455,7 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(unp.reverse_assembly_name(), 'pack')
 
     def test_revert_default_assembly_final(self):
-        unpacked_type = self.Goods.Type.insert(code="GT")
+        unpacked_type = self.PhysObj.Type.insert(code="GT")
         self.create_packs(
             type_behaviours=dict(
                 unpack=dict(
@@ -486,7 +486,7 @@ class TestUnpack(WmsTestCase):
                              goods_type=self.packed_goods_type)
 
     def test_revert_default_assembly_not_final(self):
-        unpacked_type = self.Goods.Type.insert(code="GT")
+        unpacked_type = self.PhysObj.Type.insert(code="GT")
         self.create_packs(
             type_behaviours=dict(
                 unpack=dict(
@@ -528,7 +528,7 @@ class TestUnpack(WmsTestCase):
                              location=None, goods_type=self.packed_goods_type)
 
     def test_revert_specified_assembly(self):
-        unpacked_type = self.Goods.Type.insert(label="Unpacked", code='PCK')
+        unpacked_type = self.PhysObj.Type.insert(label="Unpacked", code='PCK')
         self.create_packs(
             type_behaviours=dict(
                 unpack=dict(
@@ -562,7 +562,7 @@ class TestUnpack(WmsTestCase):
     def test_cancel(self):
         """Plan an Unpack (uniform scenario), then cancel it
         """
-        unpacked_type = self.Goods.Type.insert(code='Unpacked')
+        unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
         self.create_packs(
             type_behaviours=dict(unpack=dict(
                 uniform_outcomes=True,
@@ -578,9 +578,9 @@ class TestUnpack(WmsTestCase):
                                  dt_execution=self.dt_test2,
                                  input=self.packs)
         unp.cancel()
-        Goods = self.Goods
+        PhysObj = self.PhysObj
         self.assertEqual(
-            Goods.query().filter(Goods.type == unpacked_type).count(),
+            PhysObj.query().filter(PhysObj.type == unpacked_type).count(),
             0)
         self.assert_quantity(1,
                              goods_type=self.packed_goods_type,

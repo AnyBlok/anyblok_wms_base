@@ -6,10 +6,10 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok_wms_base.testing import WmsTestCaseWithGoods
+from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 
 
-class TestWmsTestCase(WmsTestCaseWithGoods):
+class TestWmsTestCase(WmsTestCaseWithPhysObj):
 
     def test_sorted_props(self):
         avatar = self.avatar
@@ -31,4 +31,4 @@ class TestWmsTestCase(WmsTestCaseWithGoods):
         self.assertEqual(av.dt_from, self.dt_test1)
 
 
-del WmsTestCaseWithGoods
+del WmsTestCaseWithPhysObj

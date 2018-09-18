@@ -6,10 +6,10 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok_wms_base.testing import WmsTestCaseWithGoods
+from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 
 
-class TestDeparture(WmsTestCaseWithGoods):
+class TestDeparture(WmsTestCaseWithPhysObj):
 
     arrival_kwargs = dict(quantity=3)
 
@@ -94,4 +94,4 @@ class TestDeparture(WmsTestCaseWithGoods):
         str(dep)
 
 
-del WmsTestCaseWithGoods
+del WmsTestCaseWithPhysObj

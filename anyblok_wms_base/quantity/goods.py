@@ -20,22 +20,22 @@ Model = Declarations.Model
 
 
 @register(Model.Wms)
-class Goods:
+class PhysObj:
     """Override to add the :attr:`quantity` field.
     """
 
     quantity = Decimal(label="Quantity", default=1)
     """Quantity
 
-    Depending on the Goods Type, this represents in reality some physical
-    measure (length of wire, weight of wheat) for Goods stored and handled
+    Depending on the PhysObj Type, this represents in reality some physical
+    measure (length of wire, weight of wheat) for PhysObj stored and handled
     in bulk, or a number of identical items, if goods are kept as individual
     pieces.
 
-    There is no corresponding idea of a unit of measure for bulk Goods,
-    as we believe it to be enough to represent it in the Goods Type already
+    There is no corresponding idea of a unit of measure for bulk PhysObj,
+    as we believe it to be enough to represent it in the PhysObj Type already
     (which would be, e.g, respectively a meter of wire, a ton of wheat). Note
-    that bulk Goods can be the result of some :ref:`op_unpack`, with the
+    that bulk PhysObj can be the result of some :ref:`op_unpack`, with the
     packaged version
     being itself handled as an individual piece (imagine spindles of 100m for
     the wire example) and further packable (pallets, containers…)
@@ -57,7 +57,7 @@ class Goods:
       may want to switch to a rational number type, such as ``mpq``
       type on the PostgreSQL side), although it's probably a better idea
       if there's an obvious common denominator to just use integers
-      (following on the example, simply have Goods Types representing
+      (following on the example, simply have PhysObj Types representing
       those thirds of pies alongside those representing the whole pies,
       and represent the first cutting of a slice as an
       Unpack)
@@ -65,7 +65,7 @@ class Goods:
 
     @classmethod
     def define_table_args(cls):
-        return super(Goods, cls).define_table_args() + (
+        return super(PhysObj, cls).define_table_args() + (
             CheckConstraint('quantity > 0', name='positive_qty'),
         )
 
@@ -74,11 +74,11 @@ class Goods:
                 "quantity={self.quantity})").format(self=self)
 
     def __repr__(self):
-        return ("Wms.Goods(id={self.id}, type={self.type!r}, "
+        return ("Wms.PhysObj(id={self.id}, type={self.type!r}, "
                 "quantity={self.quantity!r})".format(self=self))
 
 
-@register(Model.Wms.Goods)
+@register(Model.Wms.PhysObj)
 class Type:
     """Override to have behavorial tests for Split/Aggregate.
 
@@ -101,7 +101,7 @@ class Type:
 
     * if the represented goods come as individual pieces in reality, then all
       quantities are integers, and there's no difference in reality
-      between N>1 records of a given Goods Type with quantity=1 having
+      between N>1 records of a given PhysObj Type with quantity=1 having
       identical properties and locations on one hand, and a
       record with quantity=N at the same location with the same properties, on
       the other hand.
@@ -143,7 +143,7 @@ class Type:
 
     def is_split_reversible(self):
         """Tell whether :class:`Split <.operation.split.Split>` can be reverted
-        for this Goods Type.
+        for this PhysObj Type.
 
         By default, the Split Operation is considered to be formal,
         hence the result is ``True``. Otherwise, that depends on the
@@ -155,7 +155,7 @@ class Type:
 
     def is_aggregate_reversible(self):
         """Tell whether :class:`Aggregate <.operation.aggregate.Aggregate>`
-        can be reverted for this Goods Type.
+        can be reverted for this PhysObj Type.
 
         By default, Aggregate is considered to be formal, hence the result is
         ``True``. Otherwise, that depends on the ``reversible`` flag in the

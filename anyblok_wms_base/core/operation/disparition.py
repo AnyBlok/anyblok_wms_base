@@ -18,7 +18,7 @@ Operation = Declarations.Model.Wms.Operation
 
 @register(Operation)
 class Disparition(Mixin.WmsSingleInputOperation, Operation):
-    """Inventory Operation to record unexpected loss of Goods
+    """Inventory Operation to record unexpected loss of PhysObj
 
     This is similar to Departure, but has a distinct functional meaning.
     Disparitions can exist only in the ``done`` :ref:`state <op_states>`.

@@ -31,6 +31,15 @@ requirements = [
     'psycopg2'
 ]
 
+bloks = {
+    'wms-core': 'core:WmsCore',
+    'wms-reservation': 'reservation:WmsReservation',
+    'wms-quantity': 'quantity:WmsQuantity',
+    # Too simple for use outside of tests, yet we don't want to
+    # use DBTestCase which means droping and creating all the time
+    'test-wms-goods-batch-ref': 'test_bloks:PhysObjBatchRef'
+    }
+
 setup(
     name='anyblok_wms_base',
     version=version,
@@ -41,14 +50,8 @@ setup(
     url="http://docs.anyblok-wms-base.anyblok.org/%s" % version,
     packages=find_packages(),
     entry_points={
-        'bloks': [
-            'wms-core=anyblok_wms_base.core:WmsCore',
-            'wms-reservation=anyblok_wms_base.reservation:WmsReservation',
-            'wms-quantity=anyblok_wms_base.quantity:WmsQuantity',
-            # Too simple for use outside of tests, yet we don't want to
-            # use DBTestCase which means droping and creating all the time
-            'test-wms-goods-batch-ref=anyblok_wms_base.test_bloks:GoodsBatchRef'
-        ],
+        'bloks': ['{name}=anyblok_wms_base.{cls}'.format(name=name, cls=cls)
+                  for name, cls in bloks.items()],
         # For DBTestCase (run on a fresh DB all the time)
         'test_bloks': [
         ],
