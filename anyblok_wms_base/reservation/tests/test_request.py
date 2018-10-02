@@ -147,8 +147,10 @@ class RequestItemTestCase(WmsTestCase):
         # TODO use mock.patch contextmanager (IIRC)
         saved_commit = Request.registry.commit
         Request.registry.commit = lambda: None
-        Request.reserve_all(batch_size=1)
-        Request.registry.commit = saved_commit
+        try:
+            Request.reserve_all(batch_size=1)
+        finally:
+            Request.registry.commit = saved_commit
 
         self.assertTrue(req1.reserved)
         self.assertTrue(req2.reserved)

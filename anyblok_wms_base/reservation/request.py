@@ -223,7 +223,8 @@ class Request:
            focus on different Requests, as long as they don't compete for
            PhysObj to reserve.
 
-        The transaction is committed for each batch.
+        The transaction is committed for each batch, and that's essential
+        for proper operation under concurrency.
         """
         skip = 0
         while True:
