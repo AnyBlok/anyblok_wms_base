@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from datetime import datetime
 from datetime import timedelta
 
 from .testcase import WmsTestCase
@@ -307,10 +308,18 @@ class TestOperation(WmsTestCase):
 
         self.assertEqual(Move.query().count(), 0)
 
-    def test_planned_dt_execution_required(self):
-        with self.assertRaises(OperationError) as arc:
-            self.Operation.Arrival.create(goods_type=self.goods_type,
-                                          location=self.incoming_loc,
-                                          state='planned')
-        exc = arc.exception
-        self.assertEqual(exc.kwargs.get('state'), 'planned')
+    def test_planned_default_dt_execution_no_inputs(self):
+        now = datetime.now(tz=self.dt_test1.tzinfo)
+        arr = self.Operation.Arrival.create(goods_type=self.goods_type,
+                                            location=self.incoming_loc,
+                                            state='planned')
+        self.assertTrue(arr.dt_execution > now)
+
+    def test_planned_default_dt_execution_inputs(self):
+        arr = self.Operation.Arrival.create(goods_type=self.goods_type,
+                                            location=self.incoming_loc,
+                                            dt_execution=self.dt_test1,
+                                            state='planned')
+        avatar = arr.outcomes[0]
+        departure = self.Operation.Departure.create(input=avatar)
+        self.assertEqual(departure.dt_execution, self.dt_test1)

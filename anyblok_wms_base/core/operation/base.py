@@ -331,15 +331,7 @@ class Operation:
         methods instead).
         """
         if dt_execution is None:
-            if state == 'done':
-                dt_execution = datetime.now()
-            else:
-                raise OperationError(
-                    cls,
-                    "Creation in state {state!r} requires the "
-                    "'dt_execution' field (date and time when "
-                    "it's supposed to be done).",
-                    state=state)
+            dt_execution = cls.default_dt_execution(state, inputs)
         cls.check_create_conditions(
             state, dt_execution, inputs=inputs, **fields)
         inputs, fields_upd = cls.before_insert(state=state,
@@ -354,6 +346,38 @@ class Operation:
             op.link_inputs(inputs)
         op.after_insert()
         return op
+
+    @classmethod
+    def default_dt_execution(cls, state, inputs):
+        """Compute a default date and time of execution.
+
+        The whole system relies for accuracy of stock levels that time ranges
+        of avatars don't overlap.
+
+        In case of direct creation in the ``done`` state, the default
+        ``dt_execution`` is the current wall time.
+
+        In case of creation of a ``planned`` Operation, the default
+        ``dt_execution`` is the max of the ``dt_from`` of the inputs.
+        This policy will lead certainly to many very short lived ``future``
+        avatars, and even many with an empty time range
+        (``dt_from == dt_until``).
+        This is acceptable at this stage of development, because the time
+        range of ``future`` avatars is purely fictional anyway.
+        It's better to do this under the hood rather than forcing downstream
+        developers having to create this fiction by themselves in case they
+        have no reliable information.
+
+        In the special case of creating Operations (ie, with no inputs),
+        we believe it's acceptable to default back to the current wall time.
+
+        This class method is singled out to be easily overiddable by
+        subclasses.
+        """
+
+        if state == 'done' or not inputs:
+            return datetime.now()
+        return max(av.dt_from for av in inputs)
 
     @classmethod
     def before_insert(cls, inputs=None, **fields):

@@ -16,6 +16,7 @@ Release history
   one: ``Wms.PhysObj``. This impacts all existing code bases.
 * Inventory Operations: Apparition, Disparition and Teleportation
 * Enrichment of Properties API
+* The date and time of ``planned`` Operations is no longer mandatory
 
 0.7.0
 ~~~~~
