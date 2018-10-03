@@ -19,6 +19,86 @@ although proposed solutions have to take them into account.
 Current ideas
 ~~~~~~~~~~~~~
 
+.. _improvement_indeterminate_avatars:
+
+Allow Avatars with indeterminate time range
+-------------------------------------------
+
+It's been a design requirement from the beginning that Avatars of a
+given physical object don't overlap, but it's hard to enforce and
+gives rise to Avatars whose lifespan is too fictive, meaning that it's not
+a prediction made by applicative code or the end user, but just
+minimal garbage so that the Avatars don't overlap. It goes as far as
+having many Avatars with a zero length lifespan.
+
+An issue not adressed yet is the one of execution of chains of planned
+Operations (`#8 on Github
+<https://github.com/AnyBlok/anyblok_wms_base/issues/8>`_).
+Namely, once the first Operation gets executed, it sets
+the real dates and times on its outcomes. No effort is
+currently made to adjust downstream Avatars to avoid their overlaping
+with the ones now being present, and that happens in case the actual
+time of execution is later than planned (almost always the case
+with the default value of the planned time of execution).
+It could be solved by propagating any positive
+shift, but that defeats one of our core goals: that execution of
+planned Operations should be really fast.
+
+It would be better to use ``None`` as a marker for totally unkwnown
+times of execution and datetimes of ``future`` Avatars. Besides to be
+more understandable than having weird values in the database, it would
+lift the burden of propagating a shift in the most common use case
+where there was simply no planned date of execution (we should enforce that
+any downstream Avatar of an indeterminate one should be, too),
+but this gives rise to a new set of problems:
+
+- semantically, ``dt_until == None`` currently means the end of times.
+  If we use instead to to just say
+  that we don't know, we need something else to mark that an
+  Avatar is terminal in the current state of planification. Maybe
+  that it's not the input of any Operation is good enough, maybe we'd
+  have to mark it explicitely with a boolean for efficiency reasons,
+  maybe we'd end up chaining Avatars directly.
+- in ``future`` quantity queries, we'd need to avoid counting Avatars of a
+  given physical object twice, and we'd prefer the results to stay additive
+  with respect to the hierarchy of location/containers, ie, if location
+  A contains exactly two sublocations B and C::
+
+     quantity(location=A, …) = quantity(location=B, …) + quantity(location=C…)
+
+  Otherwise, it could lead to subtle bugs in applicative code that
+  would implicitely take that additivity for granted, or mere
+  confusion and distrust of end users that'd browse the stock levels.
+
+  Here we should be really careful to treat (and test!) all corner
+  cases, such as when
+  ``dt_until`` is None but ``dt_from`` isn't and is earlier than the
+  required datetime etc.
+
+- would we have Avatars with both ``dt_from`` and ``dt_until`` being
+  ``None`` or would we rather propagate ``dt_from`` to take into
+  account that, at  least, we known that execution will happen no
+  matter what after a certain date ? If both can be ``None`` we'd have
+  some weird effects: a planned Arrival with
+  a given date, followed by a Move would lead to the outcome of the
+  Move been counted in ``future`` quantity queries before the planned
+  time of the Arrival, so we better prevent that to happen. On the other hand,
+  does this not repeat the problem with shifting the whole chain at
+  execution of the first Operation ? Perhaps this would be less
+  problematic, as the double countings due to overlapping Avatars
+  would still be solved ? After all, the ``future`` quantity queries that
+  are the most important are the ones at infinity (not affected by this),
+  and we could mitigate with an asynchronous shifting (at least we
+  wouldn't have double countings in the meanwhile).
+
+Finally, if we could go as far as to allow overlapping Avatars, we
+could imagine to support simultaneous concurrent scenarios in
+planification, and maybe implementations of
+:ref:`improvement_operation_superseding` in a way that'd be akin to the
+obsolescence markers of Mercurial, but that's probably too far fetched.
+
+Decision about all this postponed until version 0.9
+
 .. _improvement_operation_superseding:
 
 Superseding of planned operations
@@ -292,6 +372,7 @@ Well, yeah, this page should be superseded. How ?
 * RFC/PEP-like subdirectory to PR suggestions onto ?
   Maybe that's too formal, but keeping somehow in the docs allows to
   cross-reference, like we did already in :ref:`goal_stubborn_reality`
+
 
 Implemented
 ~~~~~~~~~~~
