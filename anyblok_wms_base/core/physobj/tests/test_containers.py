@@ -89,7 +89,7 @@ class TestContainers(WmsTestCase):
         PhysObj = self.PhysObj
         stock = self.stock
         loc = self.insert_location('sub', parent=stock)
-        loc_av = self.Avatar.query().filter_by(goods=loc).one()
+        loc_av = self.Avatar.query().filter_by(obj=loc).one()
         other = self.insert_location('other')
         loc_move = self.Operation.Move.create(input=loc_av,
                                               destination=other,
