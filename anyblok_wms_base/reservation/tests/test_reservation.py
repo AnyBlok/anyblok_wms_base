@@ -37,7 +37,8 @@ class ReservationTestCase(WmsTestCase):
             request=request,
             goods_type=self.goods_type,
             quantity=3)
-        resa = self.Reservation.insert(goods=self.goods, request_item=req_item)
+        resa = self.Reservation.insert(physobj=self.goods,
+                                       request_item=req_item)
 
         # now it's reserved, and this txn hasn't authority, despite
         # being creator.

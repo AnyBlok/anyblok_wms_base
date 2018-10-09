@@ -40,5 +40,5 @@ class Operation:
                     cls,
                     "Cannot create for {goods} because their PhysObj are "
                     "reserved {reservation!r}, which does not not agree.",
-                    goods=resa.goods,
+                    goods=resa.physobj,
                     reservation=resa)

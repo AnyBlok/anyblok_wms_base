@@ -77,7 +77,7 @@ class RequestItemTestCase(WmsTestCase):
         resas = self.Reservation.query().all()
         for resa in resas:
             self.assertEqual(resa.quantity, 1)
-        first_two = set(r.goods for r in resas)
+        first_two = set(r.physobj for r in resas)
         self.assertEqual(first_two, set(self.goods[self.props1][:2]))
 
         av3, av4 = [
@@ -93,10 +93,10 @@ class RequestItemTestCase(WmsTestCase):
         self.assertEqual(item.reserve(), True)  # now it's satisfied
 
         # we needed only one more, so there's one PhysObj that's not reserved
-        all_three = set(r.goods for r in self.Reservation.query().all())
+        all_three = set(r.physobj for r in self.Reservation.query().all())
         self.assertEqual(len(all_three), 3)
         self.assertTrue(first_two.issubset(all_three))
-        self.assertTrue(av3.obj in all_three or av4.goods in all_three)
+        self.assertTrue(av3.obj in all_three or av4.obj in all_three)
 
         # subsequent executions don't reserve more
         self.assertEqual(item.reserve(), True)
@@ -114,7 +114,7 @@ class RequestItemTestCase(WmsTestCase):
                                 request=req)
         self.assertTrue(req.reserve())
         self.assertTrue(req.reserved)
-        reserved_goods = set(r.goods for r in self.Reservation.query().all())
+        reserved_goods = set(r.physobj for r in self.Reservation.query().all())
         expected = set((self.goods[self.props1][:2]))
         expected.add(self.goods[self.props2][1])
         self.assertEqual(reserved_goods, expected)
@@ -154,7 +154,7 @@ class RequestItemTestCase(WmsTestCase):
 
         self.assertTrue(req1.reserved)
         self.assertTrue(req2.reserved)
-        reserved_goods = set(r.goods for r in self.Reservation.query().all())
+        reserved_goods = set(r.physobj for r in self.Reservation.query().all())
         expected = set((self.goods[self.props1][:2]))
         expected.add(self.goods[self.props2][1])
         self.assertEqual(reserved_goods, expected)
@@ -171,7 +171,7 @@ class RequestItemTestCase(WmsTestCase):
                                 quantity=12)
         item.reserve()
         resa = self.single_result(self.Reservation.query())
-        self.assertEqual(resa.goods, goods)
+        self.assertEqual(resa.physobj, goods)
 
     def test_dont_reserve_past_avatars(self):
         """We don't reserve PhysObj that have only 'past' avatars."""
@@ -190,7 +190,7 @@ class RequestItemTestCase(WmsTestCase):
         item.reserve()
 
         resa = self.single_result(self.Reservation.query())
-        self.assertEqual(resa.goods, goods)
+        self.assertEqual(resa.physobj, goods)
 
 
 class RequestClaimTestCase(ConcurrencyBlokTestCase):

@@ -339,7 +339,7 @@ class RequestItem:
         added = 0
         for quantity, goods in self.lookup(self.quantity - already):
             # TODO use a o2m ?
-            Reservation.insert(goods=goods, quantity=quantity,
+            Reservation.insert(physobj=goods, quantity=quantity,
                                request_item=self)
             added += quantity
         return already + added >= self.quantity
