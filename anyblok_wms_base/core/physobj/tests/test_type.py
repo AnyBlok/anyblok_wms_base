@@ -132,12 +132,12 @@ class TestPhysObjType(BlokTestCase):
                          {grand, aunt, parent, child, sibling})
 
         # direct use as a CTE
-        Goods = self.registry.Wms.Goods
-        goods = Goods.insert(type=child)
+        PhysObj = self.registry.Wms.PhysObj
+        phobj = PhysObj.insert(type=child)
         cte = self.Type.query_subtypes([grand], as_cte=True)
-        self.assertEqual(Goods.query()
-                         .join(cte, cte.c.id == Goods.type_id).one(),
-                         goods)
+        self.assertEqual(PhysObj.query()
+                         .join(cte, cte.c.id == PhysObj.type_id).one(),
+                         phobj)
 
     def test_properties(self):
         parent = self.Type.insert(code='parent')
