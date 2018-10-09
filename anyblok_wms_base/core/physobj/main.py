@@ -347,6 +347,33 @@ class PhysObj:
     def is_container(self):
         return self.type.is_container()
 
+    def current_avatar(self):
+        """The Avatar giving the current position of ``self`` in reality
+
+        :return: the Avatar, or ``None``, in case ``self`` is not yet or
+                 no more physically present.
+        """
+        return self.Avatar.query().filter_by(
+            obj=self, state='present').first()
+
+    def eventual_avatar(self):
+        """The Avatar giving the latest foreseeable position of ``self``.
+
+        :return: the Avatar, or ``None``, in case
+                 - ``self`` is planned to leave the system.
+                 - ``self`` has already left the system (only ``past`` avatars)
+
+        There are more complicated corner cases, but they shouldn't arise in
+        real operation and the results are considered to be dependent on the
+        implementation of this method, hence not part of any stability
+        promises. Simplest example: a single avatar, with ``state='present'``
+        and ``dt_until`` not ``None``.
+        """
+        Avatar = self.Avatar
+        return Avatar.query().filter_by(
+            obj=self, dt_until=None).filter(
+                Avatar.state.in_(('present', 'future'))).first()
+
 
 _empty_dict = {}
 

@@ -34,6 +34,13 @@ Model.Wms.PhysObj
 
    .. raw:: html
 
+      <h3>Avatar methods</h3>
+
+   .. automethod:: current_avatar
+   .. automethod:: eventual_avatar
+
+   .. raw:: html
+
       <h3>Containers methods</h3>
 
    .. automethod:: flatten_containers_subquery
