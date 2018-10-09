@@ -7,7 +7,7 @@ This package provides the :ref:`blok_wms_quantity` Blok.
 
 .. toctree::
 
-   goods
+   physobj
    wms
    operation
 

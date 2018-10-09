@@ -8,7 +8,7 @@ This package provides the :ref:`blok_wms_core` Blok.
 .. toctree::
 
    wms
-   goods
+   physobj
    operation/index
 
 

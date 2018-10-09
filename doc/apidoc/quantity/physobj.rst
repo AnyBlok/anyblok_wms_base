@@ -1,7 +1,7 @@
-quantity.goods
-==============
+quantity.physobj
+================
 
-.. py:module:: anyblok_wms_base.quantity.goods
+.. py:module:: anyblok_wms_base.quantity.physobj
 
 Model.Wms.PhysObj
 ~~~~~~~~~~~~~~~~~

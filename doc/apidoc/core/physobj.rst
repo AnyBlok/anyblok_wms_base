@@ -1,6 +1,6 @@
-core.goods
-==========
-.. py:module:: anyblok_wms_base.core.physobj.goods
+core.physobj
+============
+.. py:module:: anyblok_wms_base.core.physobj.main
 
 Model.Wms.PhysObj
 ~~~~~~~~~~~~~~~~~
