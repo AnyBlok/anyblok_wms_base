@@ -305,7 +305,7 @@ class RequestItem:
         # tracing the test_reserve_avatars_once() under pdb)
         # SELECT DISTINCT ON would be better
         # TODO provide ordering by Avatar state and/or dt_from
-        query = PhysObj.query().join(Avatar.goods).outerjoin(
+        query = PhysObj.query().join(Avatar.obj).outerjoin(
             Reservation, Reservation.physobj_id == PhysObj.id).filter(
                 Reservation.physobj_id.is_(None),
                 PhysObj.type == self.goods_type,

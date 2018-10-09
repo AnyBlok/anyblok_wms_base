@@ -28,7 +28,7 @@ class ReservationTestCase(WmsTestCase):
                                                 state='planned',
                                                 dt_execution=self.dt_test1)
         self.avatar = arrival.outcomes[0]
-        self.goods = self.avatar.goods
+        self.goods = self.avatar.obj
 
     def test_authorized(self):
         request = self.Reservation.Request.insert(reserved=True)

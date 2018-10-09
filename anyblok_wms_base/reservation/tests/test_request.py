@@ -43,7 +43,7 @@ class RequestItemTestCase(WmsTestCase):
                  self.PhysObj.insert(type=gt2, properties=p2),
                  ],
         }
-        self.avatars = {g: self.PhysObj.Avatar.insert(goods=g,
+        self.avatars = {g: self.PhysObj.Avatar.insert(obj=g,
                                                       dt_from=self.dt_test1,
                                                       location=self.loc,
                                                       reason=self.arrival,
@@ -83,8 +83,8 @@ class RequestItemTestCase(WmsTestCase):
         av3, av4 = [
             self.PhysObj.Avatar.insert(
                 state='future',
-                goods=self.PhysObj.insert(type=self.goods_type1,
-                                          properties=self.props1),
+                obj=self.PhysObj.insert(type=self.goods_type1,
+                                        properties=self.props1),
                 reason=self.arrival,
                 dt_from=self.dt_test1,
                 location=self.loc)
@@ -96,7 +96,7 @@ class RequestItemTestCase(WmsTestCase):
         all_three = set(r.goods for r in self.Reservation.query().all())
         self.assertEqual(len(all_three), 3)
         self.assertTrue(first_two.issubset(all_three))
-        self.assertTrue(av3.goods in all_three or av4.goods in all_three)
+        self.assertTrue(av3.obj in all_three or av4.goods in all_three)
 
         # subsequent executions don't reserve more
         self.assertEqual(item.reserve(), True)
@@ -163,7 +163,7 @@ class RequestItemTestCase(WmsTestCase):
         """We don't reserve several times PhysObj that have several Avatars."""
         goods = self.goods[self.props1][0]
         for av in self.avatars.values():
-            av.goods = goods
+            av.obj = goods
         self.registry.flush()  # to be sure
 
         item = self.RequestItem(goods_type=self.goods_type1,
