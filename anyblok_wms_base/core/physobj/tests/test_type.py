@@ -116,6 +116,29 @@ class TestPhysObjType(BlokTestCase):
         self.assertFalse(stranger.is_sub_type(grand))
         self.assertFalse(stranger.is_sub_type(parent))
 
+    def test_query_subtype(self):
+        grand = self.Type.insert(code='grand')
+        parent = self.Type.insert(code='parent', parent=grand)
+        child = self.Type.insert(code='child', parent=parent)
+        sibling = self.Type.insert(code='sibling', parent=parent)
+        self.Type.insert(code='stranger')
+
+        self.assertEqual(set(self.Type.query_subtypes([parent]).all()),
+                         {parent, child, sibling})
+        self.assertEqual(set(self.Type.query_subtypes([grand]).all()),
+                         {grand, parent, child, sibling})
+        aunt = self.Type.insert(code='aunt', parent=grand)
+        self.assertEqual(set(self.Type.query_subtypes([grand]).all()),
+                         {grand, aunt, parent, child, sibling})
+
+        # direct use as a CTE
+        PhysObj = self.registry.Wms.PhysObj
+        phobj = PhysObj.insert(type=child)
+        cte = self.Type.query_subtypes([grand], as_cte=True)
+        self.assertEqual(PhysObj.query()
+                         .join(cte, cte.c.id == PhysObj.type_id).one(),
+                         phobj)
+
     def test_properties(self):
         parent = self.Type.insert(code='parent')
 
@@ -149,3 +172,13 @@ class TestPhysObjType(BlokTestCase):
         self.assertTrue(child.has_property_values(dict(foo=2, bar=True)))
         self.assertEqual(child.merged_properties(),
                          dict(foo=2, qa='nok', bar=True))
+
+    def test_query_behaviour(self):
+        parent = self.Type.insert(code='parent',
+                                  behaviours=dict(foo=1))
+        child = self.Type.insert(code='child',
+                                 parent=parent,
+                                 behaviours=dict(bar=2))
+        self.assertEqual(set(self.Type.query_behaviour('foo').all()),
+                         {parent, child})
+        self.assertEqual(self.Type.query_behaviour('bar').one(), child)

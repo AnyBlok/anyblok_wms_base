@@ -61,7 +61,11 @@ Model.Wms.PhysObj.Type
 
       <h3>Methods</h3>
 
+   .. automethod:: is_sub_type
+   .. automethod:: query_subtypes
    .. automethod:: get_behaviour
+   .. automethod:: query_behaviour
+
 
 
 Model.Wms.PhysObj.Properties
