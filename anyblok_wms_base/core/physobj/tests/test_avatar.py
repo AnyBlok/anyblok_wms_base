@@ -68,5 +68,45 @@ class TestAvatar(WmsTestCaseWithPhysObj):
         self.assertEqual(self.Avatar.query().filter_by(goods=phobj).count(),
                          2)
 
+    def test_pysobj_current_avatar(self):
+        avatar = self.avatar
+        # just to make sure
+        self.assertEqual(avatar.state, 'future')
+        phobj = avatar.obj
+
+        self.assertIsNone(phobj.current_avatar())
+
+        avatar.state = 'present'
+        self.assertEqual(phobj.current_avatar(), avatar)
+
+        avatar.state = 'past'
+        self.assertIsNone(phobj.current_avatar())
+
+    def test_pysobj_eventual_avatar(self):
+        avatar = self.avatar
+        # just to make sure
+        self.assertEqual(avatar.state, 'future')
+        phobj = avatar.obj
+
+        self.assertEqual(phobj.eventual_avatar(), avatar)
+
+        avatar.state = 'present'
+        self.assertEqual(phobj.eventual_avatar(), avatar)
+
+        avatar.state = 'past'
+        self.assertIsNone(phobj.eventual_avatar())
+
+    def test_pysobj_eventual_avatar_departure(self):
+        """If the PhysObj is planned to leave, eventual_avatar() should be None
+        """
+
+        avatar = self.avatar
+        # just to make sure
+        self.assertEqual(avatar.state, 'future')
+        phobj = avatar.obj
+
+        self.Operation.Departure.create(input=avatar)
+        self.assertIsNone(phobj.eventual_avatar())
+
 
 del WmsTestCaseWithPhysObj
