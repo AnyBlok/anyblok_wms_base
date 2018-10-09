@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+import warnings
 from anyblok_wms_base.testing import WmsTestCase
 from anyblok_wms_base.exceptions import OperationPhysObjReserved
 
@@ -60,3 +61,41 @@ class ReservationTestCase(WmsTestCase):
         # but of course, anybody can execute the plan
         self.avatar.state = 'present'
         dep.execute()
+
+    def test_compatibility_goods_field(self):
+        """Test compatibility function field for the rename goods->obj.
+
+        To be removed together with that function field once the deprecation
+        has expired.
+        """
+        request = self.Reservation.Request.insert(reserved=True)
+        req_item = self.Reservation.RequestItem.insert(
+            request=request,
+            goods_type=self.goods_type,
+            quantity=3)
+        phobj = self.goods
+
+        def assert_warnings_goods_deprecation(got_warnings):
+            self.assert_warnings_deprecation(
+                got_warnings, "'goods'", "rename to 'physobj'")
+
+        with warnings.catch_warnings(record=True) as got:
+            # writing
+            resa = self.Reservation.insert(goods=phobj,
+                                           request_item=req_item)
+
+        self.assertEqual(resa.physobj, phobj)
+        assert_warnings_goods_deprecation(got)
+
+        with warnings.catch_warnings(record=True) as got:
+            # reading
+            self.assertEqual(resa.goods, phobj)
+
+        assert_warnings_goods_deprecation(got)
+
+        with warnings.catch_warnings(record=True) as got:
+            # querying
+            self.assertEqual(
+                self.Reservation.query().filter_by(goods=phobj).all(),
+                [resa])
+        assert_warnings_goods_deprecation(got)
