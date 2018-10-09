@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+import warnings
 from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 
 
@@ -53,20 +54,31 @@ class TestAvatar(WmsTestCaseWithPhysObj):
         """
         avatar = self.avatar
         phobj = avatar.obj
-        # reading
-        self.assertEqual(avatar.goods, phobj)
 
-        # writing
-        self.Avatar.insert(goods=phobj,
-                           state='present',
-                           dt_from=self.dt_test1,
-                           dt_until=None,
-                           reason=avatar.reason,
-                           location=avatar.location)
+        def assert_warnings_goods_deprecation(got_warnings):
+            self.assert_warnings_deprecation(
+                got_warnings, "'goods'", "rename to 'obj'")
 
-        # querying
-        self.assertEqual(self.Avatar.query().filter_by(goods=phobj).count(),
-                         2)
+        with warnings.catch_warnings(record=True) as got:
+            # reading
+            self.assertEqual(avatar.goods, phobj)
+        assert_warnings_goods_deprecation(got)
+
+        with warnings.catch_warnings(record=True) as got:
+            # writing
+            self.Avatar.insert(goods=phobj,
+                               state='present',
+                               dt_from=self.dt_test1,
+                               dt_until=None,
+                               reason=avatar.reason,
+                               location=avatar.location)
+        assert_warnings_goods_deprecation(got)
+
+        with warnings.catch_warnings(record=True) as got:
+            # querying
+            self.assertEqual(self.Avatar.query().filter_by(goods=phobj).count(),
+                             2)
+        assert_warnings_goods_deprecation(got)
 
     def test_pysobj_current_avatar(self):
         avatar = self.avatar

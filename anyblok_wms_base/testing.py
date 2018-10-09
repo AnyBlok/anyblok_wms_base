@@ -78,6 +78,15 @@ class WmsTestCase(BlokTestCase):
                                            goods_type=goods_type,
                                            **kwargs), quantity)
 
+    def assert_warnings_deprecation(self, got_warnings, *message_items):
+        """Assertions about warnings gathered with warnings.catch_warnings.
+        """
+        for w in got_warnings:
+            self.assertEqual(w.category, DeprecationWarning)
+            msg = str(w.message)
+            for item in message_items:
+                self.assertTrue(item in msg)
+
     def sorted_props(self, record):
         """Extract PhysObj Properties, as a sorted tuple.
 
