@@ -8,15 +8,16 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 
-from . import split
-from . import aggregate
-from . import splitter
-from . import arrival
-from . import move
-from . import unpack
+def import_declarations(reload=None):
+    from . import split
+    from . import aggregate
+    from . import splitter
+    from . import arrival
+    from . import move
+    from . import unpack
 
-
-def reload_declarations(reload):
+    if reload is None:
+        return
     reload(split)
     reload(aggregate)
     reload(splitter)

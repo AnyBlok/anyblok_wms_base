@@ -64,8 +64,8 @@ Model.Wms.Operation.Aggregate
    .. automethod:: execute_planned
    .. TODO   .. automethod:: plan_revert_single
 
-Splitter Mixins: splitting Goods if needed
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Splitter Mixins: splitting Physical Objects if needed
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. py:module:: anyblok_wms_base.quantity.operation.splitter
 

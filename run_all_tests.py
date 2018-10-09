@@ -37,7 +37,7 @@ def install_bloks(*bloks):
 
 
 def nosetests(paths, options, cover_erase=False):
-    print("Lauching tests from paths: " + ' '.join(paths))
+    print("Launching tests from paths: " + ' '.join(paths))
     cmd = ['nosetests', '--with-anyblok-bloks',
            '--with-coverage',
            '--cover-tests',
@@ -100,7 +100,7 @@ parser.add_argument('--cover-html-dir', default="/tmp/COVER-wms",
 
 try:
     double_dash = argv.index('--')
-except:
+except ValueError:
     args, nose_additional_opts = argv[1:], ()
 else:
     args, nose_additional_opts = argv[1:double_dash], argv[double_dash + 1:]

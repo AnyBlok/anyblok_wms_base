@@ -1,10 +1,10 @@
-core.goods
-==========
-.. py:module:: anyblok_wms_base.core.goods.goods
+core.physobj
+============
+.. py:module:: anyblok_wms_base.core.physobj.main
 
-Model.Wms.Goods
-~~~~~~~~~~~~~~~
-.. autoclass:: anyblok_wms_base.core.goods.goods.Goods
+Model.Wms.PhysObj
+~~~~~~~~~~~~~~~~~
+.. autoclass:: anyblok_wms_base.core.physobj.main.PhysObj
 
    .. raw:: html
 
@@ -34,13 +34,20 @@ Model.Wms.Goods
 
    .. raw:: html
 
+      <h3>Avatar methods</h3>
+
+   .. automethod:: current_avatar
+   .. automethod:: eventual_avatar
+
+   .. raw:: html
+
       <h3>Containers methods</h3>
 
    .. automethod:: flatten_containers_subquery
 
-Model.Wms.Goods.Type
-~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: anyblok_wms_base.core.goods.type.Type
+Model.Wms.PhysObj.Type
+~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: anyblok_wms_base.core.physobj.type.Type
 
    .. raw:: html
 
@@ -61,9 +68,9 @@ Model.Wms.Goods.Type
 
 
 
-Model.Wms.Goods.Properties
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: anyblok_wms_base.core.goods.goods.Properties
+Model.Wms.PhysObj.Properties
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: anyblok_wms_base.core.physobj.main.Properties
 
    .. raw:: html
 
@@ -81,9 +88,9 @@ Model.Wms.Goods.Properties
    .. automethod:: get
    .. automethod:: set
 
-Model.Wms.Goods.Avatar
-~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: anyblok_wms_base.core.goods.goods.Avatar
+Model.Wms.PhysObj.Avatar
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: anyblok_wms_base.core.physobj.main.Avatar
 
    .. raw:: html
 

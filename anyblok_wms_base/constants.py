@@ -22,23 +22,24 @@ as keys for a display system (with i18n in mind), such as
 
 """
 
-GOODS_STATES = dict(past="wms_goods_states_past",
-                    present="wms_goods_states_present",
-                    future="wms_goods_states_future"
-                    )
+AVATAR_STATES = dict(past="wms_avatar_states_past",
+                     present="wms_avatar_states_present",
+                     future="wms_avatar_states_future"
+                     )
 """This is the enumeration of possible values of the ``state`` column of
-the :class:`Wms.Goods <anyblok_wms_base.core.goods.Goods>` Model.
+the :class:`Wms.PhysObj.Avatar <anyblok_wms_base.core.physobj.main Avatar>`
+Model.
 
 - ``present``:
-        means that the represented goods are (supposed to be) actually
+        means that the physical objects are (supposed to be) currently
         physically present as described by the record.
 - ``past``:
-        means that the represented goods are (supposed to be) not anymore
+        means that the physical objects are (supposed to be) not anymore
         physically present as described by the record. This is used rather
         than destroying the records so that archived operations can still
         reference them
 - ``future``:
-        means that the represented goods are planned to be as described in the
+        means that the physical objects are planned to be as described in the
         record. This is used for various planning purposes, with the expected
         benefit of quick validation of operations if they are planned in
         advance
@@ -95,11 +96,11 @@ See :class:`Wms.Operation.Assembly
 """
 
 CONTENTS_PROPERTY = 'contents'
-"""Standard property used for containing Goods.
+"""Standard property used for containing PhysObj.
 
 This is used in :ref:`Unpack Operation <op_unpack>` to specify variable
 expected outcomes, i.e., those that aren't specified by the
-:ref:`Type behaviour <goods_behaviours>`.
+:ref:`Type behaviour <physobj_behaviours>`.
 
 This is also used in the :ref:`Assembly Operation <op_assembly>` to record the
 components of the outcome.

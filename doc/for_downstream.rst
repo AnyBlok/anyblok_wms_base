@@ -28,7 +28,7 @@ supposed to run in-order, without concurrency.
 
 Its task is to translate :ref:`Reservation Requests <resa_request>` into actual
 :ref:`Reservations <resa_reservation>`: it takes the Requests in
-order, looks for matching :ref:`goods_goods` (whose availability may
+order, looks for matching :ref:`physobj_model` (whose availability may
 lie in the future) and reserves them, with the effect that only those
 transactions acting on behalf of the Reservation will be allowed to
 issue :ref:`Operations <operation>` about them.
@@ -52,7 +52,7 @@ The planner is where most of the business logic of a concrete
 application takes place. One by one, it claims exclusivity over
 those :ref:`Reservation Requests <resa_request>` that are fully
 reserved, reads their purposes and translates that into action upon
-the reserved :ref:`goods_goods`.
+the reserved :ref:`physobj_model`.
 
 While it is related to Reservations, its way of proceeding is in sharp
 contrast with :ref:`arch_reserver`:
@@ -88,8 +88,8 @@ Avatars and containers vs the 'contents' Property
 
 At first sight, it may seem that we have in Anyblok / Wms two
 different ways to encode that something contains something else: the
-``location`` field of :ref:`Avatars <goods_avatar>`, pointing to  containers,
-on one hand, and the ``contents`` :ref:`Property <goods_properties>`
+``location`` field of :ref:`Avatars <physobj_avatar>`, pointing to  containers,
+on one hand, and the ``contents`` :ref:`Property <physobj_properties>`
 on the other hand. In truth, these two are fairly different, and this
 section's purpose is to explain how, to help developers choose the
 right one for their case.
@@ -105,14 +105,15 @@ Here are the differences:
 - Comprehensiveness:
    the ``contents`` Property does not necessarily encode all the
    contents of some Physical Object, only what is not a direct
-   consequence of its :ref:`Type <goods_type>`.
+   consequence of its :ref:`Type <physobj_type>`.
 - Transparency:
-   Goods that are described in a ``contents`` Property don't actually
-   exist in the system. At most they can have future Avatars if an Unpack is
-   planned or past Avatars if they are the result of some Assembly.
+   Physical Objects that are described in a ``contents`` Property
+   don't actually exist in the system. At most they can have future
+   Avatars if an Unpack is planned or past Avatars if ``contents`` is the
+   result of some Assembly.
    They won't be counted correctly by quantity queries, nor
    will it be directly possible to perform Operations on them, e.g,
-   Moves, obviously but also Observations, Disparitions:
+   Moves, obviously, but also Observations, Disparitions:
    one must first at least plan an Unpack – which affects the whole
    pack, and in many cases would be followed by a converse Assembly.
 - Accuracy:

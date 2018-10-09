@@ -15,15 +15,15 @@ from anyblok_wms_base.constants import (
 )
 
 
-class TestGoods(WmsTestCase):
+class TestPhysObj(WmsTestCase):
 
     def setUp(self):
-        super(TestGoods, self).setUp()
+        super(TestPhysObj, self).setUp()
         Wms = self.registry.Wms
 
-        self.Goods = Wms.Goods
-        self.Avatar = Wms.Goods.Avatar
-        self.goods_type = self.Goods.Type.insert(label="My goods", code="MG")
+        self.PhysObj = Wms.PhysObj
+        self.Avatar = Wms.PhysObj.Avatar
+        self.goods_type = self.PhysObj.Type.insert(label="My goods", code="MG")
         self.stock = self.insert_location('Stock')
         self.arrival = Wms.Operation.Arrival.insert(
             goods_type=self.goods_type,
@@ -34,10 +34,10 @@ class TestGoods(WmsTestCase):
 
     def test_str(self):
         gt = self.goods_type
-        goods = self.Goods.insert(type=gt, quantity=D('2.5'))
+        goods = self.PhysObj.insert(type=gt, quantity=D('2.5'))
         self.assertEqual(repr(goods),
-                         "Wms.Goods(id=%d, type="
-                         "Wms.Goods.Type(id=%d, code='MG'), "
+                         "Wms.PhysObj(id=%d, type="
+                         "Wms.PhysObj.Type(id=%d, code='MG'), "
                          "quantity=Decimal('2.5'))" % (
                              goods.id, gt.id))
         self.assertEqual(str(goods),
@@ -47,13 +47,13 @@ class TestGoods(WmsTestCase):
                              gt.id))
 
 
-class TestGoodsTypes(BlokTestCase):
+class TestPhysObjTypes(BlokTestCase):
 
     def setUp(self):
-        self.GoodsType = self.registry.Wms.Goods.Type
+        self.PhysObjType = self.registry.Wms.PhysObj.Type
 
     def test_split_reversible(self):
-        gt = self.GoodsType(code='MG')
+        gt = self.PhysObjType(code='MG')
         self.assertTrue(gt.is_split_reversible())
 
         gt.behaviours = {SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR: True}
@@ -63,7 +63,7 @@ class TestGoodsTypes(BlokTestCase):
         self.assertTrue(gt.is_split_reversible())
 
     def test_aggregate_reversible(self):
-        gt = self.GoodsType(code='MG')
+        gt = self.PhysObjType(code='MG')
         self.assertTrue(gt.is_aggregate_reversible())
 
         gt.behaviours = {SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR: True}

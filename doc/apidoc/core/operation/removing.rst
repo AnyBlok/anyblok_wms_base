@@ -1,11 +1,12 @@
 Removing Operations
 ~~~~~~~~~~~~~~~~~~~
-These operations take some Goods as inputs, and have no outcomes.
+These operations take some :ref:`Avatars <physobj_avatar>` as inputs,
+and have no outcomes.
 
 Of course, since Anyblok / Wms Base keeps the full history,
-technically, the incoming Goods are not removed from the database.
+technically, the incoming Avatars are not removed from the database.
 Rather, their :attr:`state
-<anyblok_wms_base.core.goods.goods.state>` field
+<anyblok_wms_base.core.physobj.main.state>` field
 is being set to ``past`` during execution.
 
 Model.Wms.Operation.Departure

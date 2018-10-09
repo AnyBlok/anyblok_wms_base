@@ -10,10 +10,22 @@ from anyblok.blok import Blok
 from anyblok_wms_base import version
 
 
-class WmsQuantity(Blok):
-    """Enhance Goods with quantity field and related logic.
+def import_declarations(reload=None):
+    from . import wms
+    from . import physobj
+    from . import operation
 
-    Without this Blok, quantity information is derived by counting Goods
+    if reload is not None:
+        reload(wms)
+        reload(physobj)
+        reload(operation)
+    operation.import_declarations(reload=reload)
+
+
+class WmsQuantity(Blok):
+    """Enhance PhysObj with quantity field and related logic.
+
+    Without this Blok, quantity information is derived by counting PhysObj
     records, which should be enough except when dealing with bulk goods or in
     cases where goods are rarely handled down to the unit, yet without using
     intermediate packaging.
@@ -24,16 +36,8 @@ class WmsQuantity(Blok):
 
     @classmethod
     def import_declaration_module(cls):
-        from . import wms  # noqa
-        from . import goods  # noqa
-        from . import operation  # noqa
+        import_declarations()
 
     @classmethod
     def reload_declaration_module(cls, reload):
-        from . import wms
-        reload(wms)
-        from . import goods
-        reload(goods)
-        from . import operation
-        reload(operation)
-        operation.reload_declarations(reload)
+        import_declarations(reload=reload)

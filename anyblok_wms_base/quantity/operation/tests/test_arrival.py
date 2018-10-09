@@ -14,13 +14,13 @@ class TestArrival(WmsTestCase):
     def setUp(self):
         super(TestArrival, self).setUp()
         Wms = self.registry.Wms
-        self.goods_type = Wms.Goods.Type.insert(label="My good type",
-                                                code='MyGT')
+        self.goods_type = Wms.PhysObj.Type.insert(label="My good type",
+                                                  code='MyGT')
         self.incoming_loc = self.insert_location('Incoming')
         self.stock = self.insert_location('Stock')
         self.Arrival = Wms.Operation.Arrival
-        self.Goods = Wms.Goods
-        self.Avatar = self.Goods.Avatar
+        self.PhysObj = Wms.PhysObj
+        self.Avatar = self.PhysObj.Avatar
 
     def test_create_planned_execute(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
@@ -83,7 +83,7 @@ class TestArrival(WmsTestCase):
         arrival.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
         self.assertEqual(
-            self.Goods.query().filter_by(type=self.goods_type).count(),
+            self.PhysObj.query().filter_by(type=self.goods_type).count(),
             0)
 
     def test_arrival_planned_execute_obliviate(self):
@@ -99,7 +99,7 @@ class TestArrival(WmsTestCase):
         arrival.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
         self.assertEqual(
-            self.Goods.query().filter_by(type=self.goods_type).count(),
+            self.PhysObj.query().filter_by(type=self.goods_type).count(),
             0)
 
     def test_repr(self):

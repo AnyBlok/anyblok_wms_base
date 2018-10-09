@@ -7,6 +7,6 @@ provide useful examples.
 This page is therefore by no means comprehensive. If a given test
 class is listed here, only its interesting test cases are.
 
-.. autoclass:: anyblok_wms_base.core.goods.tests.test_containers.TestContainers
+.. autoclass:: anyblok_wms_base.core.tests.test_quantity.TestQuantity
 
    .. automethod:: test_override_recursion

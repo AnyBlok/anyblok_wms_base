@@ -30,12 +30,13 @@ class WmsSplitterOperation:
     Use :class:`WmsSplitterSingleInputOperation` to get both at once.
 
     It defines the :attr:`quantity` field to express that the Operation only
-    works on some of the quantity held by the Goods of the single input.
+    works on some of the quantity held by the PhysObj of the single input.
 
-    In case the Operation's :attr:`quantity` is less than in the Goods record,
-    a :class:`Split <.split.Split>` will be inserted properly in history, and
-    the Operation implementation can ignore quantities completely, as it will
-    always, in truth, work on the whole of the input it will see.
+    In case the Operation's :attr:`quantity` is less than in the PhysObj
+    record, a :class:`Split <.split.Split>` will be inserted properly in
+    history, and the Operation implementation can ignore quantities
+    completely, as it will always, in truth, work on the whole of the input
+    it will see.
 
     Subclasses can use the :attr:`partial` field if they need to know
     if that happened, but this should be useful only in special cases.
@@ -49,7 +50,7 @@ class WmsSplitterOperation:
     partial = Boolean(label="Operation induced a split")
     """Record if a Split will be or has been inserted in the history.
 
-    Such insertions should happen if the operation's original Goods
+    Such insertions should happen if the operation's original PhysObj
     have greater quantity than the operation needs.
 
     This is useful because once the Split is executed,
@@ -164,7 +165,7 @@ class Departure(Splitter):
     As with all :class:`Splitter Operations
     <anyblok_wms_base.quantity.operation.splitter.WmsSplitterOperation>`,
     Departures can be partial, i.e.,
-    there's no need to match the exact quantity held in the underlying Goods
+    there's no need to match the exact quantity held in the underlying PhysObj
     record: an automatic Split will occur if needed.
 
     In many scenarios, the Departure would come after a

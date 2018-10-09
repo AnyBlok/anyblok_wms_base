@@ -6,14 +6,14 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok_wms_base.testing import WmsTestCaseWithGoods
+from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 from anyblok_wms_base.exceptions import (
     OperationIrreversibleError,
     OperationForbiddenState,
 )
 
 
-class TestDisparition(WmsTestCaseWithGoods):
+class TestDisparition(WmsTestCaseWithPhysObj):
 
     def setUp(self):
         super(TestDisparition, self).setUp()
@@ -62,4 +62,4 @@ class TestDisparition(WmsTestCaseWithGoods):
         self.assertEqual(exc.kwargs.get('forbidden'), 'planned')
 
 
-del WmsTestCaseWithGoods
+del WmsTestCaseWithPhysObj

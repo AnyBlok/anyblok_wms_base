@@ -9,7 +9,7 @@
 
 
 def import_declarations(reload=None):
-    from . import goods
+    from . import main
     from . import type as gtype
 
     # even with 'import as', there is masking of the builtin
@@ -18,5 +18,5 @@ def import_declarations(reload=None):
     globals().pop('type', None)
 
     if reload is not None:
-        reload(goods)
+        reload(main)
         reload(gtype)

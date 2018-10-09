@@ -6,14 +6,14 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok_wms_base.testing import WmsTestCaseWithGoods
+from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 
 from anyblok_wms_base.exceptions import (
     OperationContainerExpected,
 )
 
 
-class TestMove(WmsTestCaseWithGoods):
+class TestMove(WmsTestCaseWithPhysObj):
 
     def setUp(self):
         super(TestMove, self).setUp()
@@ -85,7 +85,7 @@ class TestMove(WmsTestCaseWithGoods):
         self.assertBackToBeginning()
 
     def test_not_a_container(self):
-        wrong_loc = self.Goods.insert(type=self.goods_type)
+        wrong_loc = self.PhysObj.insert(type=self.physobj_type)
         with self.assertRaises(OperationContainerExpected) as arc:
             self.Move.create(
                 destination=wrong_loc,
@@ -98,4 +98,4 @@ class TestMove(WmsTestCaseWithGoods):
         self.assertEqual(exc.kwargs['offender'], wrong_loc)
 
 
-del WmsTestCaseWithGoods
+del WmsTestCaseWithPhysObj

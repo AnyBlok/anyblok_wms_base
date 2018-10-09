@@ -30,7 +30,7 @@ class Move(Mixin.WmsSingleInputOperation, Operation):
                  primary_key=True,
                  autoincrement=False,
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
-    destination = Many2One(model='Model.Wms.Goods',
+    destination = Many2One(model='Model.Wms.PhysObj',
                            nullable=False)
 
     def specific_repr(self):
@@ -40,14 +40,14 @@ class Move(Mixin.WmsSingleInputOperation, Operation):
     def after_insert(self):
         state, to_move, dt_exec = self.state, self.input, self.dt_execution
 
-        self.registry.Wms.Goods.Avatar.insert(
+        self.registry.Wms.PhysObj.Avatar.insert(
             location=self.destination,
             reason=self,
             state='present' if state == 'done' else 'future',
             dt_from=dt_exec,
             # copied fields:
             dt_until=to_move.dt_until,
-            goods=to_move.goods)
+            obj=to_move.obj)
 
         to_move.dt_until = dt_exec
         if state == 'done':
@@ -88,7 +88,7 @@ class Move(Mixin.WmsSingleInputOperation, Operation):
         else:
             # A move has at most a single follower, hence
             # its reversal follows at most one operation, whose
-            # outcome is one Goods record
+            # outcome is one PhysObj record
             after = follows[0]
         return self.create(input=after.outcomes[0],
                            destination=self.input.location,

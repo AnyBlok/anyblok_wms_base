@@ -17,14 +17,14 @@ class TestArrival(WmsTestCase):
 
     def setUp(self):
         super(TestArrival, self).setUp()
-        Goods = self.Goods
-        self.goods_type = Goods.Type.insert(label="My good type",
-                                            code='MGT')
+        PhysObj = self.PhysObj
+        self.goods_type = PhysObj.Type.insert(label="My good type",
+                                              code='MGT')
         self.incoming_loc = self.insert_location('INCOMING')
         self.stock = self.insert_location('STOCK')
 
         self.Arrival = self.Operation.Arrival
-        self.Avatar = self.Goods.Avatar
+        self.Avatar = self.PhysObj.Avatar
 
     def test_create_planned_execute(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
@@ -36,7 +36,7 @@ class TestArrival(WmsTestCase):
                                       goods_type=self.goods_type)
         self.assertEqual(arrival.follows, [])
         avatar = self.assert_singleton(arrival.outcomes)
-        goods = avatar.goods
+        goods = avatar.obj
         self.assertEqual(avatar.state, 'future')
         self.assertEqual(avatar.location, self.incoming_loc)
         self.assertEqual(goods.type, self.goods_type)
@@ -64,7 +64,7 @@ class TestArrival(WmsTestCase):
                                       goods_type=self.goods_type)
         self.assertEqual(arrival.follows, [])
         avatar = self.assert_singleton(arrival.outcomes)
-        goods = avatar.goods
+        goods = avatar.obj
         self.assertEqual(avatar.state, 'present')
         self.assertEqual(avatar.location, self.incoming_loc)
         self.assertEqual(goods.type, self.goods_type)
@@ -82,7 +82,7 @@ class TestArrival(WmsTestCase):
         arrival.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
         self.assertEqual(
-            self.Goods.query().filter_by(type=self.goods_type).count(), 0)
+            self.PhysObj.query().filter_by(type=self.goods_type).count(), 0)
 
     def test_arrival_planned_execute_obliviate(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
@@ -96,7 +96,7 @@ class TestArrival(WmsTestCase):
         arrival.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
         self.assertEqual(
-            self.Goods.query().filter_by(type=self.goods_type).count(), 0)
+            self.PhysObj.query().filter_by(type=self.goods_type).count(), 0)
 
     def test_repr(self):
         arrival = self.Arrival(location=self.incoming_loc,
@@ -109,7 +109,7 @@ class TestArrival(WmsTestCase):
         str(arrival)
 
     def test_not_a_container(self):
-        wrong_loc = self.Goods.insert(type=self.goods_type)
+        wrong_loc = self.PhysObj.insert(type=self.goods_type)
         with self.assertRaises(OperationContainerExpected) as arc:
             self.Arrival.create(
                 location=wrong_loc,

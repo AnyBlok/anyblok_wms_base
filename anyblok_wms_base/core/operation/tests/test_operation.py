@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from datetime import datetime
 from datetime import timedelta
 
 from .testcase import WmsTestCase
@@ -20,11 +21,12 @@ class TestOperation(WmsTestCase):
 
     def setUp(self):
         super(TestOperation, self).setUp()
-        Goods = self.Goods
+        PhysObj = self.PhysObj
         self.incoming_loc = self.insert_location('INCOMING')
         self.stock = self.insert_location('STOCK')
 
-        self.goods_type = Goods.Type.insert(label="My good type", code='MyGT')
+        self.goods_type = PhysObj.Type.insert(label="My good type",
+                                              code='MyGT')
 
     def test_execute_idempotency(self):
         op = self.Operation.Arrival.create(location=self.incoming_loc,
@@ -53,8 +55,8 @@ class TestOperation(WmsTestCase):
                                                 dt_execution=self.dt_test1,
                                                 location=self.incoming_loc,
                                                 state='planned')
-        Avatar = self.Goods.Avatar
-        goods = [Avatar.insert(goods=self.Goods.insert(type=self.goods_type),
+        Avatar = self.PhysObj.Avatar
+        goods = [Avatar.insert(obj=self.PhysObj.insert(type=self.goods_type),
                                location=self.incoming_loc,
                                dt_from=self.dt_test1,
                                state='future',
@@ -72,14 +74,16 @@ class TestOperation(WmsTestCase):
                                                 dt_execution=self.dt_test1,
                                                 location=self.incoming_loc,
                                                 state='planned')
-        Avatar = self.Goods.Avatar
-        avatars = [Avatar.insert(goods=self.Goods.insert(type=self.goods_type),
-                                 location=self.incoming_loc,
-                                 dt_from=self.dt_test1,
-                                 dt_until=dt,
-                                 state='future',
-                                 reason=arrival)
-                   for dt in (self.dt_test1, self.dt_test2, self.dt_test3)]
+        Avatar = self.PhysObj.Avatar
+        avatars = [
+            Avatar.insert(
+                obj=self.PhysObj.insert(type=self.goods_type),
+                location=self.incoming_loc,
+                dt_from=self.dt_test1,
+                dt_until=dt,
+                state='future',
+                reason=arrival)
+            for dt in (self.dt_test1, self.dt_test2, self.dt_test3)]
 
         HI = self.Operation.HistoryInput
 
@@ -138,7 +142,7 @@ class TestOperation(WmsTestCase):
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
                                                 state='planned')
-        Avatar = self.Goods.Avatar
+        Avatar = self.PhysObj.Avatar
         future_query = Avatar.query().filter(Avatar.state == 'future')
         self.assertEqual(future_query.count(), 1)
 
@@ -177,14 +181,14 @@ class TestOperation(WmsTestCase):
                                         state='planned')
         self.registry.flush()
         arrival.cancel()
-        Avatar = self.Goods.Avatar
+        Avatar = self.PhysObj.Avatar
         self.assertEqual(Avatar.query().filter(
             Avatar.state == 'future').count(), 0)
         self.assertEqual(self.Operation.query().count(), 0)
 
     def test_plan_revert_recurse_linear(self):
-        workshop = self.Goods.insert(code="Workshop",
-                                     type=self.stock.type)
+        workshop = self.PhysObj.insert(code="Workshop",
+                                       type=self.stock.type)
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
@@ -219,7 +223,7 @@ class TestOperation(WmsTestCase):
         rev_dt2 = self.dt_test3 + timedelta(2)
         move1_rev.execute(rev_dt2)
 
-        Avatar = self.Goods.Avatar
+        Avatar = self.PhysObj.Avatar
         avatar = self.single_result(
             Avatar.query().filter(Avatar.state != 'past'))
         self.assertEqual(avatar.dt_from, rev_dt2)
@@ -274,8 +278,8 @@ class TestOperation(WmsTestCase):
             arrival.obliviate()
 
     def test_obliviate_recurse_linear(self):
-        workshop = self.Goods.insert(code="Workshop",
-                                     type=self.stock.type)
+        workshop = self.PhysObj.insert(code="Workshop",
+                                       type=self.stock.type)
         arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
@@ -295,7 +299,7 @@ class TestOperation(WmsTestCase):
                     state='done')
         move1.obliviate()
 
-        Avatar = self.Goods.Avatar
+        Avatar = self.PhysObj.Avatar
         avatar = self.single_result(
             Avatar.query().filter(Avatar.state != 'past'))
         self.assertEqual(avatar.location, self.incoming_loc)
@@ -304,10 +308,18 @@ class TestOperation(WmsTestCase):
 
         self.assertEqual(Move.query().count(), 0)
 
-    def test_planned_dt_execution_required(self):
-        with self.assertRaises(OperationError) as arc:
-            self.Operation.Arrival.create(goods_type=self.goods_type,
-                                          location=self.incoming_loc,
-                                          state='planned')
-        exc = arc.exception
-        self.assertEqual(exc.kwargs.get('state'), 'planned')
+    def test_planned_default_dt_execution_no_inputs(self):
+        now = datetime.now(tz=self.dt_test1.tzinfo)
+        arr = self.Operation.Arrival.create(goods_type=self.goods_type,
+                                            location=self.incoming_loc,
+                                            state='planned')
+        self.assertTrue(arr.dt_execution > now)
+
+    def test_planned_default_dt_execution_inputs(self):
+        arr = self.Operation.Arrival.create(goods_type=self.goods_type,
+                                            location=self.incoming_loc,
+                                            dt_execution=self.dt_test1,
+                                            state='planned')
+        avatar = arr.outcomes[0]
+        departure = self.Operation.Departure.create(input=avatar)
+        self.assertEqual(departure.dt_execution, self.dt_test1)

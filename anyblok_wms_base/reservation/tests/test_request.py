@@ -15,13 +15,13 @@ class RequestItemTestCase(WmsTestCase):
     def setUp(self):
         super(RequestItemTestCase, self).setUp()
         Wms = self.registry.Wms
-        self.Goods = Wms.Goods
-        self.Props = self.Goods.Properties
+        self.PhysObj = Wms.PhysObj
+        self.Props = self.PhysObj.Properties
         self.Reservation = Wms.Reservation
         self.RequestItem = self.Reservation.RequestItem
         self.loc = self.insert_location('INC')
-        gt1 = self.goods_type1 = self.Goods.Type.insert(code='MG')
-        gt2 = self.goods_type2 = self.Goods.Type.insert(code='MH')
+        gt1 = self.goods_type1 = self.PhysObj.Type.insert(code='MG')
+        gt2 = self.goods_type2 = self.PhysObj.Type.insert(code='MH')
 
         # just so that we can insert avatars
         self.arrival = Wms.Operation.Arrival.insert(
@@ -35,19 +35,19 @@ class RequestItemTestCase(WmsTestCase):
                                              batch='ABCD')
 
         self.goods = {
-            p1: [self.Goods.insert(type=gt1, properties=p1),
-                 self.Goods.insert(type=gt1, properties=p1),
-                 self.Goods.insert(type=gt2, properties=p1),
+            p1: [self.PhysObj.insert(type=gt1, properties=p1),
+                 self.PhysObj.insert(type=gt1, properties=p1),
+                 self.PhysObj.insert(type=gt2, properties=p1),
                  ],
-            p2: [self.Goods.insert(type=gt1, properties=p2),
-                 self.Goods.insert(type=gt2, properties=p2),
+            p2: [self.PhysObj.insert(type=gt1, properties=p2),
+                 self.PhysObj.insert(type=gt2, properties=p2),
                  ],
         }
-        self.avatars = {g: self.Goods.Avatar.insert(goods=g,
-                                                    dt_from=self.dt_test1,
-                                                    location=self.loc,
-                                                    reason=self.arrival,
-                                                    state='present')
+        self.avatars = {g: self.PhysObj.Avatar.insert(goods=g,
+                                                      dt_from=self.dt_test1,
+                                                      location=self.loc,
+                                                      reason=self.arrival,
+                                                      state='present')
                         for perprop in self.goods.values() for g in perprop}
 
     def test_lookup(self):
@@ -68,7 +68,7 @@ class RequestItemTestCase(WmsTestCase):
             self.assertEqual(found[1].type, self.goods_type1)
 
     def test_item_reserve(self):
-        # requesting 3 Goods records, but only 2 will match
+        # requesting 3 PhysObj records, but only 2 will match
         item = self.RequestItem(goods_type=self.goods_type1,
                                 properties=dict(foo=3),
                                 quantity=3)
@@ -81,10 +81,10 @@ class RequestItemTestCase(WmsTestCase):
         self.assertEqual(first_two, set(self.goods[self.props1][:2]))
 
         av3, av4 = [
-            self.Goods.Avatar.insert(
+            self.PhysObj.Avatar.insert(
                 state='future',
-                goods=self.Goods.insert(type=self.goods_type1,
-                                        properties=self.props1),
+                goods=self.PhysObj.insert(type=self.goods_type1,
+                                          properties=self.props1),
                 reason=self.arrival,
                 dt_from=self.dt_test1,
                 location=self.loc)
@@ -92,7 +92,7 @@ class RequestItemTestCase(WmsTestCase):
 
         self.assertEqual(item.reserve(), True)  # now it's satisfied
 
-        # we needed only one more, so there's one Goods that's not reserved
+        # we needed only one more, so there's one PhysObj that's not reserved
         all_three = set(r.goods for r in self.Reservation.query().all())
         self.assertEqual(len(all_three), 3)
         self.assertTrue(first_two.issubset(all_three))
@@ -147,8 +147,10 @@ class RequestItemTestCase(WmsTestCase):
         # TODO use mock.patch contextmanager (IIRC)
         saved_commit = Request.registry.commit
         Request.registry.commit = lambda: None
-        Request.reserve_all(batch_size=1)
-        Request.registry.commit = saved_commit
+        try:
+            Request.reserve_all(batch_size=1)
+        finally:
+            Request.registry.commit = saved_commit
 
         self.assertTrue(req1.reserved)
         self.assertTrue(req2.reserved)
@@ -158,7 +160,7 @@ class RequestItemTestCase(WmsTestCase):
         self.assertEqual(reserved_goods, expected)
 
     def test_reserve_avatars_once(self):
-        """We don't reserve several times Goods that have several Avatars."""
+        """We don't reserve several times PhysObj that have several Avatars."""
         goods = self.goods[self.props1][0]
         for av in self.avatars.values():
             av.goods = goods
@@ -172,7 +174,7 @@ class RequestItemTestCase(WmsTestCase):
         self.assertEqual(resa.goods, goods)
 
     def test_dont_reserve_past_avatars(self):
-        """We don't reserve Goods that have only 'past' avatars."""
+        """We don't reserve PhysObj that have only 'past' avatars."""
         for av in self.avatars.values():
             av.state = 'past'
         self.registry.flush()  # to be sure

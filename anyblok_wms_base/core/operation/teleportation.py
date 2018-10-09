@@ -22,7 +22,7 @@ Operation = Declarations.Model.Wms.Operation
 
 @register(Operation)
 class Teleportation(Mixin.WmsSingleInputOperation, Operation):
-    """Inventory Operation to record unexpected change of location for Goods.
+    """Inventory Operation to record unexpected change of location for PhysObj.
 
     This is similar to Move, but has a distinct functional meaning: the
     change of location is only witnessed after the fact, and it has no
@@ -38,9 +38,9 @@ class Teleportation(Mixin.WmsSingleInputOperation, Operation):
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
     """Primary key."""
 
-    new_location = Many2One(model='Model.Wms.Goods',
+    new_location = Many2One(model='Model.Wms.PhysObj',
                             nullable=False)
-    """Where the Goods record showed up."""
+    """Where the PhysObj record showed up."""
 
     @classmethod
     def check_create_conditions(cls, state, dt_execution,
@@ -74,13 +74,13 @@ class Teleportation(Mixin.WmsSingleInputOperation, Operation):
         """
         to_move, dt_exec = self.input, self.dt_execution
 
-        self.registry.Wms.Goods.Avatar.insert(
+        self.registry.Wms.PhysObj.Avatar.insert(
             location=self.new_location,
             reason=self,
             state='present',
             dt_from=dt_exec,
             # copied fields:
             dt_until=to_move.dt_until,
-            goods=to_move.goods)
+            obj=to_move.obj)
 
         to_move.update(dt_until=dt_exec, reason=self, state='past')

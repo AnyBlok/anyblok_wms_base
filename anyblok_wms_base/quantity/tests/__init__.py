@@ -20,4 +20,5 @@ class QuantityTestCAse(BlokTestCase):
             self.assertIsInstance(module, module_type)
 
         blok = BlokManager.get('wms-quantity')
+        blok.import_declaration_module()
         blok.reload_declaration_module(fake_reload)

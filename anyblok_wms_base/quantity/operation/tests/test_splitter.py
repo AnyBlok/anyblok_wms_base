@@ -6,14 +6,14 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok_wms_base.testing import WmsTestCaseWithGoods
+from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 from anyblok_wms_base.exceptions import (
     OperationQuantityError,
     OperationMissingQuantityError,
 )
 
 
-class TestSplitterOperation(WmsTestCaseWithGoods):
+class TestSplitterOperation(WmsTestCaseWithPhysObj):
     """Test the WmsSingleGoodOperation mixin
 
     In these test cases, Operation.Move is considered the canonical example of
@@ -62,7 +62,7 @@ class TestSplitterOperation(WmsTestCaseWithGoods):
         self.assertEqual(move.follows, [self.arrival])
         self.assertEqual(move.input, self.avatar)
         self.avatar.state = 'present'
-        self.goods.quantity = 2
+        self.physobj.quantity = 2
         self.registry.flush()
         with self.assertRaises(OperationQuantityError) as arc:
             move.execute()
@@ -100,7 +100,7 @@ class TestSplitterOperation(WmsTestCaseWithGoods):
                                 input=self.avatar)
         split = self.assert_singleton(move.follows)
         self.assertEqual(split.input, self.avatar)
-        self.goods.quantity = 1
+        self.physobj.quantity = 1
         self.avatar.state = 'present'
 
         with self.assertRaises(OperationQuantityError) as arc:
@@ -125,4 +125,4 @@ class TestSplitterOperation(WmsTestCaseWithGoods):
         str(move)
 
 
-del WmsTestCaseWithGoods
+del WmsTestCaseWithPhysObj

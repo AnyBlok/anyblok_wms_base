@@ -9,8 +9,17 @@
 Release history
 ===============
 
-0.7.0 (unreleased)
+0.8.0 (unreleased)
 ~~~~~~~~~~~~~~~~~~
+
+* Merge of the ``Wms.Goods`` and ``Wms.Location`` Models into a single
+  one: ``Wms.PhysObj``. This impacts all existing code bases.
+* Inventory Operations: Apparition, Disparition and Teleportation
+* Enrichment of Properties API
+* The date and time of ``planned`` Operations is no longer mandatory
+
+0.7.0
+~~~~~
 * Moved the quantity field of Goods from wms-core to the new
   optional wms-quantity Blok.
 

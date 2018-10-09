@@ -52,7 +52,7 @@ class HistoryInput:
                          foreign_key_options={'ondelete': 'cascade'})
     """The Operation we are interested in."""
 
-    avatar = Many2One(model='Model.Wms.Goods.Avatar',
+    avatar = Many2One(model='Model.Wms.PhysObj.Avatar',
                       primary_key=True,
                       foreign_key_options={'ondelete': 'cascade'})
     """One of the inputs of the :attr:`operation`."""
@@ -65,7 +65,7 @@ class HistoryInput:
     aspects of Operations, as is exposed in the :attr:`Operation.follows`
     and :attr:`Operation.followers` attributes and, on the other hand, the
     preservation of :attr:`reason
-    <anyblok_wms_base.core.goods.Avatar.reason>` for restore if
+    <anyblok_wms_base.core.physobj.Avatar.reason>` for restore if
     needed, even after the :attr:`current operation <operation>` is done.
     """
 
@@ -90,7 +90,7 @@ class Operation:
     polymorphic features of SQLAlchemy and AnyBlok.
 
     The main purpose of this separation is to simplify the representation of
-    operational history: Goods Avatars and Operations can be :class:`linked
+    operational history: PhysObj Avatars and Operations can be :class:`linked
     together <HistoryInput>` in full generality.
 
     Downstream applications and libraries can add columns on the present model
@@ -165,7 +165,7 @@ class Operation:
         * a move of a bottle of milk that follows the unpacking
           of a 6-pack, which itself follows a move from somewhere else
         * a parcel packing operation that follows exactly one move
-          to the shipping area for each Goods to be packed.
+          to the shipping area for each PhysObj to be packed.
           they themselves would follow more operations.
         * an :class:`Arrival <.arrival.Arrival>` typically doesn't
           follow anything (but might be due to some kind of purchase order).
@@ -206,10 +206,10 @@ class Operation:
     For Operations in states ``planned`` and ``started``,
     this represents the time at which the execution is supposed to complete.
     This has consequences on the :attr:`dt_from
-    <anyblok_wms_base.core.goods.Avatar.dt_from>` and :attr:`dt_until
-    <anyblok_wms_base.core.goods.Avatar.dt_until>` fields of
-    the :ref:`Goods Avatars <goods_avatar>` affected by this Operation, to
-    avoid summing up several :ref:`Avatars <goods_avatar>` of the same
+    <anyblok_wms_base.core.physobj.Avatar.dt_from>` and :attr:`dt_until
+    <anyblok_wms_base.core.physobj.Avatar.dt_until>` fields of
+    the :ref:`PhysObj Avatars <physobj_avatar>` affected by this Operation, to
+    avoid summing up several :ref:`Avatars <physobj_avatar>` of the same
     physical goods while :meth:`peeking at quantities in the future
     <anyblok_wms_base.core.location.Location.quantity>`,
     but has no other strong meaning within
@@ -217,7 +217,7 @@ class Operation:
     it can use it about freely. The actual execution can
     occur later at any time, be it sooner or later, as :meth:`execute`
     will in particular correct the value of this field, and its
-    consequences on the affected :ref:`Avatars <goods_avatar>`.
+    consequences on the affected :ref:`Avatars <physobj_avatar>`.
     """
 
     dt_start = DateTime(label="date and time of start")
@@ -232,7 +232,7 @@ class Operation:
 
     .. note:: We will probably later on make use of this field in
               destructive Operations to update the :attr:`dt_until
-              <anyblok_wms_base.core.goods.Avatar.dt_until>` field
+              <anyblok_wms_base.core.physobj.Avatar.dt_until>` field
               of their inputs, meaning that they won't appear in
               present quantity queries anymore.
 
@@ -248,7 +248,7 @@ class Operation:
     """Number of :attr:`inputs` the Operation expects.
 
     This can be set by subclasses to impose a fixed number, as in
-    :attr:`inputs_number <.on_goods.WmsSingleGoodsOperation>`
+    :attr:`inputs_number <.on_goods.WmsSinglePhysObjOperation>`
 
     In particular, purely creative subclasses must set this to 0
     """
@@ -294,7 +294,7 @@ class Operation:
 
         In contrast with :meth:`insert`, this class method performs
         some Wms specific logic,
-        e.g, creation of Goods, but that's up to the specific subclasses.
+        e.g, creation of PhysObj, but that's up to the specific subclasses.
 
         :param state:
            value of the :attr:`state` field right after creation. It has
@@ -303,8 +303,8 @@ class Operation:
            right away.
 
            Creating an Operation in the ``started`` state should
-           make the relevant Goods and/or Avatar locked or destroyed right away
-           (TODO not implemented)
+           make the relevant PhysObj and/or Avatar locked or destroyed right
+           away (TODO not implemented)
         :param fields: remaining fields, to be forwarded to ``insert`` and
                        the various involved methods implemented in subclasses.
         :param dt_execution:
@@ -331,15 +331,7 @@ class Operation:
         methods instead).
         """
         if dt_execution is None:
-            if state == 'done':
-                dt_execution = datetime.now()
-            else:
-                raise OperationError(
-                    cls,
-                    "Creation in state {state!r} requires the "
-                    "'dt_execution' field (date and time when "
-                    "it's supposed to be done).",
-                    state=state)
+            dt_execution = cls.default_dt_execution(state, inputs)
         cls.check_create_conditions(
             state, dt_execution, inputs=inputs, **fields)
         inputs, fields_upd = cls.before_insert(state=state,
@@ -354,6 +346,38 @@ class Operation:
             op.link_inputs(inputs)
         op.after_insert()
         return op
+
+    @classmethod
+    def default_dt_execution(cls, state, inputs):
+        """Compute a default date and time of execution.
+
+        The whole system relies for accuracy of stock levels that time ranges
+        of avatars don't overlap.
+
+        In case of direct creation in the ``done`` state, the default
+        ``dt_execution`` is the current wall time.
+
+        In case of creation of a ``planned`` Operation, the default
+        ``dt_execution`` is the max of the ``dt_from`` of the inputs.
+        This policy will lead certainly to many very short lived ``future``
+        avatars, and even many with an empty time range
+        (``dt_from == dt_until``).
+        This is acceptable at this stage of development, because the time
+        range of ``future`` avatars is purely fictional anyway.
+        It's better to do this under the hood rather than forcing downstream
+        developers having to create this fiction by themselves in case they
+        have no reliable information.
+
+        In the special case of creating Operations (ie, with no inputs),
+        we believe it's acceptable to default back to the current wall time.
+
+        This class method is singled out to be easily overiddable by
+        subclasses.
+        """
+
+        if state == 'done' or not inputs:
+            return datetime.now()
+        return max(av.dt_from for av in inputs)
 
     @classmethod
     def before_insert(cls, inputs=None, **fields):
@@ -606,7 +630,7 @@ class Operation:
     def outcomes(self):
         """Return the outcomes of the present operation.
 
-        Outcomes are the Goods Avatars that the current Operation produces,
+        Outcomes are the PhysObj Avatars that the current Operation produces,
         unless another Operation has been executed afterwards, becoming their
         reason.
         If no Operation is downstream, one can think of outcomes as the results
@@ -618,7 +642,7 @@ class Operation:
         This is a Python property, because it might become a field at some
         point.
         """
-        Avatar = self.registry.Wms.Goods.Avatar
+        Avatar = self.registry.Wms.PhysObj.Avatar
         # if already executed, might be the 'reason' for some Avatar
         # from self.inputs to be in 'past' state.
         return Avatar.query().filter(Avatar.reason == self,
@@ -675,24 +699,24 @@ class Operation:
         raise NotImplementedError  # pragma: no cover
 
     def delete_outcomes(self):
-        """Delete outcomes of the current Operation and their Goods if needed
+        """Delete outcomes of the current Operation and their PhysObj if needed
 
         This is used in the default implementations of :meth:`cancel_single`
         and :meth:`obliviate_single`.
 
-        The Goods that the outcome Avatars were attached too get removed if
-        they have no Avatar left. Typically that would be because they have been
-        created along with the Avatars.
+        The PhysObj that the outcome Avatars were attached too get removed if
+        they have no Avatar left. Typically that would be because they have
+        been created along with the Avatars.
         """
         all_goods = set()
         for avatar in self.outcomes:
-            all_goods.add(avatar.goods)
+            all_goods.add(avatar.obj)
             avatar.delete()
         self.registry.flush()
         # TODO PERF probably more efficient in one query with GROUP BY + COUNT
-        Avatar = self.registry.Wms.Goods.Avatar
+        Avatar = self.registry.Wms.PhysObj.Avatar
         for goods in all_goods:
-            if not Avatar.query().filter(Avatar.goods == goods).count():
+            if not Avatar.query().filter(Avatar.obj == goods).count():
                 goods.delete()
 
     def cancel_single(self):
