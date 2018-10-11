@@ -51,7 +51,7 @@ class Arrival:
                                quantity=self.quantity,
                                code=self.goods_code)
         PhysObj.Avatar.insert(
-            goods=goods,
+            obj=goods,
             location=self.location,
             reason=self,
             state='present' if self.state == 'done' else 'future',

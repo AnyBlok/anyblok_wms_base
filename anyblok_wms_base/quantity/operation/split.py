@@ -26,7 +26,7 @@ class Split(SingleInput, Operation):
     """A split of PhysObj record in two.
 
     Splits replace their input's :class:`PhysObj
-    <anyblok_wms_base.quantity.goods.PhysObj>` record with
+    <anyblok_wms_base.quantity.physobj.PhysObj>` record with
     two of them, one having the wished :attr:`quantity`, along with
     Avatars at the same location, while
     keeping the same properties and the same total quantity.
@@ -48,7 +48,7 @@ class Split(SingleInput, Operation):
     the PhysObj Type.
 
     .. seealso:: :class:`Model.Wms.PhysObj.Type
-                 <anyblok_wms_base.quantity.goods.Type>`
+                 <anyblok_wms_base.quantity.physobj.Type>`
                  for a full discussion including use-cases of formal and
                  physical splits and reversal of the latter.
 
@@ -86,12 +86,12 @@ class Split(SingleInput, Operation):
     def after_insert(self):
         self.registry.flush()
         avatar = self.input
-        goods = avatar.goods
+        phobj = avatar.obj
         qty = self.quantity
-        new_goods = dict(
-            type=goods.type,
-            code=goods.code,
-            properties=goods.properties,
+        new_phobj = dict(
+            type=phobj.type,
+            code=phobj.code,
+            properties=phobj.properties,
         )
         new_avatars = dict(
             location=avatar.location,
@@ -108,9 +108,9 @@ class Split(SingleInput, Operation):
 
         return tuple(
             avatar.insert(
-                goods=goods.insert(quantity=new_qty, **new_goods),
+                obj=phobj.insert(quantity=new_qty, **new_phobj),
                 **new_avatars)
-            for new_qty in (qty, goods.quantity - qty))
+            for new_qty in (qty, phobj.quantity - qty))
 
     @property
     def wished_outcome(self):
@@ -126,7 +126,7 @@ class Split(SingleInput, Operation):
         Avatar = PhysObj.Avatar
         # in case the split is exactly in half, there's no difference
         # between the two records we created, let's pick any.
-        outcome = Avatar.query().join(Avatar.goods).filter(
+        outcome = Avatar.query().join(Avatar.obj).filter(
             Avatar.reason == self,
             Avatar.state != 'past',
             PhysObj.quantity == self.quantity).first()
@@ -138,14 +138,14 @@ class Split(SingleInput, Operation):
         """Call the base class's version and check that quantity is suitable.
         """
         super(Split, self).check_execute_conditions()
-        goods = self.input.goods
-        if self.quantity > goods.quantity:
+        phobj = self.input.obj
+        if self.quantity > phobj.quantity:
             raise OperationQuantityError(
                 self,
                 "Can't execute {op}, whose quantity {op.quantity} is greater "
-                "than on its input {goods}, "
+                "than on its input {phobj}, "
                 "although it's been successfully planned.",
-                op=self, goods=self.input)
+                op=self, phobj=self.input)
 
     def execute_planned(self):
         for outcome in self.outcomes:
@@ -161,7 +161,7 @@ class Split(SingleInput, Operation):
         See :meth:`on Model.PhysObj.Type
         <anyblok_wms_base.core.physobj.Type.is_split_reversible>`
         """
-        return self.input.goods.type.is_split_reversible()
+        return self.input.obj.type.is_split_reversible()
 
     def plan_revert_single(self, dt_execution, follows=()):
         if not follows:
@@ -185,7 +185,7 @@ class Split(SingleInput, Operation):
 
         The base class would only take care of the created Avatars
         """
-        outcomes_goods = [o.goods for o in self.outcomes]
+        outcomes_objs = [o.obj for o in self.outcomes]
         super(Split, self).obliviate_single()
-        for goods in outcomes_goods:
-            goods.delete()
+        for obj in outcomes_objs:
+            obj.delete()

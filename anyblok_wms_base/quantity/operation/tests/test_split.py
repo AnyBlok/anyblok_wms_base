@@ -43,12 +43,12 @@ class TestSplit(WmsTestCaseWithPhysObj):
         self.assertEqual(self.avatar.state, 'past')
         self.assertEqual(self.avatar.dt_from, self.dt_test1)
         self.assertEqual(self.avatar.dt_until, self.dt_test2)
-        self.assertEqual(sum(out.goods.quantity for out in outcomes), 3)
+        self.assertEqual(sum(out.obj.quantity for out in outcomes), 3)
         for outcome in outcomes:
             self.assertEqual(outcome.dt_from, self.dt_test2)
             self.assertEqual(outcome.location, self.incoming_loc)
             self.assertEqual(outcome.state, 'present')
-            self.assertEqual(outcome.goods.type, self.physobj_type)
+            self.assertEqual(outcome.obj.type, self.physobj_type)
             # No need to test quantity > 0, we now have a constraint on that
 
     def test_create_planned_execute(self):
@@ -65,7 +65,7 @@ class TestSplit(WmsTestCaseWithPhysObj):
         self.assertEqual(self.avatar.state, 'present')
         self.assertEqual(self.avatar.dt_from, self.dt_test1)
         self.assertEqual(self.avatar.dt_until, self.dt_test2)
-        self.assertEqual(sum(out.goods.quantity for out in all_outcomes), 3)
+        self.assertEqual(sum(out.obj.quantity for out in all_outcomes), 3)
         # this will fail if me mangle the datetimes severely
         self.assertEqual(
             self.Wms.quantity(location=self.incoming_loc,
@@ -78,9 +78,9 @@ class TestSplit(WmsTestCaseWithPhysObj):
             self.assertEqual(outcome.dt_from, self.dt_test2)
             self.assertEqual(outcome.location, self.incoming_loc)
             self.assertEqual(outcome.state, 'future')
-            self.assertEqual(outcome.goods.type, self.physobj_type)
+            self.assertEqual(outcome.obj.type, self.physobj_type)
         wished_outcome = split.wished_outcome
-        self.assertEqual(wished_outcome.goods.quantity, 2)
+        self.assertEqual(wished_outcome.obj.quantity, 2)
         self.assertTrue(wished_outcome in all_outcomes)
 
         split.execute(self.dt_test2)
@@ -89,7 +89,7 @@ class TestSplit(WmsTestCaseWithPhysObj):
             self.assertEqual(outcome.dt_until, None)
             self.assertEqual(outcome.location, self.incoming_loc)
             self.assertEqual(outcome.state, 'present')
-            self.assertEqual(outcome.goods.type, self.physobj_type)
+            self.assertEqual(outcome.obj.type, self.physobj_type)
 
         # whatever the time we pick at the total quantity should still be
         # unchanged (using the right states, of course)
@@ -157,9 +157,9 @@ class TestSplit(WmsTestCaseWithPhysObj):
         Avatar = self.PhysObj.Avatar
         new_avatar = self.single_result(
             Avatar.query().filter(Avatar.state == 'present'))
-        new_goods = new_avatar.goods
+        new_goods = new_avatar.obj
         self.assertEqual(new_goods.quantity, 3)
-        # TODO would be neat for the outcome to actually be self.goods,
+        # TODO would be neat for the outcome to actually be self.physobj,
         # i.e., the PhysObj record we started with
         self.assertEqual(new_avatar.location, self.avatar.location)
         self.assertEqual(new_goods.type, self.physobj.type)
@@ -199,9 +199,9 @@ class TestSplit(WmsTestCaseWithPhysObj):
         Avatar = self.PhysObj.Avatar
         new_avatar = self.single_result(
             Avatar.query().filter(Avatar.state == 'present'))
-        new_goods = new_avatar.goods
+        new_goods = new_avatar.obj
         self.assertEqual(new_goods.quantity, 3)
-        # TODO would be neat for the outcome to actually be self.goods,
+        # TODO would be neat for the outcome to actually be self.physobj,
         # i.e., the PhysObj record we started with
         self.assertEqual(new_avatar.location, self.avatar.location)
         self.assertEqual(new_goods.type, self.physobj.type)
@@ -227,10 +227,10 @@ class TestSplit(WmsTestCaseWithPhysObj):
         restored_avatar = self.single_result(Avatar.query())
         restored_goods = self.single_result(self.PhysObj.query().filter_by(
             type=self.physobj.type))
-        self.assertEqual(restored_avatar.goods, restored_goods)
+        self.assertEqual(restored_avatar.obj, restored_goods)
 
         self.assertEqual(restored_avatar.location, self.avatar.location)
-        # TODO would be neat for the outcome to actually be self.goods,
+        # TODO would be neat for the outcome to actually be self.physobj,
         # i.e., the PhysObj record we started with
         self.assertEqual(restored_goods, self.physobj)
         self.assertEqual(restored_goods.quantity, 3)

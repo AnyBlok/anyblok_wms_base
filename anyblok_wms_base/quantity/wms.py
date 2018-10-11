@@ -20,4 +20,4 @@ class Wms:
         PhysObj = cls.registry.Wms.PhysObj
         Avatar = PhysObj.Avatar
         # TODO distinguish quantity on Avatars from those on PhysObj?
-        return Avatar.query(func.sum(PhysObj.quantity)).join(Avatar.goods)
+        return Avatar.query(func.sum(PhysObj.quantity)).join(Avatar.obj)

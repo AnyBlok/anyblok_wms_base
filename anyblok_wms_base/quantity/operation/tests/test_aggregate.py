@@ -28,21 +28,14 @@ class TestAggregate(WmsTestCase):
         self.loc = self.insert_location('Incoming')
 
         # The arrival fields don't matter, we'll insert goods directly
-        self.arrival = Operation.Arrival.insert(goods_type=self.physobj_type,
-                                                location=self.loc,
-                                                state='planned',
-                                                dt_execution=self.dt_test1,
-                                                quantity=17)
-
-        Avatar = self.PhysObj.Avatar
-        self.avatars = [
-            Avatar.insert(goods=self.PhysObj.insert(quantity=qty,
-                                                    type=self.physobj_type),
-                          location=self.loc,
-                          dt_from=self.dt_test1,
-                          state='future',
-                          reason=self.arrival)
+        self.arrivals = [
+            Operation.Arrival.create(goods_type=self.physobj_type,
+                                     location=self.loc,
+                                     state='planned',
+                                     dt_execution=self.dt_test1,
+                                     quantity=qty)
             for qty in (1, 2)]
+        self.avatars = [op.outcomes[0] for op in self.arrivals]
         self.Agg = Operation.Aggregate
 
         self.default_quantity_location = self.loc
@@ -56,7 +49,7 @@ class TestAggregate(WmsTestCase):
         props = self.PhysObj.Properties.insert(flexible=dict(foo='bar'))
         for avatar in self.avatars:
             avatar.state = 'present'
-            avatar.goods.properties = props
+            avatar.obj.properties = props
         agg = self.Agg.create(inputs=self.avatars, state='done')
         self.assertEqual(agg.inputs, self.avatars)
         for record in self.avatars:
@@ -64,7 +57,7 @@ class TestAggregate(WmsTestCase):
             self.assertEqual(record.reason, agg)
         new_avatar = self.assert_singleton(agg.outcomes)
         self.assertEqual(new_avatar.location, self.loc)
-        new_goods = new_avatar.goods
+        new_goods = new_avatar.obj
         self.assertEqual(new_goods.properties, props)
         self.assertEqual(new_goods.quantity, 3)
 
@@ -77,12 +70,12 @@ class TestAggregate(WmsTestCase):
         for avatar in self.avatars:
             avatar.state = 'present'
             props = self.PhysObj.Properties.insert(flexible=dict(foo='bar'))
-            avatar.goods.properties = props
+            avatar.obj.properties = props
         agg = self.Agg.create(inputs=self.avatars, state='done')
 
         new_avatar = self.assert_singleton(agg.outcomes)
         self.assertEqual(new_avatar.location, self.loc)
-        new_goods = new_avatar.goods
+        new_goods = new_avatar.obj
         self.assertIsNotNone(new_goods.properties)
         new_props = new_goods.properties.to_dict()
         new_props.pop('id')
@@ -118,16 +111,16 @@ class TestAggregate(WmsTestCase):
         self.assertEqual(set(g.quantity for g in new_goods), set((1, 2)))
 
         for avatar in self.PhysObj.Avatar.query().all():
-            self.assertEqual(avatar.goods.type, self.physobj_type)
+            self.assertEqual(avatar.obj.type, self.physobj_type)
             self.assertEqual(avatar.location, self.loc)
             self.assertEqual(avatar.state, 'present')
-            self.assertEqual(avatar.reason, self.arrival)
+            self.assertTrue(avatar.reason in self.arrivals)
 
     def test_create_done_equal_props_obliviate(self):
         for avatar in self.avatars:
             avatar.state = 'present'
             props = self.PhysObj.Properties.insert(flexible=dict(foo='bar'))
-            avatar.goods.properties = props
+            avatar.obj.properties = props
         agg = self.Agg.create(inputs=self.avatars, state='done')
         agg.obliviate()
         self.assertBackToBeginning(state='present', props=props)
@@ -151,15 +144,16 @@ class TestAggregate(WmsTestCase):
         self.avatars[0].reason = other_reason
         agg = self.Agg.create(inputs=self.avatars, state='done',
                               dt_execution=self.dt_test2)
-        self.assertEqual(set(agg.follows), set((self.arrival, other_reason)))
+        self.assertEqual(set(agg.follows), set((self.arrivals[1],
+                                                other_reason)))
         agg.obliviate()
         new_avatars = self.PhysObj.Avatar.query().all()
         self.assertEqual(len(new_avatars), 2)
         for avatar in new_avatars:
-            if avatar.goods.quantity == 1:
+            if avatar.obj.quantity == 1:
                 exp_reason = other_reason
             else:
-                exp_reason = self.arrival
+                exp_reason = self.arrivals[1]
             self.assertEqual(avatar.reason, exp_reason)
 
         # CASCADE options did the necessary cleanups
@@ -179,8 +173,8 @@ class TestAggregate(WmsTestCase):
 
     def test_forbid_differences_goods(self):
         """Forbid differences among avatars' PhysObj."""
-        self.avatars[0].goods.code = 'AB'
-        self.avatars[1].goods.code = 'CD'
+        self.avatars[0].obj.code = 'AB'
+        self.avatars[1].obj.code = 'CD'
         with self.assertRaises(OperationInputsError) as arc:
             self.plan_aggregate()
         exc = arc.exception
@@ -239,7 +233,7 @@ class TestAggregate(WmsTestCase):
         props = self.PhysObj.Properties.insert(flexible=dict(foo='bar'))
         for avatar in self.avatars:
             avatar.state = 'present'
-            avatar.goods.properties = props
+            avatar.obj.properties = props
 
         agg = self.plan_aggregate()
         self.assertEqual(agg.inputs, self.avatars)
@@ -264,9 +258,9 @@ class TestAggregate(WmsTestCase):
             Avatar.query().filter(
                 Avatar.reason == agg,
                 Avatar.state == 'present').all())
-        self.assertEqual(new_avatar.goods.quantity, 3)
+        self.assertEqual(new_avatar.obj.quantity, 3)
         self.assertEqual(new_avatar.location, self.loc)
-        self.assertEqual(new_avatar.goods.properties, props)
+        self.assertEqual(new_avatar.obj.properties, props)
 
     def test_execute_several_dt_from(self):
         self.avatars[1].dt_from = self.dt_test2
@@ -292,7 +286,7 @@ class TestAggregate(WmsTestCase):
         props = self.PhysObj.Properties.insert(flexible=dict(foo='bar'))
         for avatar in self.avatars:
             avatar.state = 'present'
-            avatar.goods.properties = props
+            avatar.obj.properties = props
 
         agg = self.plan_aggregate()
         self.assertEqual(agg.inputs, self.avatars)
@@ -308,13 +302,13 @@ class TestAggregate(WmsTestCase):
         agg.cancel()
         self.assertEqual(self.Agg.query().count(), 0)
         Avatar = self.PhysObj.Avatar
-        all_avatars = Avatar.query().join(Avatar.goods).filter(
-            self.PhysObj.type == self.avatars[0].goods.type).all()
+        all_avatars = Avatar.query().join(Avatar.obj).filter(
+            self.PhysObj.type == self.avatars[0].obj.type).all()
         self.assertEqual(set(all_avatars), set(self.avatars))
 
         all_goods = self.PhysObj.query().filter(
-            self.PhysObj.type == self.avatars[0].goods.type).all()
-        self.assertEqual(set(all_goods), set(av.goods for av in self.avatars))
+            self.PhysObj.type == self.avatars[0].obj.type).all()
+        self.assertEqual(set(all_goods), set(av.obj for av in self.avatars))
 
     def test_reversibility(self):
         for record in self.avatars:
@@ -322,7 +316,7 @@ class TestAggregate(WmsTestCase):
         agg = self.Agg.create(inputs=self.avatars, state='done')
 
         self.assertTrue(agg.is_reversible())
-        gt = self.avatars[0].goods.type
+        gt = self.avatars[0].obj.type
         gt.behaviours = {SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR: True}
         self.assertFalse(agg.is_reversible())
 

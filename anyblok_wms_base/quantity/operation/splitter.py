@@ -76,17 +76,17 @@ class WmsSplitterOperation:
             state, dt_execution,
             inputs=inputs, quantity=quantity, **kwargs)
 
-        goods = inputs[0].goods
+        phobj = inputs[0].obj
         if quantity is None:
             raise OperationMissingQuantityError(
                 cls,
                 "The 'quantity keyword argument must be passed to "
                 "the create() method")
-        if quantity > goods.quantity:
+        if quantity > phobj.quantity:
             raise OperationQuantityError(
                 cls,
                 "Can't split a greater quantity ({op_quantity}) than held in "
-                "{input} (which have quantity={input.goods.quantity})",
+                "{input} (which have quantity={input.obj.quantity})",
                 op_quantity=quantity, input=inputs[0])
 
     def check_execute_conditions(self):
@@ -98,14 +98,14 @@ class WmsSplitterOperation:
         that it's in state ``future``: the Split will be executed during
         ``self.execute()``, which comes once the present method has agreed.
         """
-        goods = self.input.goods
-        if self.quantity != goods.quantity:
+        if self.quantity != self.input.obj.quantity:
             raise OperationQuantityError(
                 self,
                 "Can't execute planned for a different quantity {op_quantity} "
                 "than held in its input {input} "
-                "(which have quantity={goods.quantity}). "
-                "If it's less, a Split should have occured first ")
+                "(which have quantity={input.obj.quantity}). "
+                "If it's less, a Split should have occured first ",
+                input=input)
         if self.partial:
             self.input.reason.check_execute_conditions()
         else:
@@ -125,7 +125,7 @@ class WmsSplitterOperation:
         matching from the beginning.
         """
         avatar = inputs[0]
-        partial = quantity < avatar.goods.quantity
+        partial = quantity < avatar.obj.quantity
         if not partial:
             return inputs, None
 
@@ -170,7 +170,7 @@ class Departure(Splitter):
 
     In many scenarios, the Departure would come after a
     :ref:`Move <op_move>` that would bring
-    the goods to a shipping location and maybe issue itself a
+    the physical objects to a shipping location and maybe issue itself a
     :ref:`Split <op_split_aggregate>`, so that
     actually the quantity for departure would be an exact match, but Departure
     does not rely on that.

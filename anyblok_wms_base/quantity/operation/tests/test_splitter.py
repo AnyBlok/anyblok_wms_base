@@ -82,7 +82,7 @@ class TestSplitterOperation(WmsTestCaseWithPhysObj):
                                 state='planned',
                                 input=self.avatar)
         self.assertNotEqual(move.input, self.avatar)
-        move.input.goods.quantity = 3
+        move.input.obj.quantity = 3
 
         self.avatar.state = 'present'
         self.registry.flush()

@@ -49,7 +49,7 @@ class Aggregate(Operation):
     TODO implement :meth:`plan_revert_single`
     """
     TYPE = 'wms_aggregate'
-    UNIFORM_GOODS_FIELDS = ('type', 'properties', 'code')
+    UNIFORM_PHYSOBJ_FIELDS = ('type', 'properties', 'code')
     UNIFORM_AVATAR_FIELDS = ('location', )
 
     id = Integer(label="Identifier",
@@ -94,14 +94,14 @@ class Aggregate(Operation):
         super(Aggregate, cls).check_create_conditions(
             state, dt_execution, inputs=inputs, **kwargs)
         first = inputs[0]
-        first_goods = first.goods
+        first_physobj = first.obj
         for avatar in inputs:
-            goods = avatar.goods
+            physobj = avatar.obj
             diff = {}  # field name -> (first value, second value)
-            for field in cls.UNIFORM_GOODS_FIELDS:
-                if not cls.field_is_equal(field, first_goods, goods):
-                    diff[field] = (getattr(first_goods, field),
-                                   getattr(goods, field))
+            for field in cls.UNIFORM_PHYSOBJ_FIELDS:
+                if not cls.field_is_equal(field, first_physobj, physobj):
+                    diff[field] = (getattr(first_physobj, field),
+                                   getattr(physobj, field))
             for field in cls.UNIFORM_AVATAR_FIELDS:
                 first_value = getattr(first, field)
                 second_value = getattr(avatar, field)
@@ -139,17 +139,17 @@ class Aggregate(Operation):
             record.update(**update)
 
         tpl_avatar = inputs[0]
-        tpl_goods = tpl_avatar.goods
-        uniform_goods_fields = {field: getattr(tpl_goods, field)
-                                for field in self.UNIFORM_GOODS_FIELDS}
+        tpl_physobj = tpl_avatar.obj
+        uniform_physobj_fields = {field: getattr(tpl_physobj, field)
+                                  for field in self.UNIFORM_PHYSOBJ_FIELDS}
         uniform_avatar_fields = {field: getattr(tpl_avatar, field)
                                  for field in self.UNIFORM_AVATAR_FIELDS}
-        aggregated_goods = PhysObj.insert(
-            quantity=sum(a.goods.quantity for a in inputs),
-            **uniform_goods_fields)
+        aggregated_physobj = PhysObj.insert(
+            quantity=sum(a.obj.quantity for a in inputs),
+            **uniform_physobj_fields)
 
         return PhysObj.Avatar.insert(
-            goods=aggregated_goods,
+            obj=aggregated_physobj,
             reason=self,
             dt_from=dt_exec,
             # dt_until in states 'present' and 'future' is theoretical anyway
@@ -171,4 +171,4 @@ class Aggregate(Operation):
         context.
         """
         # that all Good Types are equal is part of pre-creation checks
-        return self.inputs[0].goods.type.is_aggregate_reversible()
+        return self.inputs[0].obj.type.is_aggregate_reversible()

@@ -99,14 +99,14 @@ class TestUnpack(WmsTestCase):
                 self.PhysObj.type == unpacked_clone_type))
         self.assertEqual(unpacked_goods_cloned_props.quantity, 10)
         self.assertEqual(unpacked_goods_cloned_props.properties,
-                         self.packs.goods.properties)
+                         self.packs.obj.properties)
 
         unpacked_goods_fwd_props = self.single_result(
             self.PhysObj.query().filter(
                 self.PhysObj.type == unpacked_fwd_type))
         self.assertEqual(unpacked_goods_fwd_props.quantity, 15)
         self.assertNotEqual(unpacked_goods_fwd_props.properties,
-                            self.packs.goods.properties)
+                            self.packs.obj.properties)
         self.assertIsNone(unpacked_goods_fwd_props.get_property('other'))
         self.assertEqual(unpacked_goods_fwd_props.get_property('foo'), 3)
 
@@ -136,7 +136,7 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(unpacked_goods.quantity, 15)
         self.assertEqual(unpacked_goods.type, unpacked_type)
         self.assertEqual(unpacked_goods.properties,
-                         self.packs.goods.properties)
+                         self.packs.obj.properties)
 
     def test_whole_done_non_uniform(self):
         """Unpack with outcomes defined in pack properties.
@@ -290,7 +290,7 @@ class TestUnpack(WmsTestCase):
         # we don't have a create() returned value to compare
 
         # Having properties, still missing the required one
-        self.packs.goods.properties = self.PhysObj.Properties.insert(
+        self.packs.obj.properties = self.PhysObj.Properties.insert(
             flexible=dict(bar=1))
 
         with self.assertRaises(OperationInputsError) as arc:
@@ -359,7 +359,7 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(unpacked_goods.get_property('baz'), 'second hand')
 
         avatar = self.single_result(self.Avatar.query().filter(
-            self.Avatar.goods == unpacked_goods))
+            self.Avatar.obj == unpacked_goods))
         self.assertEqual(avatar.state, 'future')
         self.assertEqual(avatar.reason, unp)
 
@@ -380,7 +380,7 @@ class TestUnpack(WmsTestCase):
                              at_datetime=self.dt_test2,
                              additional_states=['future'])
         self.assertEqual(
-            self.Avatar.query().join(self.Avatar.goods).filter(
+            self.Avatar.query().join(self.Avatar.obj).filter(
                 self.PhysObj.type == self.packed_goods_type,
                 self.Avatar.state == 'future').count(),
             0)
@@ -416,7 +416,7 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(unpacked_goods.get_property('foo'), 7)
 
         avatar = self.single_result(
-            self.Avatar.query().filter(self.Avatar.goods == unpacked_goods))
+            self.Avatar.query().filter(self.Avatar.obj == unpacked_goods))
         self.assertEqual(avatar.reason, unp)
         self.assertEqual(avatar.state, 'future')
 
@@ -434,19 +434,19 @@ class TestUnpack(WmsTestCase):
         packs_goods_query = PhysObj.query().filter(
             PhysObj.type == self.packed_goods_type)
         still_packed = self.single_result(
-            packs_goods_query.join(Avatar.goods).filter(
+            packs_goods_query.join(Avatar.obj).filter(
                 Avatar.state == 'present'))
         self.assertEqual(still_packed.quantity, 1)
 
         # check intermediate objects no leftover intermediate packs
         after_split = self.single_result(
-            Avatar.query().join(Avatar.goods).filter(
+            Avatar.query().join(Avatar.obj).filter(
                 PhysObj.type == self.packed_goods_type,
                 Avatar.state == 'past',
                 Avatar.reason == unp))
-        self.assertEqual(after_split.goods.quantity, 4)
+        self.assertEqual(after_split.obj.quantity, 4)
         self.assertEqual(
-            PhysObj.query().join(Avatar.goods).filter(
+            PhysObj.query().join(Avatar.obj).filter(
                 Avatar.state == 'future').count(),
             0)
 

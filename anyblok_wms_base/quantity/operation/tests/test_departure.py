@@ -45,9 +45,9 @@ class TestDeparture(WmsTestCaseWithPhysObj):
             self.Avatar.query().filter(self.Avatar.reason == dep))
         self.assertEqual(sent.state, 'past')
         self.assertEqual(sent.dt_until, self.dt_test2)
-        self.assertEqual(sent.goods.quantity, 1)
+        self.assertEqual(sent.obj.quantity, 1)
         # dt_until being exclusive, at self.dt_test2 the
-        # goods were already sent.
+        # physical objects were already sent.
         self.assert_quantities(future=(2, self.dt_test2),
                                present=2,
                                past=(2, self.dt_test2))
@@ -77,9 +77,10 @@ class TestDeparture(WmsTestCaseWithPhysObj):
         sent = sent[0]
         self.assertEqual(sent.state, 'past')
         self.assertEqual(sent.dt_until, self.dt_test3)
-        self.assertEqual(sent.goods.quantity, 1)
-        # dt_until being exclusive, at self.dt_test3 the
-        # goods were already sent, at self.dt_test2, they aren't yet
+        self.assertEqual(sent.obj.quantity, 1)
+        # dt_until being exclusive,
+        # at self.dt_test3 the physical objects were already sent,
+        # at self.dt_test2, they aren't yet
         self.assert_quantities(future=(2, self.dt_test3),
                                present=2,
                                past=(2, self.dt_test3))
