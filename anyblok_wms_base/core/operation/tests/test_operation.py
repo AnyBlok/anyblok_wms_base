@@ -87,9 +87,13 @@ class TestOperation(WmsTestCase):
 
         HI = self.Operation.HistoryInput
 
-        op = self.Operation.insert(state='done',
-                                   dt_execution=self.dt_test3,
-                                   type='wms_move')
+        # using a Move instead of a bare Wms.Operation, so that
+        # SQLAlchemy doesn't complain about inconsistent polymorphism
+        # (we would need to pass a correct type (``wms_move``),
+        # but a bare Wms.Operation would not be of the appropriate class)
+        op = self.Operation.Move.insert(state='done',
+                                        destination=self.stock,
+                                        dt_execution=self.dt_test3)
         op.link_inputs(inputs=avatars[:1])
         self.assertEqual(op.inputs, avatars[:1])
         hi = self.single_result(HI.query().filter(HI.operation == op))
