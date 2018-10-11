@@ -13,10 +13,17 @@ Release history
 ~~~~~~~~~~~~~~~~~~
 
 * Merge of the ``Wms.Goods`` and ``Wms.Location`` Models into a single
-  one: ``Wms.PhysObj``. This impacts all existing code bases.
+  one: ``Wms.PhysObj``. This impacts all existing code bases. Some
+  limited upgrade logic is provided (don't upgrade blindly a database
+  if you care about it).
+* The date and time of ``planned`` Operations is no longer mandatory
 * Inventory Operations: Apparition, Disparition and Teleportation
 * Enrichment of Properties API
-* The date and time of ``planned`` Operations is no longer mandatory
+* New methods ``current_avatar()`` and ``eventual_avatar`` of
+  ``Wms.PhysObj`` (formerly ``Wms.Goods``)
+* More flexibility and power in quantity queries (grouping, reuse)
+* Recursive queries for Types (subtype, behaviours)
+
 
 0.7.0
 ~~~~~
