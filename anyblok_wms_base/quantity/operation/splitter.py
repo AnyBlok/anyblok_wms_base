@@ -107,7 +107,7 @@ class WmsSplitterOperation:
                 "If it's less, a Split should have occured first ",
                 input=input)
         if self.partial:
-            self.input.reason.check_execute_conditions()
+            self.input.outcome_of.check_execute_conditions()
         else:
             super(WmsSplitterOperation,
                   self).check_execute_conditions()

@@ -28,12 +28,10 @@ class TestTeleportation(WmsTestCaseWithPhysObj):
                                           new_location=self.stock,
                                           input=avatar)
         self.assertEqual(avatar.state, 'past')
-        self.assertEqual(avatar.reason, telep)
         self.assertEqual(avatar.dt_until, self.dt_test2)
 
         outcome = self.assert_singleton(telep.outcomes)
         self.assertEqual(outcome.state, 'present')
-        self.assertEqual(outcome.reason, telep)
         self.assertEqual(outcome.dt_from, self.dt_test2)
         self.assertEqual(outcome.location, self.stock)
         self.assertIsNone(outcome.dt_until)
@@ -51,7 +49,6 @@ class TestTeleportation(WmsTestCaseWithPhysObj):
 
         telep.obliviate()
         self.assertEqual(avatar.state, 'present')
-        self.assertEqual(avatar.reason, self.arrival)
         self.assertIsNone(avatar.dt_until)
         self.assertEqual(
             self.Avatar.query().filter_by(obj=avatar.obj).count(), 1)

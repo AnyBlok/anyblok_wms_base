@@ -361,7 +361,7 @@ class TestUnpack(WmsTestCase):
         avatar = self.single_result(self.Avatar.query().filter(
             self.Avatar.obj == unpacked_goods))
         self.assertEqual(avatar.state, 'future')
-        self.assertEqual(avatar.reason, unp)
+        self.assertEqual(avatar.outcome_of, unp)
 
         self.assert_quantity(0,
                              goods_type=self.packed_goods_type,
@@ -373,7 +373,6 @@ class TestUnpack(WmsTestCase):
         unp.execute()
         self.assertEqual(avatar.state, 'present')
         self.assertEqual(self.packs.state, 'past')
-        self.assertEqual(self.packs.reason, unp)
 
         self.assert_quantity(0,
                              goods_type=self.packed_goods_type,
@@ -417,7 +416,6 @@ class TestUnpack(WmsTestCase):
 
         avatar = self.single_result(
             self.Avatar.query().filter(self.Avatar.obj == unpacked_goods))
-        self.assertEqual(avatar.reason, unp)
         self.assertEqual(avatar.state, 'future')
 
         self.assert_quantity(1,
@@ -439,16 +437,10 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(still_packed.quantity, 1)
 
         # check intermediate objects no leftover intermediate packs
-        after_split = self.single_result(
-            Avatar.query().join(Avatar.obj).filter(
-                PhysObj.type == self.packed_goods_type,
-                Avatar.state == 'past',
-                Avatar.reason == unp))
+        after_split = unp.input
         self.assertEqual(after_split.obj.quantity, 4)
-        self.assertEqual(
-            PhysObj.query().join(Avatar.obj).filter(
-                Avatar.state == 'future').count(),
-            0)
+        self.assertEqual(after_split.state, 'past')
+        self.assertEqual(Avatar.query().filter_by(state='future').count(), 0)
 
     def test_partial_cancel(self):
         """Plan a partial Unpack (uniform scenario), then cancel it

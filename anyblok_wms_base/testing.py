@@ -155,17 +155,18 @@ class WmsTestCase(BlokTestCase):
             # (useful to debug Apparitiom itself if needed)
             if dt_from is None:
                 dt_from = cls.dt_test1
-            cls.PhysObj.Avatar.insert(obj=loc,
-                                      state='present',
-                                      location=parent,
-                                      dt_from=dt_from,
-                                      dt_until=None,
-                                      reason=cls.Operation.Apparition.insert(
-                                          goods_type=location_type,
-                                          quantity=1,
-                                          location=parent,
-                                          dt_execution=dt_from,
-                                          state='done'))
+            cls.PhysObj.Avatar.insert(
+                obj=loc,
+                state='present',
+                location=parent,
+                dt_from=dt_from,
+                dt_until=None,
+                outcome_of=cls.Operation.Apparition.insert(
+                    goods_type=location_type,
+                    quantity=1,
+                    location=parent,
+                    dt_execution=dt_from,
+                    state='done'))
         return loc
 
 

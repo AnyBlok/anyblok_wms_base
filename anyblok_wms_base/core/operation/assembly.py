@@ -921,7 +921,7 @@ class Assembly(Operation):
         dt_exec = self.dt_execution
         input_upd = dict(dt_until=dt_exec)
         if state == 'done':
-            input_upd.update(state='past', reason=self)
+            input_upd.update(state='past')
         # TODO PERF bulk update ?
         for inp in self.inputs:
             inp.update(**input_upd)
@@ -934,7 +934,7 @@ class Assembly(Operation):
                 properties=PhysObj.Properties.create(
                     **self.outcome_properties(state, for_creation=True))),
             location=self.inputs[0].location,
-            reason=self,
+            outcome_of=self,
             state=outcome_state,
             dt_from=dt_exec,
             dt_until=None)

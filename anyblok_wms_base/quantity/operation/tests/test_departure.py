@@ -41,8 +41,7 @@ class TestDeparture(WmsTestCaseWithPhysObj):
         self.assertEqual(dep.follows[0].type, 'wms_split')
         self.assertEqual(dep.follows[0].follows, [self.arrival])
 
-        sent = self.single_result(
-            self.Avatar.query().filter(self.Avatar.reason == dep))
+        sent = dep.input
         self.assertEqual(sent.state, 'past')
         self.assertEqual(sent.dt_until, self.dt_test2)
         self.assertEqual(sent.obj.quantity, 1)
@@ -72,9 +71,7 @@ class TestDeparture(WmsTestCaseWithPhysObj):
         self.assert_quantities(past=(3, self.dt_test1))
         dep.execute(dt_execution=self.dt_test3)
 
-        sent = self.Avatar.query().filter(self.Avatar.reason == dep).all()
-        self.assertEqual(len(sent), 1)
-        sent = sent[0]
+        sent = dep.input
         self.assertEqual(sent.state, 'past')
         self.assertEqual(sent.dt_until, self.dt_test3)
         self.assertEqual(sent.obj.quantity, 1)

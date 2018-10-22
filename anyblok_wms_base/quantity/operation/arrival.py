@@ -53,7 +53,7 @@ class Arrival:
         PhysObj.Avatar.insert(
             obj=goods,
             location=self.location,
-            reason=self,
+            outcome_of=self,
             state='present' if self.state == 'done' else 'future',
             dt_from=self.dt_execution,
         )

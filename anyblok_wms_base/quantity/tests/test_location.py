@@ -32,7 +32,7 @@ class TestLocation(WmsTestCase):
     def insert_goods(self, qty, state, dt_from, until=None):
         self.Avatar.insert(
             obj=self.PhysObj.insert(type=self.physobj_type, quantity=qty),
-            reason=self.arrival, location=self.stock,
+            outcome_of=self.arrival, location=self.stock,
             dt_from=dt_from,
             dt_until=until,
             state=state)

@@ -42,7 +42,7 @@ class Move(Mixin.WmsSingleInputOperation, Operation):
 
         self.registry.Wms.PhysObj.Avatar.insert(
             location=self.destination,
-            reason=self,
+            outcome_of=self,
             state='present' if state == 'done' else 'future',
             dt_from=dt_exec,
             # copied fields:
@@ -71,7 +71,7 @@ class Move(Mixin.WmsSingleInputOperation, Operation):
         after_move.update(state='present', dt_from=dt_execution)
         self.registry.flush()
 
-        self.input.update(state='past', reason=self, dt_until=dt_execution)
+        self.input.update(state='past', dt_until=dt_execution)
 
     def is_reversible(self):
         """Moves are always reversible.

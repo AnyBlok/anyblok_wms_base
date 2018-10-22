@@ -46,7 +46,7 @@ class RequestItemTestCase(WmsTestCase):
         self.avatars = {g: self.PhysObj.Avatar.insert(obj=g,
                                                       dt_from=self.dt_test1,
                                                       location=self.loc,
-                                                      reason=self.arrival,
+                                                      outcome_of=self.arrival,
                                                       state='present')
                         for perprop in self.goods.values() for g in perprop}
 
@@ -85,7 +85,7 @@ class RequestItemTestCase(WmsTestCase):
                 state='future',
                 obj=self.PhysObj.insert(type=self.goods_type1,
                                         properties=self.props1),
-                reason=self.arrival,
+                outcome_of=self.arrival,
                 dt_from=self.dt_test1,
                 location=self.loc)
             for i in (3, 4)]

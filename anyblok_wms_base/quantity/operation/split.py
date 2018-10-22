@@ -95,13 +95,13 @@ class Split(SingleInput, Operation):
         )
         new_avatars = dict(
             location=avatar.location,
-            reason=self,
+            outcome_of=self,
             dt_from=self.dt_execution,
             dt_until=avatar.dt_until,
         )
         avatar.dt_until = self.dt_execution
         if self.state == 'done':
-            avatar.update(state='past', reason=self)
+            avatar.update(state='past')
             new_avatars['state'] = 'present'
         else:
             new_avatars['state'] = 'future'
@@ -127,8 +127,7 @@ class Split(SingleInput, Operation):
         # in case the split is exactly in half, there's no difference
         # between the two records we created, let's pick any.
         outcome = Avatar.query().join(Avatar.obj).filter(
-            Avatar.reason == self,
-            Avatar.state != 'past',
+            Avatar.outcome_of == self,
             PhysObj.quantity == self.quantity).first()
         if outcome is None:
             raise OperationError(self, "The split outcomes have disappeared")
@@ -151,8 +150,7 @@ class Split(SingleInput, Operation):
         for outcome in self.outcomes:
             outcome.update(state='present', dt_from=self.dt_execution)
         self.registry.flush()
-        self.input.update(state='past', dt_until=self.dt_execution,
-                          reason=self)
+        self.input.update(state='past', dt_until=self.dt_execution)
         self.registry.flush()
 
     def is_reversible(self):
@@ -164,18 +162,14 @@ class Split(SingleInput, Operation):
         return self.input.obj.type.is_split_reversible()
 
     def plan_revert_single(self, dt_execution, follows=()):
-        if not follows:
-            # reversal of an end-of-chain split
-            follows = [self]
         Wms = self.registry.Wms
         Avatars = Wms.PhysObj.Avatar
         # here in that case, that's for multiple operations
         # in_ is not implemented for Many2Ones
         reason_ids = set(f.id for f in follows)
-        reason_ids.add(self.id)
         to_aggregate = Avatars.query().filter(
-            Avatars.reason_id.in_(reason_ids),
-            Avatars.state != 'past').all()
+            Avatars.outcome_of_id.in_(reason_ids)).all()
+        to_aggregate.extend(self.leaf_outcomes())
         return Wms.Operation.Aggregate.create(inputs=to_aggregate,
                                               dt_execution=dt_execution,
                                               state='planned')

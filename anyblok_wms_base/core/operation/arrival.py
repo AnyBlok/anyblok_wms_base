@@ -105,12 +105,10 @@ class Arrival(Operation):
         PhysObj.Avatar.insert(
             obj=goods,
             location=self.location,
-            reason=self,
+            outcome_of=self,
             state='present' if self.state == 'done' else 'future',
             dt_from=self.dt_execution,
         )
 
     def execute_planned(self):
-        Avatar = self.registry.Wms.PhysObj.Avatar
-        Avatar.query().filter(Avatar.reason == self).one().update(
-            state='present', dt_from=self.dt_execution)
+        self.outcomes[0].update(state='present', dt_from=self.dt_execution)

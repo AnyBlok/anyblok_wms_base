@@ -60,7 +60,7 @@ class TestOperation(WmsTestCase):
                                location=self.incoming_loc,
                                dt_from=self.dt_test1,
                                state='future',
-                               reason=arrival)
+                               outcome_of=arrival)
                  for _ in (1, 2)]
 
         with self.assertRaises(OperationInputsError) as arc:
@@ -82,7 +82,7 @@ class TestOperation(WmsTestCase):
                 dt_from=self.dt_test1,
                 dt_until=dt,
                 state='future',
-                reason=arrival)
+                outcome_of=arrival)
             for dt in (self.dt_test1, self.dt_test2, self.dt_test3)]
 
         HI = self.Operation.HistoryInput

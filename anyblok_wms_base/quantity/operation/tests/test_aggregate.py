@@ -54,7 +54,6 @@ class TestAggregate(WmsTestCase):
         self.assertEqual(agg.inputs, self.avatars)
         for record in self.avatars:
             self.assertEqual(record.state, 'past')
-            self.assertEqual(record.reason, agg)
         new_avatar = self.assert_singleton(agg.outcomes)
         self.assertEqual(new_avatar.location, self.loc)
         new_goods = new_avatar.obj
@@ -114,7 +113,6 @@ class TestAggregate(WmsTestCase):
             self.assertEqual(avatar.obj.type, self.physobj_type)
             self.assertEqual(avatar.location, self.loc)
             self.assertEqual(avatar.state, 'present')
-            self.assertTrue(avatar.reason in self.arrivals)
 
     def test_create_done_equal_props_obliviate(self):
         for avatar in self.avatars:
@@ -132,6 +130,8 @@ class TestAggregate(WmsTestCase):
         make a better one, and label it as a MultiplePhysObj mixin test, by
         issuing more goods and reasons and pairing them randomly so that
         chances of passing by coincidence are really low.
+        TODO now that ``reason`` has been changed to ``outcome_of`` which isn't
+        mutated after creation, consider removing this test altogether
         """
         for record in self.avatars:
             record.state = 'present'
@@ -141,7 +141,7 @@ class TestAggregate(WmsTestCase):
                                                 state='done',
                                                 dt_execution=self.dt_test1,
                                                 quantity=35)
-        self.avatars[0].reason = other_reason
+        self.avatars[0].outcome_of = other_reason
         agg = self.Agg.create(inputs=self.avatars, state='done',
                               dt_execution=self.dt_test2)
         self.assertEqual(set(agg.follows), set((self.arrivals[1],
@@ -154,7 +154,7 @@ class TestAggregate(WmsTestCase):
                 exp_reason = other_reason
             else:
                 exp_reason = self.arrivals[1]
-            self.assertEqual(avatar.reason, exp_reason)
+            self.assertEqual(avatar.outcome_of, exp_reason)
 
         # CASCADE options did the necessary cleanups
         self.assertEqual(Operation.HistoryInput.query().count(), 0)
@@ -251,13 +251,8 @@ class TestAggregate(WmsTestCase):
 
         for record in self.avatars:
             self.assertEqual(record.state, 'past')
-            self.assertEqual(record.reason, agg)
 
-        Avatar = self.PhysObj.Avatar
-        new_avatar = self.assert_singleton(
-            Avatar.query().filter(
-                Avatar.reason == agg,
-                Avatar.state == 'present').all())
+        new_avatar = self.assert_singleton(agg.outcomes)
         self.assertEqual(new_avatar.obj.quantity, 3)
         self.assertEqual(new_avatar.location, self.loc)
         self.assertEqual(new_avatar.obj.properties, props)

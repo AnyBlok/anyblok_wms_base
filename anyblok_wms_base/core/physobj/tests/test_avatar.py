@@ -70,7 +70,7 @@ class TestAvatar(WmsTestCaseWithPhysObj):
                                state='present',
                                dt_from=self.dt_test1,
                                dt_until=None,
-                               reason=avatar.reason,
+                               outcome_of=avatar.outcome_of,
                                location=avatar.location)
         assert_warnings_goods_deprecation(got)
 

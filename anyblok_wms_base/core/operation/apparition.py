@@ -118,6 +118,6 @@ class Apparition(Operation):
                     properties=props,
                     code=self.goods_code),
                 location=self.location,
-                reason=self,
+                outcome_of=self,
                 state='present',
                 dt_from=self.dt_execution)

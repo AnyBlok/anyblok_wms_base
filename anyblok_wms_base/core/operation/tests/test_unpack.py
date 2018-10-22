@@ -325,7 +325,7 @@ class TestUnpack(WmsTestCase):
 
             avatar = self.single_avatar(unpacked_goods)
             self.assertEqual(avatar.state, 'present')
-            self.assertEqual(avatar.reason, unp)
+            self.assertEqual(avatar.outcome_of, unp)
 
     def test_plan_execute(self):
         """Plan an Unpack (non uniform scenario), then execute it
@@ -357,7 +357,7 @@ class TestUnpack(WmsTestCase):
 
             avatar = self.single_avatar(unpacked_goods)
             self.assertEqual(avatar.state, 'future')
-            self.assertEqual(avatar.reason, unp)
+            self.assertEqual(avatar.outcome_of, unp)
 
         self.assert_quantity(0,
                              goods_type=self.packed_goods_type,
@@ -370,7 +370,6 @@ class TestUnpack(WmsTestCase):
         for avatar in unp.outcomes:
             self.assertEqual(avatar.state, 'present')
         self.assertEqual(self.packs.state, 'past')
-        self.assertEqual(self.packs.reason, unp)
 
         self.assert_quantity(0,
                              goods_type=self.packed_goods_type,
