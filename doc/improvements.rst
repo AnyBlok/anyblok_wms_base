@@ -19,6 +19,26 @@ although proposed solutions have to take them into account.
 Current ideas
 ~~~~~~~~~~~~~
 
+.. _improvement_inventory:
+
+Inventory support
+-----------------
+
+Currently, the core provides special Operations, such as
+:ref:`op_apparition` to represent the effect of inventory processes,
+yet AnyBlok / Wms Base doesn't include a representation of
+inventories, that should in turn be the major source of these
+Operations.
+
+Depending on the needs, there are several possible ways to proceed
+with inventories, but they usually amount to record what is actually present
+in the relevant locations, compare that with the database and issue
+corrections.
+
+We should provide some support for that process, but it would be in a
+new optional Blok, in order not to block applications that would need
+to proceed in a very different way.
+
 .. _improvement_indeterminate_avatars:
 
 Allow Avatars with indeterminate time range

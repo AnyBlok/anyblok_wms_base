@@ -45,7 +45,7 @@ Model.Wms.Operation.Aggregate
 
       <h3>Specific members</h3>
 
-   .. autoattribute:: UNIFORM_GOODS_FIELDS
+   .. autoattribute:: UNIFORM_PHYSOBJ_FIELDS
    .. autoattribute:: UNIFORM_AVATAR_FIELDS
    .. automethod:: field_is_equal
 

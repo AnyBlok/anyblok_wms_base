@@ -44,7 +44,7 @@ Release history
 
 0.6.0
 ~~~~~
-* Published on PyPY
+* Published on PyPI
 * Implemented Avatars
 * Uniformisation of the relationship between Operations and Goods
   (Avatars)

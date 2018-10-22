@@ -45,12 +45,13 @@ fundamental :ref:`core_concepts`, in hope of doing them really well,
 while giving downstream applications or libraries the *means* to
 implement their detailed behaviours.
 
-Anyblok / Wms Base is actually itself split into several :ref:`components`
-("Bloks" in Anyblok speech), of which only ``wms-core`` is mandatory.
-For instance, we have unwritten plans to provide a reservation system,
-and that will probably take the form of a separate ``wms-reservation``
-Blok, at least until we are convinced it's generic enough to land into
-``wms-core``, if ever.
+To help with this, Anyblok / Wms Base is actually itself split into
+several :ref:`components` ("Bloks" in Anyblok speech), of which only
+``wms-core`` is mandatory.
+For instance, the reservation system that ships with AnyBlok / Wms
+Base takes the form of the separate ``wms-reservation`` Blok. Even some
+further developments meant for ``wms-core`` may be first provided as
+separate Bloks.
 
 So, in particular, you won't find any user interface within Anyblok /
 WMS Base. Actually we don't want to even assume that the end

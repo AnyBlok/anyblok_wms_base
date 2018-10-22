@@ -299,7 +299,7 @@ interesting benefits:
 - containers can be moved in a way that the system is able to track
   and take into account, e.g, in the quantity queries, whereas with a
   separate model, we'd probably have a ``parent`` field, of which any change
-  of value would impact all times, present, future and event past.
+  of value would impact all times, present, future and even past.
 - containers are automatically typed and have properties, which can be
   used to encode various functional aspects.
 - containers can be received (after all, warehouse hardware is also
@@ -333,17 +333,17 @@ they inherit from the base :class:`Operation
 while they are persisted as two tables in the database: ``wms_operation``
 for the common data and a specific one, such as ``wms_operation_arrival``.
 
-In general, Operations take :ref:`Avatars <physobj_avatar>` as inputs,
+In general, Operations take :ref:`Avatars <physobj_avatar>` as *inputs*,
 but that can be an empty set for some (creation Operations, such as
 :ref:`op_arrival`), and many Operations work just on one :ref:`Avatar
 <physobj_avatar>`.
 Conversely, most Operations have resulting :ref:`Avatars
-<physobj_avatar>`, which for the time being are called their *outcomes*.
+<physobj_avatar>`, which we call their *outcomes*.
 
 .. note:: That Operations see Physical Objects through their
           :ref:`Avatars <physobj_avatar>` doesn't imply they have no
           effect on the underlying :ref:`PhysObj <physobj_model>`
-          records, quite the contrary :
+          records, quite the contrary.
           In fact, most of :ref:`PhysObj <physobj_model>` modifications
           should occur through Operations.
 
@@ -386,19 +386,14 @@ and :meth:`execute()
        appropriate states so that the whole system view is consistent for the
        present time as well as future times.
 
-       For this reason, it is necessary to provide a value for the
-       :attr:`date and time of execution
-       <anyblok_wms_base.core.operation.base.Operation.dt_execution>`,
-       even if it is a very wrong estimate.
-
        Planned Operations can be either :meth:`executed
        <anyblok_wms_base.core.operation.base.Operation.execute>`
        or :ref:`cancelled <op_cancel_revert_obliviate>`.
 
 - ``started``:
        .. note:: this value is already defined but it is for now
-                 totally ignored in the implementation. This part is
-                 therefore made only of design notes.
+                 totally ignored in the implementation. This part can be
+                 therefore considered to be design notes.
 
        In reality, operations are never atomic, and often cannot be
        cancelled any more once started.
@@ -445,7 +440,7 @@ and :meth:`execute()
      <anyblok_wms_base.core.operation.base.Operation.create>`
      method directly.
 
-     .. note:: Typically, creating directly in the ``done`` state is much less
+     .. note:: Typically, creating directly in the ``done`` state is less
                expensive that creating in the ``planned`` state, followed by a
                call to :meth:`execute()
                <anyblok_wms_base.core.operation.base.Operation.execute>`
@@ -537,17 +532,21 @@ Apparition
           for more details.
 
 Apparitions are similar to Arrivals in that they create previously
-untracked :ref:`physobj_model`, but they are meant to be used in
+untracked :ref:`Physical Objects <physobj_model>`, but they are meant
+to be used in
 inventory assessments: they represent the fact that some
-:ref:`physobj_model` have been discovered, with no known explanation.
+:ref:`Physical Objects <physobj_model>` have been discovered, with no
+known explanation.
 
 In concrete applications, Apparitions would typically be optionally
 tied to some higher level Inventory Model that would be backing some user
-interface while grouping and maybe creating them (Anyblok / Wms Base
-does not currently provide such Inventories).
+interface while grouping and maybe creating them. Anyblok / Wms Base 0.8
+does not provide such Inventories, but there are :ref:`plans
+to include them in a new optional Blok <improvement_inventory>`.
 
 Apparitions are always in the ``done`` :ref:`state <op_states>`, as
-other states don't make sense in their case.
+other states don't make sense in their case. In other words, only
+direct creations in the ``done`` :ref:`state <op_states>` are allowed.
 
 Apparitions are irreversible in the sense of :ref:`op_cancel_revert_obliviate`.
 
@@ -567,7 +566,7 @@ missing, for no known reason. In other words, they are to
 <op_apparition>` are to :ref:`Arrivals <op_arrival>`:
 
 - they cannot be planned nor started; only direct creations in the
-  ``'done'`` :ref:`state <op_states>` are allowed.
+  ``done`` :ref:`state <op_states>` are allowed.
 - they are irreversible.
 - they should be tied in applications to higher level Inventory objects.
 
@@ -583,8 +582,8 @@ Move
           <anyblok_wms_base.core.operation.move.Move>`
           for more details.
 
-Moves represent goods being carried over from one :ref:`location` to
-another, with no change of properties. They are always reversible in
+Moves represent goods being carried over from one :ref:`place <location>` to
+another, with no other change. They are always reversible in
 the sense of :ref:`op_cancel_revert_obliviate`.
 
 .. _op_teleportation:
@@ -598,11 +597,11 @@ Teleportation
 Teleportations are inventory Operations that record that the goods are
 not missing, but changed places, for no known reason.
 In other words, they are to
-:ref:`Moves <op_move>` what :ref:`Disparitions
-<op_disparition>` are to :ref:`Departures <op_departure>`:
+:ref:`Moves <op_move>` what :ref:`Apparitions
+<op_apparition>` are to :ref:`Arrivals <op_arrival>`:
 
 - they cannot be planned nor started; only direct creations in the
-  ``'done'`` :ref:`state <op_states>` are allowed.
+  ``done`` :ref:`state <op_states>` are allowed.
 - they are irreversible.
 - they should be tied in applications to higher level Inventory objects.
 
@@ -656,8 +655,8 @@ Operations : several inputs are consumed to produce a single outcome.
 More general manufacturing cases fall out of the scope of
 the ``wms-core`` Blok.
 
-Assemblies have an outcome :ref:`physobj_type`, and a name, so that a given
-:ref:`Type <physobj_type>` can be assembled in different ways.
+Assemblies have an outcome :ref:`Type <physobj_type>`, and a name, so
+that a given :ref:`Type <physobj_type>` can be assembled in different ways.
 
 As an edge case, Assemblies can have a single input,
 how weird that may sound, and are, in fact, the preferred way to alter
