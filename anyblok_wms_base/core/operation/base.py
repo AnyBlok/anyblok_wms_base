@@ -510,10 +510,11 @@ class Operation:
         mistake (bug or human error), but did not happen at all in reality.
 
         We chose the word "obliviate" because it has a stronger feeling that
-        simply "forget" and also sound more specific.
+        simply "forget" and also sounds more specific.
 
         This is not to be confused with reversals, which try and create a
-        chain of Operations to perform to revert the effect of some Operations.
+        chain of Operations whose execution would revert the effect of some
+        Operations.
 
         If one reverts a Move that has been done by mistake,
         that means one performs a Move back (takes some time, can go wrong).
@@ -543,7 +544,7 @@ class Operation:
             raise OperationError(
                 self,
                 "Can't obliviate {op} because its state {op.state!r} is not "
-                "'obliviate'", op=self)
+                "'done'", op=self)
         logger.debug("Obliviating operation %r", self)
 
         # followers attribute value will mutate during the loop

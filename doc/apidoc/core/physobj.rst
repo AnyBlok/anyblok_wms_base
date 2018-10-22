@@ -19,6 +19,7 @@ Model.Wms.PhysObj
       <h3>Type methods</h3>
 
    .. automethod:: has_type
+   .. automethod:: is_container
 
    .. raw:: html
 
@@ -86,7 +87,12 @@ Model.Wms.PhysObj.Properties
    .. automethod:: create
    .. automethod:: duplicate
    .. automethod:: get
-   .. automethod:: set
+   .. automethod:: __getitem__
+   .. automethod:: __setitem__
+   .. automethod:: pop
+   .. automethod:: update
+   .. automethod:: as_dict
+   .. automethod:: __contains__
 
 Model.Wms.PhysObj.Avatar
 ~~~~~~~~~~~~~~~~~~~~~~~~

@@ -345,6 +345,10 @@ class PhysObj:
         return cte
 
     def is_container(self):
+        """Tell whether the :attr:`type` is a container one.
+
+        :rtype: bool
+        """
         return self.type.is_container()
 
     def current_avatar(self):
@@ -360,6 +364,7 @@ class PhysObj:
         """The Avatar giving the latest foreseeable position of ``self``.
 
         :return: the Avatar, or ``None``, in case
+
                  - ``self`` is planned to leave the system.
                  - ``self`` has already left the system (only ``past`` avatars)
 
@@ -367,7 +372,8 @@ class PhysObj:
         real operation and the results are considered to be dependent on the
         implementation of this method, hence not part of any stability
         promises. Simplest example: a single avatar, with ``state='present'``
-        and ``dt_until`` not ``None``.
+        and ``dt_until`` not ``None`` (normally a subsequent avatar, in the
+        ``planned`` state should explain the bounded time range).
         """
         Avatar = self.Avatar
         return Avatar.query().filter_by(
@@ -397,9 +403,8 @@ class Properties:
     This has the obvious drawback of defining some properties for all PhysObj,
     regardless of their Types, so it should not be abused.
 
-    On :class:`PhysObj`, the :meth:`get_property <PhysObj.get_property>` /
-    :meth:`set_property <PhysObj.set_property>` API will treat
-    direct fields and top-level keys of :attr:`flexible` uniformely,
+    This model implements a subset of the :class:`dict` API, treating
+    direct fields and top-level keys of :attr:`flexible` uniformely, so
     that, as long as all pieces of code use only this API to handle properties,
     flexible keys can be replaced with proper fields transparently at any time
     in the development of downstream applications and libraries
@@ -442,6 +447,10 @@ class Properties:
         return res
 
     def __getitem__(self, k):
+        """Support for reading with the [] syntax.
+
+        :raises: KeyError
+        """
         if k in self._field_property_names():
             return getattr(self, k)
         if self.flexible is None:
@@ -449,6 +458,7 @@ class Properties:
         return self.flexible[k]
 
     def get(self, k, *default):
+        """Similar to :meth:`dict.get`."""
         if len(default) > 1:
             return _empty_dict.get(k, *default)
 
@@ -460,6 +470,7 @@ class Properties:
             return None
 
     def __setitem__(self, k, v):
+        """Support for writing with the [] notation."""
         if k in ('id', 'flexible'):
             raise ValueError("The key %r is reserved, and can't be used "
                              "as a property name" % k)
@@ -475,6 +486,10 @@ class Properties:
     set = __setitem__  # backwards compatibility
 
     def __delitem__(self, k):
+        """Support for deleting with the [] notation.
+
+        :raises: KeyError if ``k`` is missing
+        """
         if k in ('id', 'flexible'):
             raise ValueError("The key %r is reserved, can't be used "
                              "as a property name and hence can't "
@@ -489,6 +504,7 @@ class Properties:
         flag_modified(self, '__anyblok_field_flexible')
 
     def pop(self, k, *default):
+        """Similar to :meth:`dict.pop`."""
         if k in ('id', 'flexible'):
             raise ValueError("The key %r is reserved, can't be used "
                              "as a property name and hence can't "
