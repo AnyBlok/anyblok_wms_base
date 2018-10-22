@@ -9,8 +9,8 @@
 Release history
 ===============
 
-0.8.0 (unreleased)
-~~~~~~~~~~~~~~~~~~
+0.8.0
+~~~~~
 
 * Merge of the ``Wms.Goods`` and ``Wms.Location`` Models into a single
   one: ``Wms.PhysObj``. This impacts all existing code bases. Some
