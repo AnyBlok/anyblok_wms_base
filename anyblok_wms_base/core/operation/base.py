@@ -57,15 +57,6 @@ class HistoryInput:
                       foreign_key_options={'ondelete': 'cascade'})
     """One of the inputs of the :attr:`operation`."""
 
-    latest_previous_op = Many2One(model='Model.Wms.Operation',
-                                  index=True)
-    """The latest operation that affected :attr:`avatar` before :attr:`operation`.
-
-    This is both the fundamental data structure supporting history (DAG)
-    aspects of Operations, as is exposed in the :attr:`Operation.follows`
-    and :attr:`Operation.followers` attributes.
-    """
-
     orig_dt_until = DateTime(label="Original dt_until of avatars")
     """Saving the original ``dt_until`` value of the :attr:`Avatar <avatar>`
 
@@ -171,8 +162,12 @@ class Operation:
         The backing data is actually stored in
         :class:`Model.Wms.Operation.HistoryInput <HistoryInput>`.
         """
-        return [hi.latest_previous_op
-                for hi in self.query_history_input().all()]
+        Wms = self.registry.Wms
+        HI = Wms.Operation.HistoryInput
+        Avatar = Wms.PhysObj.Avatar
+        return [av.outcome_of
+                for av in Avatar.query().join(HI).filter_by(
+                        operation=self).all()]
 
     @property
     def followers(self):
@@ -188,10 +183,12 @@ class Operation:
         The backing data is actually stored in
         :class:`Model.Wms.Operation.HistoryInput <HistoryInput>`.
         """
-        HI = self.registry.Wms.Operation.HistoryInput
+        Wms = self.registry.Wms
+        HI = Wms.Operation.HistoryInput
+        Avatar = Wms.PhysObj.Avatar
         return [hi.operation
-                for hi in HI.query().filter(
-                        HI.latest_previous_op == self).all()]
+                for hi in HI.query().join(Avatar).filter(
+                        Avatar.outcome_of == self).all()]
 
     dt_execution = DateTime(label="date and time of execution",
                             nullable=False)
@@ -281,7 +278,6 @@ class Operation:
         for avatar in inputs:
             HI.insert(avatar=avatar,
                       operation=self,
-                      latest_previous_op=avatar.outcome_of,
                       orig_dt_until=avatar.dt_until)
 
     def leaf_outcomes(self):

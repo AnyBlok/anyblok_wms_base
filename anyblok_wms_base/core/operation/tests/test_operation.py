@@ -98,7 +98,7 @@ class TestOperation(WmsTestCase):
         self.assertEqual(op.inputs, avatars[:1])
         hi = self.single_result(HI.query().filter(HI.operation == op))
         self.assertEqual(hi.orig_dt_until, self.dt_test1)
-        self.assertEqual(hi.latest_previous_op, arrival)
+        self.assertEqual(set(op.follows), {arrival})
 
         op.link_inputs(inputs=avatars[1:2])
         self.assertEqual(op.inputs, avatars[:2])
@@ -107,13 +107,13 @@ class TestOperation(WmsTestCase):
         self.assertEqual(len(his), 2)
         self.assertEqual(his[0], hi)
         self.assertEqual(his[1].orig_dt_until, self.dt_test2)
-        self.assertEqual(his[1].latest_previous_op, arrival)
+        self.assertEqual(set(op.follows), {arrival})
 
         op.link_inputs(inputs=avatars[2:], clear=True)
         self.assertEqual(op.inputs, avatars[2:])
         hi = self.single_result(HI.query().filter(HI.operation == op))
         self.assertEqual(hi.orig_dt_until, self.dt_test3)
-        self.assertEqual(hi.latest_previous_op, arrival)
+        self.assertEqual(set(op.follows), {arrival})
 
     def test_before_insert(self):
         other_loc = self.insert_location('other')
