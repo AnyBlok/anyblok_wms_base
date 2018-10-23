@@ -165,9 +165,9 @@ class Operation:
         Wms = self.registry.Wms
         HI = Wms.Operation.HistoryInput
         Avatar = Wms.PhysObj.Avatar
-        return [av.outcome_of
-                for av in Avatar.query().join(HI).filter_by(
-                        operation=self).all()]
+        return set(av.outcome_of
+                   for av in Avatar.query().join(HI).filter_by(
+                           operation=self).all())
 
     @property
     def followers(self):
@@ -186,9 +186,9 @@ class Operation:
         Wms = self.registry.Wms
         HI = Wms.Operation.HistoryInput
         Avatar = Wms.PhysObj.Avatar
-        return [hi.operation
-                for hi in HI.query().join(Avatar).filter(
-                        Avatar.outcome_of == self).all()]
+        return set(hi.operation
+                   for hi in HI.query().join(Avatar).filter(
+                           Avatar.outcome_of == self).all())
 
     dt_execution = DateTime(label="date and time of execution",
                             nullable=False)

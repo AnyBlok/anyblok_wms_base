@@ -33,7 +33,7 @@ class TestMove(WmsTestCaseWithPhysObj):
                                 state='planned',
                                 dt_execution=self.dt_test2,
                                 input=self.avatar)
-        self.assertEqual(move.follows, [self.arrival])
+        self.assert_singleton(move.follows, value=self.arrival)
         self.assertEqual(move.input, self.avatar)
         self.avatar.update(state='present')
 
@@ -53,7 +53,7 @@ class TestMove(WmsTestCaseWithPhysObj):
                                 state='done',
                                 dt_execution=self.dt_test2,
                                 input=self.avatar)
-        self.assertEqual(move.follows, [self.arrival])
+        self.assert_singleton(move.follows, value=self.arrival)
 
         after_move = move.outcomes[0]
         self.assertEqual(after_move.location, self.stock)

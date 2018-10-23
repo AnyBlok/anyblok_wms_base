@@ -52,11 +52,14 @@ class WmsTestCase(BlokTestCase):
         self.assertEqual(len(results), 1)
         return results[0]
 
-    def assert_singleton(self, collection):
-        """Assert that collection has exactly one element and return the latter.
+    def assert_singleton(self, collection, value=_missing):
+        """Assert that collection has exactly one element, returning it.
+
 
         This help improving reader's focus, while never throwing an Error
 
+        :param value: if specified, it will be asserted that the unique
+                      element of the collection is equal to it.
         :param collection:
            whatever is iterable and implements ``len()`.
            These criteria cover at least list, tuple, set, frozenset…
@@ -65,6 +68,8 @@ class WmsTestCase(BlokTestCase):
         """
         self.assertEqual(len(collection), 1)
         for elt in collection:
+            if value is not _missing:
+                self.assertEqual(elt, value)
             return elt
 
     def assert_quantity(self, quantity, location=_missing, goods_type=_missing,

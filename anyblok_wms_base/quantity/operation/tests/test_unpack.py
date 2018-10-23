@@ -56,7 +56,7 @@ class TestUnpack(WmsTestCase):
                                  state='done',
                                  dt_execution=self.dt_test2,
                                  input=self.packs)
-        self.assertEqual(unp.follows, [self.arrival])
+        self.assert_singleton(unp.follows, value=self.arrival)
 
         unpacked_goods = self.single_result(
             self.PhysObj.query().filter(self.PhysObj.type == unpacked_type))
@@ -92,7 +92,7 @@ class TestUnpack(WmsTestCase):
                                  state='done',
                                  dt_execution=self.dt_test2,
                                  input=self.packs)
-        self.assertEqual(unp.follows, [self.arrival])
+        self.assert_singleton(unp.follows, value=self.arrival)
 
         unpacked_goods_cloned_props = self.single_result(
             self.PhysObj.query().filter(
@@ -128,7 +128,7 @@ class TestUnpack(WmsTestCase):
                                  state='done',
                                  dt_execution=self.dt_test2,
                                  input=self.packs)
-        self.assertEqual(unp.follows, [self.arrival])
+        self.assert_singleton(unp.follows, value=self.arrival)
 
         unpacked_goods = self.single_result(self.PhysObj.query().filter(
             self.PhysObj.type == unpacked_type))
@@ -163,7 +163,7 @@ class TestUnpack(WmsTestCase):
                                  state='done',
                                  dt_execution=self.dt_test2,
                                  input=self.packs)
-        self.assertEqual(unp.follows, [self.arrival])
+        self.assert_singleton(unp.follows, value=self.arrival)
 
         unpacked_goods = self.PhysObj.query().filter(
             self.PhysObj.type == unpacked_type).all()
@@ -204,7 +204,7 @@ class TestUnpack(WmsTestCase):
                                  state='done',
                                  dt_execution=self.dt_test2,
                                  input=self.packs)
-        self.assertEqual(unp.follows, [self.arrival])
+        self.assert_singleton(unp.follows, value=self.arrival)
 
         unpacked_goods = self.single_result(
             self.PhysObj.query().filter(self.PhysObj.type == unpacked_type))
@@ -316,7 +316,7 @@ class TestUnpack(WmsTestCase):
                                  state='done',
                                  dt_execution=self.dt_test2,
                                  input=self.packs)
-        self.assertEqual(unp.follows, [self.arrival])
+        self.assert_singleton(unp.follows, value=self.arrival)
 
         unpacked_goods = self.PhysObj.query().filter(
             self.PhysObj.type == unpacked_type).all()
@@ -348,7 +348,7 @@ class TestUnpack(WmsTestCase):
                                  state='planned',
                                  dt_execution=self.dt_test2,
                                  input=self.packs)
-        self.assertEqual(unp.follows, [self.arrival])
+        self.assert_singleton(unp.follows, value=self.arrival)
 
         unpacked_goods = self.single_result(self.PhysObj.query().filter(
             self.PhysObj.type == unpacked_type))
@@ -403,7 +403,7 @@ class TestUnpack(WmsTestCase):
                                  state='planned',
                                  dt_execution=self.dt_test2,
                                  input=self.packs)
-        self.assertEqual(unp.follows[0].type, 'wms_split')
+        self.assertEqual(self.assert_singleton(unp.follows).type, 'wms_split')
         self.assertEqual(unp.partial, True)
 
         PhysObj = self.PhysObj
@@ -461,7 +461,7 @@ class TestUnpack(WmsTestCase):
                                  state='planned',
                                  dt_execution=self.dt_test2,
                                  input=self.packs)
-        self.assertEqual(unp.follows[0].type, 'wms_split')
+        self.assertEqual(self.assert_singleton(unp.follows).type, 'wms_split')
         self.assertEqual(unp.partial, True)
 
         unp.cancel()

@@ -59,7 +59,7 @@ class TestSplitterOperation(WmsTestCaseWithPhysObj):
                                 dt_execution=self.dt_test2,
                                 state='planned',
                                 input=self.avatar)
-        self.assertEqual(move.follows, [self.arrival])
+        self.assert_singleton(move.follows, value=self.arrival)
         self.assertEqual(move.input, self.avatar)
         self.avatar.state = 'present'
         self.physobj.quantity = 2

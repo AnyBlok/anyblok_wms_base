@@ -34,7 +34,7 @@ class TestDeparture(WmsTestCaseWithPhysObj):
                                     dt_execution=self.dt_test2,
                                     input=self.avatar)
 
-        self.assertEqual(dep.follows, [self.arrival])
+        self.assert_singleton(dep.follows, value=self.arrival)
         self.assertEqual(dep.input, self.avatar)
         self.assertEqual(self.avatar.dt_until, self.dt_test2)
 
@@ -86,7 +86,7 @@ class TestDeparture(WmsTestCaseWithPhysObj):
                                     dt_execution=self.dt_test2,
                                     input=self.avatar)
 
-        self.assertEqual(dep.follows, [self.arrival])
+        self.assert_singleton(dep.follows, value=self.arrival)
         self.assertEqual(dep.input, self.avatar)
         self.assert_quantities(future=(0, self.dt_test2),
                                present=0,

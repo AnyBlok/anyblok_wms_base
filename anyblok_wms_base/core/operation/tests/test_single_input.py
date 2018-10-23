@@ -81,7 +81,7 @@ class TestSingleInputOperation(WmsTestCaseWithPhysObj):
                                 dt_execution=self.dt_test2,
                                 state='planned',
                                 input=self.avatar)
-        self.assertEqual(move.follows, [self.arrival])
+        self.assert_singleton(move.follows, value=self.arrival)
         self.assertEqual(move.input, self.avatar)
         with self.assertRaises(OperationInputsError) as arc:
             move.execute()

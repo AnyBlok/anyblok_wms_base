@@ -35,7 +35,7 @@ class TestApparition(WmsTestCase):
             goods_properties=dict(foo=2,
                                   monty='python'),
             goods_type=self.goods_type)
-        self.assertEqual(apparition.follows, [])
+        self.assertEqual(len(apparition.follows), 0)
         avatar = self.assert_singleton(apparition.outcomes)
         goods = avatar.obj
         self.assertEqual(avatar.state, 'present')
@@ -63,7 +63,7 @@ class TestApparition(WmsTestCase):
             goods_properties=dict(foo=2,
                                   monty='python'),
             goods_type=self.goods_type)
-        self.assertEqual(apparition.follows, [])
+        self.assertEqual(len(apparition.follows), 0)
         avatars = apparition.outcomes
         self.assertEqual(len(avatars), 3)
         for avatar in avatars:
@@ -99,7 +99,7 @@ class TestApparition(WmsTestCase):
             quantity=1,
             goods_code='x34/7',
             goods_type=self.goods_type)
-        self.assertEqual(apparition.follows, [])
+        self.assertEqual(len(apparition.follows), 0)
         avatar = self.assert_singleton(apparition.outcomes)
         goods = avatar.obj
         self.assertEqual(avatar.state, 'present')

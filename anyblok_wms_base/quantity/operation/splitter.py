@@ -137,7 +137,7 @@ class WmsSplitterOperation:
     def execute_planned(self):
         """Execute the :class:`Split <.split.Split>` if any, then self."""
         if self.partial:
-            split_op = self.follows[0]
+            split_op = next(iter(self.follows))
             split_op.execute(dt_execution=self.dt_execution)
         super(WmsSplitterOperation, self).execute_planned()
         self.registry.flush()
