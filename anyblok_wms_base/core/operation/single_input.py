@@ -61,3 +61,38 @@ class WmsSingleInputOperation:
 
     def specific_repr(self):
         return "input={self.input!r}".format(self=self)
+
+    def refine_with_leading_move(self, stopover):
+        """Split the current Operation in two, the first one being a Move
+
+        :param stopover: this is the location of the intermediate Avatar
+                         that's been introduced (destination of the Move).
+        :return: the new Move
+
+        This doesn't change anything for the Operations that the current
+        Operation follows, and in fact, it is guaranteed that their outcomes
+        are untouched by this method.
+
+        This may recurse for consequences of the fact that the location of
+        ``self.input`` changes in the process (and in fact it's a new Avatar),
+        but it is expected that this should be used mostly for Operations for
+        which the location of the inputs don't matter, such as Move or
+        Departure.
+
+        Example use case: Rather than planning a Move from stock to a shipping
+        area, followed by a Departure, one may wish to just plan a Departure
+        directly from the stock location, and later on, refine
+        this as Move, then Departure.
+        This is especially useful if the shipping area can't be
+        determined at the time of the original planning, or simply to follow
+        the general principle of sober planning.
+        """
+        self.check_alterable()
+        move = self.registry.Wms.Operation.Move.create(
+            input=self.input,
+            destination=stopover,
+            dt_execution=self.dt_execution,
+            state='planned')
+        self.link_inputs(move.outcomes, clear=True)
+        self.input_location_altered()
+        return move

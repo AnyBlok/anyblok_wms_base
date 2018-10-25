@@ -118,4 +118,9 @@ Mixin.WmsSingleInputOperation: working on a single input
 
    .. automethod:: create
 
+   .. raw:: html
 
+      <h4 class="section" style="font-size: 160%">
+            Specific methods.</h4>
+
+   .. automethod:: refine_with_leading_move

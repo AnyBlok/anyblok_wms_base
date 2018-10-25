@@ -180,5 +180,38 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         self.assertEqual(dep_input.outcome_of, new_move)
         self.assertEqual(new_move.input, new_av)
 
+    def test_refine_with_leading_move(self):
+        outgoing = self.insert_location('OUTGOING')
+        stock = self.stock
+        move = self.Move.create(destination=stock,
+                                dt_execution=self.dt_test2,
+                                state='planned',
+                                input=self.avatar)
+        orig_dep_input = self.assert_singleton(move.outcomes)
+        dep = self.Operation.Departure.create(
+            dt_execution=self.dt_test3,
+            state='planned',
+            input=orig_dep_input)
+
+        new_move = dep.refine_with_leading_move(stopover=outgoing)
+
+        self.assertIsInstance(new_move, self.Move)
+        self.assert_singleton(dep.follows, value=new_move)
+
+        # follower's input hasn't changed (same instance)
+        self.assert_singleton(move.outcomes, value=orig_dep_input)
+
+        # about the new intermediate Avatar
+        new_av = self.assert_singleton(new_move.outcomes)
+        self.assertNotEqual(new_av, orig_dep_input)
+        self.assertEqual(new_av.location, outgoing)
+        self.assertEqual(new_av.obj, self.physobj)
+        self.assertEqual(new_av.dt_from, self.dt_test3)
+        self.assertEqual(new_av.dt_until, self.dt_test3)
+
+        self.assertEqual(dep.input, new_av)
+        self.assertEqual(new_move.destination, outgoing)
+        self.assertEqual(new_move.input, orig_dep_input)
+
 
 del WmsTestCaseWithPhysObj
