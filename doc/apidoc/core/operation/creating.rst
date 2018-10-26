@@ -17,9 +17,15 @@ Model.Wms.Operation.Arrival
 
    .. raw:: html
 
-      <h3>Specific members</h3>
+      <h3>Specific attributes</h3>
 
    .. autoattribute:: inputs_number
+
+   .. raw:: html
+
+      <h3>Specific methods</h3>
+
+   .. automethod:: refine_with_trailing_unpack
 
    .. raw:: html
 

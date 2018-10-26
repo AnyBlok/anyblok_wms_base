@@ -585,3 +585,137 @@ class TestUnpack(WmsTestCase):
                              goods_type=self.packed_goods_type,
                              additional_states=['future'],
                              at_datetime=self.dt_test2)
+
+    def test_plan_for_outcomes_full(self):
+        unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(
+                uniform_outcomes=True,
+                outcomes=[
+                    dict(type=unpacked_type.code,
+                         quantity=2,
+                         ),
+                ],
+            )),
+            properties=dict(foo=7))
+        # everything will happen in the same place
+        location = self.packs.location
+        outcomes = set()
+        for i in range(2):
+            outcomes.update(self.Operation.Arrival.create(
+                state='planned',
+                goods_type=unpacked_type,
+                dt_execution=self.dt_test1,
+                location=location).outcomes)
+
+        unp, attached = self.Unpack.plan_for_outcomes(
+            [self.packs], outcomes, dt_execution=self.dt_test2)
+        self.assertEqual(set(attached), outcomes)
+        self.assertEqual(set(unp.outcomes), outcomes)
+        # the new Property has been set
+        for av in outcomes:
+            self.assertEqual(av.obj.get_property('foo'), 7)
+
+    def test_plan_for_outcomes_forward_props(self):
+        unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(
+                forward_properties=['foo'],
+                outcomes=[
+                    dict(type=unpacked_type.code,
+                         quantity=2,
+                         ),
+                ],
+            )),
+            properties=dict(foo=7, bar=2))
+        # everything will happen in the same place
+        location = self.packs.location
+        outcomes = set()
+        for i in range(2):
+            outcomes.update(self.Operation.Arrival.create(
+                state='planned',
+                goods_type=unpacked_type,
+                dt_execution=self.dt_test1,
+                location=location).outcomes)
+
+        unp, attached = self.Unpack.plan_for_outcomes(
+            [self.packs], outcomes, dt_execution=self.dt_test2)
+        self.assertEqual(set(attached), outcomes)
+        self.assertEqual(set(unp.outcomes), outcomes)
+        # the forwarded properties have been set
+        for av in outcomes:
+            self.assertEqual(av.obj.get_property('foo'), 7)
+            self.assertEqual(av.obj.get_property('bar'), None)
+
+    def test_plan_for_outcomes_forward_props_match(self):
+        unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
+        wrapping_type = self.PhysObj.Type.insert(code='Cardboard')
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(
+                outcomes=[
+                    dict(type=unpacked_type.code,
+                         quantity=2,
+                         forward_properties=['foo', 'bar'],
+                         ),
+                    dict(type=wrapping_type.code,
+                         forward_properties=['bar'],
+                         quantity=1),
+                ],
+            )),
+            properties=dict(foo=7, bar=12))
+        # everything will happen in the same place
+        location = self.packs.location
+        outcomes = []
+        for i in range(2):
+            outcomes.extend(
+                self.Operation.Arrival.create(
+                    state='planned',
+                    goods_type=unpacked_type,
+                    goods_properties=dict(foo=7+i),
+                    dt_execution=self.dt_test1,
+                    location=location).outcomes)
+
+        unp, attached = self.Unpack.plan_for_outcomes(
+            [self.packs], outcomes, dt_execution=self.dt_test2)
+        # only the first of outcomes could be matched
+        self.assertEqual(self.assert_singleton(attached), outcomes[0])
+        # we now have one unpacked_type with foo=8 and the wrapping
+        self.assertEqual(outcomes[1].outcome_of.type, 'wms_arrival')
+        wrapping = self.assert_singleton([out for out in unp.outcomes
+                                          if out.obj.type == wrapping_type])
+        self.assertEqual(wrapping.obj.get_property('bar'), 12)
+        # the additional forwarded property has been set on the matched outcome
+        self.assertEqual(outcomes[0].obj.get_property('bar'), 12)
+
+    def test_plan_for_outcomes_more(self):
+        unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
+        self.create_packs(
+            type_behaviours=dict(unpack=dict(
+                uniform_outcomes=True,
+                outcomes=[
+                    dict(type=unpacked_type.code,
+                         quantity=3,
+                         ),
+                ],
+            )),
+            properties=dict(foo=7))
+        # everything will happen in the same place
+        location = self.packs.location
+        outcomes = set()
+        for i in range(2):
+            outcomes.update(self.Operation.Arrival.create(
+                state='planned',
+                goods_type=unpacked_type,
+                dt_execution=self.dt_test1,
+                location=location).outcomes)
+
+        unp, attached = self.Unpack.plan_for_outcomes(
+            [self.packs], outcomes, dt_execution=self.dt_test2)
+        unp_outcomes = unp.outcomes
+        self.assertEqual(set(attached), outcomes)
+        self.assertTrue(set(unp_outcomes).issuperset(outcomes))
+        self.assertEqual(len(unp_outcomes), 3)
+
+        # the new Property has been set
+        for av in unp.outcomes:
+            self.assertEqual(av.obj.get_property('foo'), 7)

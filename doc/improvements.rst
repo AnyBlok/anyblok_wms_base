@@ -184,7 +184,7 @@ what the core provides us (none of these is satisfactory):
      the Purchase Order, just plan an
      Arrival for the expected goods, at the unpacking location.
      Make no further attempt to predict
-     what form it will take place, but linked it with the Purchase Order
+     what form it will take place, just link it with the Purchase Order
      (that linking wouldn't be part of wms-core, but it would be
      implemented in the end application)
    * In particular, don't represent the unpacking of the parcels

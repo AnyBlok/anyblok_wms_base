@@ -213,5 +213,105 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         self.assertEqual(new_move.destination, outgoing)
         self.assertEqual(new_move.input, orig_dep_input)
 
+    def check_refine_arrivals_with_trailing_unpack(self,
+                                                   dt_pack_arrival=None,
+                                                   dt_unpack=None):
+        Arrival = self.Operation.Arrival
+        arrival, avatar = self.arrival, self.avatar
+        arrival2 = Arrival.create(goods_type=self.physobj_type,
+                                  location=self.incoming_loc,
+                                  state='planned',
+                                  dt_execution=self.dt_test1)
+        avatar2 = arrival2.outcomes[0]
+
+        # downstream Operations, to validate that they won't be affected
+        move = self.Operation.Move.create(input=avatar,
+                                          destination=self.stock,
+                                          dt_execution=self.dt_test3,
+                                          state='planned')
+        dep = self.Operation.Departure.create(input=avatar2,
+                                              dt_execution=self.dt_test3,
+                                              state='planned')
+
+        pack_type = self.PhysObj.Type.insert(
+            code='PACK',
+            behaviours=dict(unpack=dict(
+                uniform_outcomes=True,
+                outcomes=[
+                    dict(type=self.physobj_type.code,
+                         quantity=3),
+                    ]
+                )))
+
+        unpack = Arrival.refine_with_trailing_unpack(
+            (arrival, arrival2),
+            pack_type,
+            dt_pack_arrival=dt_pack_arrival,
+            dt_unpack=dt_unpack,
+            pack_properties=dict(
+                batch_ref='1337XO'),
+            pack_code='PCK123')
+
+        self.assertEqual(move.follows, dep.follows)
+        self.assert_singleton(move.follows, value=unpack)
+        self.assertEqual(len(unpack.outcomes), 3)
+        # downstream Operation inputs are unchanged
+        self.assertEqual(move.input, avatar)
+        self.assertEqual(dep.input, avatar2)
+        # but now they have a new property
+        for av in (avatar, avatar2):
+            self.assertEqual(av.obj.get_property('batch_ref'), '1337XO')
+
+        # the two previous arrivals have been deleted, what remains is
+        # the one of the pack
+        new_arrival = self.assert_singleton(
+            self.Operation.Arrival.query().all())
+        self.assert_singleton(unpack.follows, value=new_arrival)
+
+        # more about the pack
+        self.assertEqual(unpack.input.obj.type, pack_type)
+        return unpack
+
+    def test_refine_arrivals_with_trailing_unpack_default_dt_arrival(self):
+        unpack = self.check_refine_arrivals_with_trailing_unpack(
+            dt_pack_arrival=None,
+            dt_unpack=self.dt_test2)
+        self.assertEqual(unpack.dt_execution, self.dt_test2)
+
+    def test_refine_arrivals_with_trailing_unpack_default_dt_unpack(self):
+        unpack = self.check_refine_arrivals_with_trailing_unpack(
+            dt_pack_arrival=self.dt_test2,
+            dt_unpack=None)
+        self.assertEqual(unpack.dt_execution, self.dt_test2)
+
+    def test_refine_arrivals_with_trailing_unpack_errors(self):
+        Arrival = self.Operation.Arrival
+        arrival = self.arrival
+
+        # this is only about errors in the main method
+        # the Unpack internal methods obviously would lead to more of them
+        # with the parameters given below
+
+        # no arrivals !
+        with self.assertRaises(OperationError) as arc:
+            Arrival.refine_with_trailing_unpack((), None)
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs['arrivals'], ())
+
+        # different locations
+        arrival2 = Arrival.create(goods_type=self.physobj_type,
+                                  location=self.stock,
+                                  state='planned',
+                                  dt_execution=self.dt_test1)
+        with self.assertRaises(OperationError) as arc:
+            Arrival.refine_with_trailing_unpack((arrival, arrival2), None)
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs['arrivals'], (arrival, arrival2))
+        self.assertEqual(exc.kwargs['nb_locs'], 2)
+
 
 del WmsTestCaseWithPhysObj
