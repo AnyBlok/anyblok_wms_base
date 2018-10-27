@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from sqlalchemy import func
 from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 from anyblok_wms_base.exceptions import (
     OperationError,
@@ -312,6 +313,101 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         repr(exc)
         self.assertEqual(exc.kwargs['arrivals'], (arrival, arrival2))
         self.assertEqual(exc.kwargs['nb_locs'], 2)
+
+    def test_use_case_improvements_operation_superseding(self):
+        """Use case of improvements_superseding doc section"""
+        Arrival = self.Operation.Arrival
+        Move = self.Operation.Move
+        unpack_area = self.insert_location('UNPACKING')
+        incoming = self.incoming_loc
+
+        unpacked_type = self.physobj_type
+        stock = self.stock
+        parcel_type = self.PhysObj.Type.insert(
+            code='PARCEL',
+            behaviours=dict(unpack=dict(
+                # parcels's outcomes will be entirely specified dynamically
+                # with the 'contents' property
+                )))
+
+        arrivals = []
+        downstreams = []
+        original_avatars = set()
+        for i in range(5):
+            arrival = Arrival.create(goods_type=unpacked_type,
+                                     location=unpack_area,
+                                     state='planned',
+                                     dt_execution=self.dt_test2)
+            arrivals.append(arrival)
+            arrived_av = self.assert_singleton(arrival.outcomes)
+            original_avatars.add(arrived_av)
+            downstream_kw = dict(input=arrived_av,
+                                 state='planned',
+                                 dt_execution=self.dt_test3)
+            if i % 2:
+                downstream = Move.create(destination=stock, **downstream_kw)
+            else:
+                downstream = self.Operation.Departure.create(**downstream_kw)
+            downstreams.append(downstream)
+
+        # say we get parcels with three units in each
+        parcel_contents = [dict(type=unpacked_type.code, quantity=3)]
+
+        unpacks = (
+            Arrival.refine_with_trailing_unpack(
+                arrivals[:3], parcel_type,
+                dt_unpack=self.dt_test2,
+                pack_properties=dict(contents=parcel_contents)),
+            Arrival.refine_with_trailing_unpack(
+                arrivals[3:], parcel_type,
+                dt_unpack=self.dt_test2,
+                pack_properties=dict(contents=parcel_contents))
+        )
+        # now we can be more precise about the parcels arrivals:
+        # they will actually occur in the incoming location
+        for unpack in unpacks:
+            unpack_arrival = self.assert_singleton(unpack.follows)
+            unpack_arrival.refine_with_trailing_move(stopover=incoming)
+
+        # here's the final picture
+        parcel_arrivals = Arrival.query().filter_by(
+            goods_type=parcel_type).all()
+        self.assertEqual(len(parcel_arrivals), 2)
+        all_unpacks_outcomes = set()
+        for arr in parcel_arrivals:
+            move = self.assert_singleton(arr.followers)
+            self.assertIsInstance(move, Move)
+            self.assertEqual(move.destination, unpack_area)
+            unpack = self.assert_singleton(move.followers)
+            self.assertEqual(len(unpack.outcomes), 3)
+            all_unpacks_outcomes.update(unpack.outcomes)
+        self.assertEqual(len(all_unpacks_outcomes), 6)
+        self.assertTrue(original_avatars.issubset(all_unpacks_outcomes))
+
+        # Downstream operations are attached to the unpacks outcomes,
+        # and are still two downstream Moves and three Departures
+        HI = self.Operation.HistoryInput
+        Operation = self.Operation
+        query = Operation.query(
+            Operation.type, func.count(Operation.id))
+        query = query.join(HI, HI.operation_id == Operation.id)
+        query = query.group_by(Operation.type)
+        downstream_op_types = {
+            op_type: c
+            for op_type, c in Operation.query(
+                    Operation.type, func.count(Operation.id)).join(
+                        HI, Operation.id == HI.operation_id).filter(
+                            HI.avatar_id.in_(
+                                out.id for out in all_unpacks_outcomes)
+                        ).group_by(Operation.type).all()
+        }
+        self.assertEqual(downstream_op_types,
+                         dict(wms_move=2, wms_departure=3))
+
+        # the sixth unpacked item is dangling in the unpacking area
+        dangling_av = self.assert_singleton(
+            all_unpacks_outcomes.difference(original_avatars))
+        self.assertEqual(dangling_av.location, unpack_area)
 
 
 del WmsTestCaseWithPhysObj
