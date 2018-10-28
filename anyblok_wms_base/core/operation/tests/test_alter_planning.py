@@ -162,10 +162,10 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
             dt_execution=self.dt_test3,
             state='planned',
             input=dep_input)
-        move.refine_with_trailing_move(stopover=stock)
+        new_move = move.refine_with_trailing_move(stopover=stock)
 
-        new_move = self.assert_singleton(dep.follows)
         self.assertIsInstance(new_move, self.Move)
+        self.assert_singleton(dep.follows, value=new_move)
 
         # follower's input hasn't changed (same instance)
         self.assert_singleton(dep.inputs, value=dep_input)

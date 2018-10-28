@@ -844,6 +844,7 @@ class Operation:
 
         :param stopover: this is the location of the intermediate Avatar
                          that's been introduced (starting point of the Move).
+        :returns: the new Move instance
 
         This doesn't change anything for the followers of the current
         Operation, and in fact, it is guaranteed that their inputs are
@@ -865,7 +866,6 @@ class Operation:
                 "Can't refine {op} with a trailing move, because it's "
                 "not responsible for the location of its outcomes",
                 op=self)
-        prev_dest = getattr(self, field)
         setattr(self, field, stopover)
 
         outcomes = self.outcomes
@@ -875,7 +875,7 @@ class Operation:
                 "Can't refine {op} with a trailing move, because it has "
                 "several ({outcomes_len)) outcomes: {outcomes}",
                 op=self, outcomes=outcomes, outcomes_len=len(outcomes))
-        outcome = outcomes[0]
+        outcome = next(iter(outcomes))
         new_outcome = self.registry.Wms.PhysObj.Avatar.insert(
             location=stopover,
             outcome_of=self,
@@ -884,9 +884,5 @@ class Operation:
             # copied fields:
             dt_until=outcome.dt_until,
             obj=outcome.obj)
-        move = self.registry.Wms.Operation.Move.insert(
-            destination=prev_dest,
-            state='planned',
-            dt_execution=self.dt_execution)
-        move.link_inputs([new_outcome])
-        outcome.outcome_of = move
+        return self.registry.Wms.Operation.Move.plan_for_outcomes(
+            (new_outcome, ), outcomes, dt_execution=self.dt_execution)

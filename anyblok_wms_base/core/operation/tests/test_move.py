@@ -9,6 +9,7 @@
 from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 
 from anyblok_wms_base.exceptions import (
+    OperationError,
     OperationContainerExpected,
 )
 
@@ -92,6 +93,27 @@ class TestMove(WmsTestCaseWithPhysObj):
         str(exc)
         repr(exc)
         self.assertEqual(exc.kwargs['offender'], wrong_loc)
+
+    def test_plan_for_outcomes_wrong_nb(self):
+        with self.assertRaises(OperationError) as arc:
+            self.Move.plan_for_outcomes([self.avatar],
+                                        (), destination=self.stock)
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs['outcomes'], ())
+        self.assertEqual(exc.kwargs['nb_outcomes'], 0)
+
+        # this would be very wrong, but what matters here is the length
+        # of the 'outcomes' parameter
+        with self.assertRaises(OperationError) as arc:
+            self.Move.plan_for_outcomes([self.avatar],
+                                        [1, 2], destination=self.stock)
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs['outcomes'], [1, 2])
+        self.assertEqual(exc.kwargs['nb_outcomes'], 2)
 
 
 del WmsTestCaseWithPhysObj

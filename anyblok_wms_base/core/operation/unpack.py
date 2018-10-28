@@ -207,7 +207,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
                 for candidate in to_match:
                     # breaking out of this loop signals a match
                     cand_obj = candidate.obj
-                    if cand_obj.type != stype:  # TODO properties
+                    if cand_obj.type != stype:
                         continue
                     sprops = spec['forward_properties']
                     if cand_obj.properties is None:
@@ -238,7 +238,6 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
             spec['quantity'] -= i
             unpack.create_outcomes_for_spec(code_to_type, spec, 'future')
 
-        # TODO create outcomes from unmatched specs
         return unpack, attached
 
     def outcome_props_update(self, spec):

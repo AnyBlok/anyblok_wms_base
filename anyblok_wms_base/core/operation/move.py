@@ -11,6 +11,7 @@ from anyblok import Declarations
 from anyblok.column import Integer
 from anyblok.relationship import Many2One
 from anyblok_wms_base.exceptions import (
+    OperationError,
     OperationContainerExpected,
     )
 
@@ -64,6 +65,26 @@ class Move(Mixin.WmsSingleInputOperation, Operation):
             raise OperationContainerExpected(
                 cls, "destination field value {offender}",
                 offender=destination)
+
+    @classmethod
+    def plan_for_outcomes(cls, inputs, outcomes, dt_execution=None, **fields):
+        if len(outcomes) != 1:
+            raise OperationError(
+                cls, "can't plan for {nb_outcomes} outcomes, would need "
+                "exactly one outcome. Got {outcomes!r})",
+                nb_outcomes=len(outcomes),
+                outcomes=outcomes)
+
+        outcome = next(iter(outcomes))
+        destination = outcome.location
+        cls.check_create_conditions('planned', dt_execution,
+                                    inputs=inputs, destination=destination,
+                                    **fields)
+        move = cls.insert(destination=destination, state='planned',
+                          dt_execution=dt_execution, **fields)
+        move.link_inputs(inputs)
+        outcome.outcome_of = move
+        return move
 
     def execute_planned(self):
         dt_execution = self.dt_execution
