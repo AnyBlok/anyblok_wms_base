@@ -34,7 +34,7 @@ class TestMove(WmsTestCaseWithPhysObj):
         self.assertEqual(self.avatar.dt_from, self.dt_test1)
         self.assertEqual(self.avatar.dt_until, self.dt_test2)
 
-        not_moved = self.assert_singleton(split.outcomes)
+        not_moved = self.assert_singleton(split.leaf_outcomes())
         self.assertEqual(not_moved.obj.quantity, 2)
 
         after_move = self.assert_singleton(move.outcomes)
@@ -42,7 +42,6 @@ class TestMove(WmsTestCaseWithPhysObj):
         self.assertEqual(after_move.dt_from, self.dt_test2)
         self.assertEqual(after_move.dt_until, self.dt_test3)
         self.assertEqual(after_move.location, self.stock)
-        self.assertEqual(after_move.reason, move)
 
     def test_partial_planned_execute(self):
         move = self.Move.create(destination=self.stock,
@@ -63,9 +62,7 @@ class TestMove(WmsTestCaseWithPhysObj):
         self.assertEqual(self.avatar.dt_from, self.dt_test1)
         self.assertEqual(self.avatar.dt_until, self.dt_test2)
 
-        # the moved PhysObj are not considered an outcome of the Split,
-        # because the Move is now its reason
-        not_moved = self.assert_singleton(split.outcomes)
+        not_moved = self.assert_singleton(split.leaf_outcomes())
         self.assertEqual(not_moved.obj.quantity, 2)
 
         after_move = self.assert_singleton(move.outcomes)
@@ -73,7 +70,6 @@ class TestMove(WmsTestCaseWithPhysObj):
         self.assertEqual(after_move.location, self.stock)
         self.assertEqual(after_move.dt_from, self.dt_test2)
         self.assertEqual(after_move.dt_until, self.dt_test3)
-        self.assertEqual(after_move.reason, move)
         self.assertEqual(after_move.state, 'present')
 
 

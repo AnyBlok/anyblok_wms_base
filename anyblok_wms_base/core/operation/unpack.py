@@ -68,7 +68,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         # TODO PERF direct update query would probably be faster
         for outcome in self.outcomes:
             outcome.state = 'present'
-        packs.update(state='past', reason=self)
+        packs.update(state='past')
 
     def create_unpacked_goods(self, fields, spec):
         """Create PhysObj record according to given specification.
@@ -119,7 +119,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
 
         outcome_state = 'present' if self.state == 'done' else 'future'
         if self.state == 'done':
-            packs.update(state='past', reason=self)
+            packs.update(state='past')
         for outcome_spec in spec:
             # TODO what would be *really* neat would be to be able
             # to recognize the goods after a chain of pack/unpack
@@ -131,7 +131,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
                                                     outcome_spec):
                 PhysObj.Avatar.insert(obj=goods,
                                       location=packs.location,
-                                      reason=self,
+                                      outcome_of=self,
                                       dt_from=dt_execution,
                                       dt_until=packs.dt_until,
                                       state=outcome_state)
@@ -346,12 +346,16 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         Unpack took place. This may not fit some concrete work organizations
         in warehouses.
         """
+        # we need to pack the outcomes of reversals of downstream operations
+        # together with our outcomes that aren't themselves inputs of a
+        # downstream operation.
         pack_inputs = [out for op in follows for out in op.outcomes]
         # self.outcomes has actually only those outcomes that aren't inputs
         # of downstream operations
         # TODO maybe change that and create a new method instead
         # for API clarity
-        pack_inputs.extend(self.outcomes)
+
+        pack_inputs.extend(self.leaf_outcomes())
         return self.registry.Wms.Operation.Assembly.create(
             outcome_type=self.input.obj.type,
             dt_execution=dt_execution,

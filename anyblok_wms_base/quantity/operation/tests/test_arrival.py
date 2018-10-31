@@ -31,7 +31,7 @@ class TestArrival(WmsTestCase):
                                       goods_properties=dict(foo=5,
                                                             bar='monty'),
                                       goods_type=self.goods_type)
-        self.assertEqual(arrival.follows, [])
+        self.assertEqual(len(arrival.follows), 0)
         avatar = self.assert_singleton(arrival.outcomes)
         goods = avatar.obj
         self.assertEqual(avatar.state, 'future')
@@ -61,7 +61,7 @@ class TestArrival(WmsTestCase):
                                       goods_properties=dict(foo=2,
                                                             monty='python'),
                                       goods_type=self.goods_type)
-        self.assertEqual(arrival.follows, [])
+        self.assertEqual(len(arrival.follows), 0)
         avatar = self.assert_singleton(arrival.outcomes)
         self.assertEqual(avatar.state, 'present')
         self.assertEqual(avatar.location, self.incoming_loc)

@@ -57,18 +57,6 @@ class HistoryInput:
                       foreign_key_options={'ondelete': 'cascade'})
     """One of the inputs of the :attr:`operation`."""
 
-    latest_previous_op = Many2One(model='Model.Wms.Operation',
-                                  index=True)
-    """The latest operation that affected :attr:`avatars` before :attr:`operation`.
-
-    This is both the fundamental data structure suporting history (DAG)
-    aspects of Operations, as is exposed in the :attr:`Operation.follows`
-    and :attr:`Operation.followers` attributes and, on the other hand, the
-    preservation of :attr:`reason
-    <anyblok_wms_base.core.physobj.Avatar.reason>` for restore if
-    needed, even after the :attr:`current operation <operation>` is done.
-    """
-
     orig_dt_until = DateTime(label="Original dt_until of avatars")
     """Saving the original ``dt_until`` value of the :attr:`Avatar <avatar>`
 
@@ -174,8 +162,12 @@ class Operation:
         The backing data is actually stored in
         :class:`Model.Wms.Operation.HistoryInput <HistoryInput>`.
         """
-        return [hi.latest_previous_op
-                for hi in self.query_history_input().all()]
+        Wms = self.registry.Wms
+        HI = Wms.Operation.HistoryInput
+        Avatar = Wms.PhysObj.Avatar
+        return set(av.outcome_of
+                   for av in Avatar.query().join(HI).filter_by(
+                           operation=self).all())
 
     @property
     def followers(self):
@@ -191,10 +183,12 @@ class Operation:
         The backing data is actually stored in
         :class:`Model.Wms.Operation.HistoryInput <HistoryInput>`.
         """
-        HI = self.registry.Wms.Operation.HistoryInput
-        return [hi.operation
-                for hi in HI.query().filter(
-                        HI.latest_previous_op == self).all()]
+        Wms = self.registry.Wms
+        HI = Wms.Operation.HistoryInput
+        Avatar = Wms.PhysObj.Avatar
+        return set(hi.operation
+                   for hi in HI.query().join(Avatar).filter(
+                           Avatar.outcome_of == self).all())
 
     dt_execution = DateTime(label="date and time of execution",
                             nullable=False)
@@ -284,8 +278,19 @@ class Operation:
         for avatar in inputs:
             HI.insert(avatar=avatar,
                       operation=self,
-                      latest_previous_op=avatar.reason,
                       orig_dt_until=avatar.dt_until)
+
+    def leaf_outcomes(self):
+        """Return those of :attr:`outcomes` that aren't inputs of Operations.
+        """
+        Wms = self.registry.Wms
+        HI = Wms.Operation.HistoryInput
+        Avatar = Wms.PhysObj.Avatar
+        query = Avatar.query().outerjoin(
+            HI, HI.avatar_id == Avatar.id).filter(
+                Avatar.outcome_of == self,
+                HI.avatar_id.is_(None))
+        return query.all()
 
     @classmethod
     def create(cls, state='planned', inputs=None,
@@ -563,11 +568,10 @@ class Operation:
         Depending on the needs, it might be interesting to avoid
         actually fetching all those records.
 
-        :return: a generator of pairs (goods, their original reasons,
-        their original ``dt_until``)
+        :return: a generator of pairs (goods, their original ``dt_until``)
         """
         # TODO simple n-column query instead
-        return ((hi.avatar, hi.latest_previous_op, hi.orig_dt_until)
+        return ((hi.avatar, hi.orig_dt_until)
                 for hi in self.query_history_input().all())
 
     def reset_inputs_original_values(self, state=None):
@@ -582,10 +586,10 @@ class Operation:
         their records, but work directly on ids (and maybe do this in one pass
         with a clever UPDATE query).
         """
-        for avatar, reason, dt_until in self.iter_inputs_original_values():
+        for avatar, dt_until in self.iter_inputs_original_values():
             if state is not None:
                 avatar.state = state
-            avatar.update(reason=reason, dt_until=dt_until)
+            avatar.update(dt_until=dt_until)
 
     @classmethod
     def check_create_conditions(cls, state, dt_execution,
@@ -631,23 +635,13 @@ class Operation:
     def outcomes(self):
         """Return the outcomes of the present operation.
 
-        Outcomes are the PhysObj Avatars that the current Operation produces,
-        unless another Operation has been executed afterwards, becoming their
-        reason.
-        If no Operation is downstream, one can think of outcomes as the results
-        of the current Operation.
-
-        This default implementation considers that the :attr:`inputs`
-        of the current Operation never are outcomes.
+        Outcomes are the PhysObj Avatars that the current Operation produces.
 
         This is a Python property, because it might become a field at some
         point.
         """
         Avatar = self.registry.Wms.PhysObj.Avatar
-        # if already executed, might be the 'reason' for some Avatar
-        # from self.inputs to be in 'past' state.
-        return Avatar.query().filter(Avatar.reason == self,
-                                     Avatar.state != 'past').all()
+        return Avatar.query().filter_by(outcome_of=self).all()
 
     def after_insert(self):
         """Perform specific logic after insert during creation process

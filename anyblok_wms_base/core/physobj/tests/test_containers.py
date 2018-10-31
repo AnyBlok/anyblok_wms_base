@@ -35,7 +35,7 @@ class TestContainers(WmsTestCase):
         for _ in range(qty):
             self.Avatar.insert(
                 obj=self.PhysObj.insert(type=self.physobj_type),
-                reason=self.arrival,
+                outcome_of=self.arrival,
                 location=self.stock if location is None else location,
                 dt_from=dt_from,
                 dt_until=until,

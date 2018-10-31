@@ -26,7 +26,6 @@ class TestMove(WmsTestCaseWithPhysObj):
         self.assertEqual(new_goods.state, 'present')
         self.assertEqual(new_goods.dt_from, self.dt_test1)
         self.assertEqual(new_goods.dt_until, self.dt_test3)
-        self.assertEqual(new_goods.reason, self.arrival)
         # TODO also check that id did not change once we can make it True
 
     def test_whole_planned_execute(self):
@@ -34,17 +33,15 @@ class TestMove(WmsTestCaseWithPhysObj):
                                 state='planned',
                                 dt_execution=self.dt_test2,
                                 input=self.avatar)
-        self.assertEqual(move.follows, [self.arrival])
+        self.assert_singleton(move.follows, value=self.arrival)
         self.assertEqual(move.input, self.avatar)
         self.avatar.update(state='present')
 
         move.execute()
         self.assertEqual(move.state, 'done')
-        self.assertEqual(self.avatar.reason, move)
 
         moved = self.assert_singleton(move.outcomes)
         self.assertEqual(moved.state, 'present')
-        self.assertEqual(moved.reason, move)
         self.assertEqual(moved.location, self.stock)
         self.assertEqual(self.Avatar.query().filter(
             self.Avatar.location == self.incoming_loc,
@@ -56,12 +53,11 @@ class TestMove(WmsTestCaseWithPhysObj):
                                 state='done',
                                 dt_execution=self.dt_test2,
                                 input=self.avatar)
-        self.assertEqual(move.follows, [self.arrival])
+        self.assert_singleton(move.follows, value=self.arrival)
 
         after_move = move.outcomes[0]
         self.assertEqual(after_move.location, self.stock)
         self.assertEqual(after_move.state, 'present')
-        self.assertEqual(after_move.reason, move)
 
         not_moved = move.input
         self.assertEqual(not_moved.state, 'past')

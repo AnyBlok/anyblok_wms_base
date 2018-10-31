@@ -27,7 +27,6 @@ class TestDisparition(WmsTestCaseWithPhysObj):
                                        input=avatar)
         self.assertEqual(len(disp.outcomes), 0)
         self.assertEqual(avatar.state, 'past')
-        self.assertEqual(avatar.reason, disp)
         self.assertEqual(avatar.dt_until, self.dt_test2)
         self.assertIsNone(self.Avatar.query().filter(
             self.Avatar.state != 'past').first())
@@ -45,7 +44,6 @@ class TestDisparition(WmsTestCaseWithPhysObj):
 
         disp.obliviate()
         self.assertEqual(avatar.state, 'present')
-        self.assertEqual(avatar.reason, self.arrival)
         self.assertIsNone(avatar.dt_until)
 
     def test_no_planned_state(self):

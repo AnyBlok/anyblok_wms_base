@@ -34,7 +34,7 @@ class TestDeparture(WmsTestCaseWithPhysObj):
                                     dt_execution=self.dt_test2,
                                     input=self.avatar)
 
-        self.assertEqual(dep.follows, [self.arrival])
+        self.assert_singleton(dep.follows, value=self.arrival)
         self.assertEqual(dep.input, self.avatar)
         self.assertEqual(self.avatar.dt_until, self.dt_test2)
 
@@ -46,12 +46,8 @@ class TestDeparture(WmsTestCaseWithPhysObj):
         dep.execute(self.dt_test3)
         self.assertEqual(dep.state, 'done')
 
-        sent = self.Avatar.query().filter(self.Avatar.reason == dep).all()
-        self.assertEqual(len(sent), 1)
-        sent = sent[0]
-        self.assertEqual(sent.state, 'past')
+        self.assertEqual(self.avatar.state, 'past')
         self.assertEqual(self.avatar.dt_until, self.dt_test3)
-        self.assertEqual(sent.reason, dep)
 
         self.assert_quantities(future=(0, self.dt_test2),
                                present=0,
@@ -90,12 +86,11 @@ class TestDeparture(WmsTestCaseWithPhysObj):
                                     dt_execution=self.dt_test2,
                                     input=self.avatar)
 
-        self.assertEqual(dep.follows, [self.arrival])
+        self.assert_singleton(dep.follows, value=self.arrival)
         self.assertEqual(dep.input, self.avatar)
         self.assert_quantities(future=(0, self.dt_test2),
                                present=0,
                                past=(1, self.dt_test1))
-        self.assertEqual(self.avatar.reason, dep)
         self.assertEqual(self.avatar.state, 'past')
         self.assertEqual(self.avatar.dt_until, self.dt_test2)
 

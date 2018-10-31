@@ -52,7 +52,6 @@ class Disparition(Mixin.WmsSingleInputOperation, Operation):
         """Put the input Avatar in the 'past' state
         """
         self.input.update(dt_until=self.dt_execution,
-                          reason=self,
                           state='past')
 
     def obliviate_single(self):

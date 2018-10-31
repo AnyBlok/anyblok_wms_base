@@ -105,6 +105,5 @@ Model.Wms.PhysObj.Avatar
    .. autoattribute:: id
    .. autoattribute:: location
    .. autoattribute:: state
-   .. autoattribute:: reason
    .. autoattribute:: dt_from
    .. autoattribute:: dt_until

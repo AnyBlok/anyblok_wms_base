@@ -688,27 +688,9 @@ class Avatar:
     range would simply be another Avatar (use case: moving back and forth).
     """
 
-    reason = Many2One(label="The operation that is the direct cause "
-                      "for the values",
-                      index=True,
-                      model=Model.Wms.Operation, nullable=False)
-    """Entry point to operational history.
-
-    This records the Operation that is responsible for the current
-    Avatar, including its :attr:`state`. In practice, it is
-    simply the latest :class:`Operation <.operation.base.Operation>` that
-    affected these goods.
-
-    It should renamed as ``outcome_of`` or ``latest_operation`` in some
-    future.
-
-    .. note:: As a special case, planned Operations do change :attr:`dt_until`
-              on the Avatars they work on without setting themselves as
-              :attr:`reason`.
-
-              No setting themselves as :attr:`reason` helps to distinguish
-              their inputs from their outcomes and is in line
-              with :attr:`dt_until` being theoretical in that case anyway.
+    outcome_of = Many2One(index=True,
+                          model=Model.Wms.Operation, nullable=False)
+    """The Operation that created this Avatar.
     """
 
     goods = Function(fget='_goods_get',

@@ -167,13 +167,9 @@ class TestSplit(WmsTestCaseWithPhysObj):
 
         # TODO we might actually want in case Splits have no meaning
         # in real life to simply forget an end-of-chain Split.
-        self.assertEqual(Avatar.query().filter(
-            Avatar.state == 'past',
-            Avatar.reason == aggregate).all(), outcomes)
 
         # no weird leftovers
-        self.assertEqual(
-            Avatar.query().filter(Avatar.state == 'future').count(), 0)
+        self.assertEqual(Avatar.query().filter_by(state='future').count(), 0)
 
     def test_revert_implicit_intermediate(self):
         """Test reversal of a Split that's been inserted implictely.
@@ -184,15 +180,14 @@ class TestSplit(WmsTestCaseWithPhysObj):
                                           input=self.avatar,
                                           quantity=2)
 
-        self.assertEqual(len(move.follows), 1)
-        split = move.follows[0]
-        self.assertEqual(self.avatar.reason, split)
+        split = self.assert_singleton(move.follows)
+        self.assertEqual(move.input.outcome_of, split)
 
         aggregate, rev_leafs = split.plan_revert()
         self.assertEqual(len(rev_leafs), 1)
         rev_move = rev_leafs[0]
 
-        self.assertEqual(rev_move.follows, [move])
+        self.assert_singleton(rev_move.follows, value=move)
         rev_move.execute()
         aggregate.execute()
 

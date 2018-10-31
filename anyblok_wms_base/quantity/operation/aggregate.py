@@ -132,7 +132,7 @@ class Aggregate(Operation):
         outcome_dt_until = min_upper_bounds(g.dt_until for g in inputs)
 
         if self.state == 'done':
-            update = dict(dt_until=dt_exec, state='past', reason=self)
+            update = dict(dt_until=dt_exec, state='past')
         else:
             update = dict(dt_until=dt_exec)
         for record in inputs:
@@ -150,7 +150,7 @@ class Aggregate(Operation):
 
         return PhysObj.Avatar.insert(
             obj=aggregated_physobj,
-            reason=self,
+            outcome_of=self,
             dt_from=dt_exec,
             # dt_until in states 'present' and 'future' is theoretical anyway
             dt_until=outcome_dt_until,
@@ -161,7 +161,6 @@ class Aggregate(Operation):
         self.outcomes[0].update(state='present', dt_from=self.dt_execution)
         for record in self.inputs:
             record.update(state='past',
-                          reason=self,
                           dt_until=self.dt_execution)
 
     def is_reversible(self):
