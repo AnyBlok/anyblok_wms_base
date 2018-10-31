@@ -327,3 +327,17 @@ class TestOperation(WmsTestCase):
         avatar = arr.outcomes[0]
         departure = self.Operation.Departure.create(input=avatar)
         self.assertEqual(departure.dt_execution, self.dt_test1)
+
+    def test_check_alterable(self):
+        arr = self.Operation.Arrival.create(goods_type=self.goods_type,
+                                            location=self.incoming_loc,
+                                            dt_execution=self.dt_test1,
+                                            state='planned')
+        arr.check_alterable()
+        arr.state = 'done'
+        with self.assertRaises(OperationError) as arc:
+            arr.check_alterable()
+        exc = arc.exception
+        str(exc)
+        self.assertEqual(exc.kwargs.get('op'), arr)
+        self.assertEqual(exc.kwargs.get('state'), 'done')

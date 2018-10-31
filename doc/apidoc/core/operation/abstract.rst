@@ -36,6 +36,7 @@ Model.Wms.Operation
    .. automethod:: cancel
    .. automethod:: plan_revert
    .. automethod:: obliviate
+   .. automethod:: alter_destination
 
    .. raw:: html
 
@@ -55,10 +56,10 @@ Model.Wms.Operation
 
       <h4>Optional API of subclasses</h4>
 
-
    These methods have a default implementation in the base class, and
    are meant for the concrete Operation subclasses to override them if needed.
 
+   .. autoattribute:: destination_field
    .. automethod:: is_reversible
    .. automethod:: check_create_conditions
    .. automethod:: check_execute_conditions

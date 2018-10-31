@@ -32,6 +32,7 @@ class Move(Mixin.WmsSingleInputOperation, Operation):
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
     destination = Many2One(model='Model.Wms.PhysObj',
                            nullable=False)
+    destination_field = 'destination'
 
     def specific_repr(self):
         return ("input={self.input!r}, "
@@ -103,3 +104,6 @@ class Move(Mixin.WmsSingleInputOperation, Operation):
         :ref:`wms-quantity Blok <blok_wms_quantity>`.
         """
         return {}
+
+    def input_location_altered(self):
+        """A Move doesn't care if its origin changed."""

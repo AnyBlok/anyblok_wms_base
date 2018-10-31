@@ -76,6 +76,8 @@ class Arrival(Operation):
     inputs_number = 0
     """This Operation is a purely creative one."""
 
+    destination_field = 'location'
+
     def specific_repr(self):
         return ("goods_type={self.goods_type!r}, "
                 "location={self.location!r}").format(self=self)
