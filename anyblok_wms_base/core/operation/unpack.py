@@ -121,25 +121,126 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         if self.state == 'done':
             packs.update(state='past')
         for outcome_spec in spec:
-            # TODO what would be *really* neat would be to be able
-            # to recognize the goods after a chain of pack/unpack
-            goods_fields = dict(type=outcome_types[outcome_spec['type']])
-            clone = outcome_spec.get('forward_properties') == 'clone'
-            if clone:
-                goods_fields['properties'] = packs.obj.properties
-            for goods in self.create_unpacked_goods(goods_fields,
-                                                    outcome_spec):
-                PhysObj.Avatar.insert(obj=goods,
-                                      location=packs.location,
-                                      outcome_of=self,
-                                      dt_from=dt_execution,
-                                      dt_until=packs.dt_until,
-                                      state=outcome_state)
-                if not clone:
-                    self.forward_props(outcome_spec, goods)
+            self.create_outcomes_for_spec(
+                outcome_types, outcome_spec, outcome_state)
         packs.dt_until = dt_execution
 
-    def forward_props(self, spec, outcome):
+    def create_outcomes_for_spec(self, types_cache, spec, outcome_state):
+        PhysObj = self.registry.Wms.PhysObj
+        # TODO what would be *really* neat would be to be able
+        # to recognize the goods after a chain of pack/unpack
+        goods_fields = dict(type=types_cache[spec['type']])
+        packs = self.input
+        clone = spec.get('forward_properties') == 'clone'
+        if clone:
+            goods_fields['properties'] = packs.obj.properties
+        for physobj in self.create_unpacked_goods(goods_fields,
+                                                  spec):
+            PhysObj.Avatar.insert(obj=physobj,
+                                  location=packs.location,
+                                  outcome_of=self,
+                                  dt_from=self.dt_execution,
+                                  dt_until=packs.dt_until,
+                                  state=outcome_state)
+            if not clone:
+                physobj.update_properties(self.outcome_props_update(spec))
+
+    @classmethod
+    def plan_for_outcomes(cls, inputs, outcomes, dt_execution=None):
+        """Create a planned Unpack of which some outcomes are already given.
+
+        This is useful for planning refinements, in cases the given ``future``
+        outcomes already exist in the database, typically because they are
+        from Arrivals that are in the :meth:`process of being superseded
+        <anyblok_wms_base.core.operation.arrival.Arrival.refine_with_trailing_unpack>`
+
+        :param inputs: should be made of only one element, an Avatar of the
+                       physical object to be unpacked, yet it's convenient
+                       to get it as an iterable (also for the caller).
+        :param outcomes: candidate Avatars to reinterpret as outcomes of the
+                         newly created Unpack. It is possible that the Unpack
+                         produces some extra ones, and conversely that some
+                         of them are not produced by the Unpack.
+        :returns: a pair made of
+
+                  - the created Unpack
+                  - the sublist of ``outcomes`` that have been attached.
+
+        This method ensures that the newly created Unpack instance produces
+        at least the same properties as already present on the given outcomes,
+        and actually uses the properties as a match criteria to perform the
+        attachments.
+        It is on the other hand perfectly acceptable that the Unpack adds
+        more properties, for instance because they were previously unplannable
+        or irrelevant for the planning (use cases: serial and batch numbers,
+        expiry dates...)
+        """  # noqa (unbreakable Sphinx crossref)
+        if dt_execution is None:
+            # TODO improve using outcomes dt_from
+            dt_execution = max(inp.dt_from for inp in inputs)
+
+        cls.check_create_conditions('planned', dt_execution, inputs)
+        unpack = cls.insert(state='planned', dt_execution=dt_execution)
+        unpack.link_inputs(inputs)
+        input_obj = next(iter(inputs)).obj
+
+        to_match = set(outcomes)
+        attached = []
+        PhysObj = cls.registry.Wms.PhysObj
+        POT = PhysObj.Type
+        # TODO PERF this has quadratic complexity.
+        # I suppose it's ok because outcomes shoudl not be too big,
+        # but it could be improved by presorting specs and outcomes
+        # TODO it's quite possible that some of the outcome can't be matched
+        # because the spec item that would match it has already been used
+        # to match one with less properties
+        code_to_type = {}
+        for spec in unpack.get_outcome_specs():
+            code = spec['type']
+            stype = code_to_type.get(code)
+            if stype is None:
+                stype = POT.query().filter_by(code=code).one()
+                code_to_type[code] = stype
+            for i in range(spec['quantity']):
+                # breaking out of this loops means we already match as much
+                # as possible
+                for candidate in to_match:
+                    # breaking out of this loop signals a match
+                    cand_obj = candidate.obj
+                    if cand_obj.type != stype:
+                        continue
+                    sprops = spec['forward_properties']
+                    if cand_obj.properties is None:
+                        # easy case: no properties to match, only new ones
+                        # to create
+                        if sprops == 'clone':
+                            cand_obj.properties = input_obj.properties
+                        else:
+                            cand_obj.update_properties(
+                                unpack.outcome_props_update(spec))
+                        break
+                    # else, we check if candidate's properties are a subdict
+                    # of what the Unpack would give rise to
+                    props_from_spec = unpack.outcome_props_update(spec)
+                    cand_props = cand_obj.properties.as_dict()
+                    if all(props_from_spec.get(k) == v
+                           for k, v in cand_props.items()):
+                        cand_obj.update_properties(props_from_spec)
+                        break
+                else:
+                    break
+                to_match.remove(candidate)
+                attached.append(candidate)
+                candidate.update(outcome_of=unpack,
+                                 dt_from=dt_execution)
+            else:
+                continue  # next spec
+            spec['quantity'] -= i
+            unpack.create_outcomes_for_spec(code_to_type, spec, 'future')
+
+        return unpack, attached
+
+    def outcome_props_update(self, spec):
         """Handle the properties for a given outcome (PhysObj record)
 
         This is actually a bit more that just forwarding.
@@ -148,6 +249,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
                           produced by :meth:`get_outcome_specs` (see below
                           for the contents).
         :param outcome: the just created PhysObj instance
+        :return: the properties to update, as a :class:`dict`
 
         *Specification contents*
 
@@ -177,9 +279,10 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         Properties of ``outcome``. To forward and require a property, it has
         thus to be in both lists.
         """
+        props_upd = {}
         direct_props = spec.get('properties')
         if direct_props is not None and 'local_goods_ids' not in spec:
-            outcome.update_properties(direct_props)
+            props_upd.update(direct_props)
         packs = self.input.obj
         fwd_props = spec.get('forward_properties', ())
         req_props = spec.get('required_properties')
@@ -191,8 +294,8 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
                 "requires these for Unpack operation: {req_props}",
                 type=packs.type, req_props=req_props)
         if not fwd_props:
-            return
-        upd = []
+            return props_upd
+
         for pname in fwd_props:
             pvalue = packs.get_property(pname)
             if pvalue is None:
@@ -203,8 +306,8 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
                     "Packs {inputs[0]} lacks the property {prop}"
                     "required by their type for Unpack operation",
                     prop=pname)
-            upd.append((pname, pvalue))
-        outcome.update_properties(upd)
+            props_upd[pname] = pvalue
+        return props_upd
 
     def get_outcome_specs(self):
         """Produce a complete specification for outcomes and their properties.
@@ -361,3 +464,11 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
             dt_execution=dt_execution,
             name=self.reverse_assembly_name(),
             inputs=pack_inputs)
+
+    def input_location_altered(self):
+        """An Unpack being in place, must propagate change of locations."""
+        outcomes = self.outcomes
+        for av in outcomes:
+            av.location = self.input.location
+        for follower in self.followers:
+            follower.input_location_altered()

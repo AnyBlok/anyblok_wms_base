@@ -84,9 +84,10 @@ This Operation Model inherits from :class:`Mixin.WmsSingleInput
 
       <h3>Specific members</h3>
 
-   .. automethod:: forward_props
    .. automethod:: get_outcome_specs
+   .. automethod:: outcome_props_update
    .. automethod:: create_unpacked_goods
+   .. automethod:: plan_for_outcomes
 
    .. raw:: html
 

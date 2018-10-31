@@ -990,3 +990,15 @@ class Assembly(Operation):
         return self.registry.Wms.Operation.Unpack.create(
             dt_execution=dt_execution,
             inputs=unpack_inputs)
+
+    def input_location_altered(self):
+        """Being in-place, an Assembly must propagate changes of locations.
+
+        Also it should recheck that all inputs are in the same place.
+        """
+        self.check_inputs_locations(self.inputs)
+        outcome = self.outcomes[0]
+        outcome.location = self.inputs[0].location
+
+        for follower in self.followers:
+            follower.input_location_altered()

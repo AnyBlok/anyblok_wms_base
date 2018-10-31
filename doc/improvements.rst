@@ -119,10 +119,87 @@ obsolescence markers of Mercurial, but that's probably too far fetched.
 
 Decision about all this postponed until version 0.9
 
+.. _improvement_federation:
+
+Federation of Anyblok WMS instances
+-----------------------------------
+In a big system, especially with several sites for Goods handling
+(warehouses, retail stores),
+the detail of operations occurring at some given premises is usually
+of no interest for the big picture.
+
+For example, we could have a central system taking care of sales and
+purchases, and keeping track of rough stock levels for these purposes.
+
+Such a system would certainly not be interested by the detailed
+organization of locations inside the different warehouses, nor with
+the many operations that occur as part of the reception, keep in
+stock, then delivery process and in fact, it would burden it.
+On the other hand, it's best if handling sites don't suffer
+the network latency to an offsite system.
+
+The central system could instead have a simplified view of the
+logistics, representing each handling site as a single Location, maybe
+using :ref:`Goods lines with quantities <improvement_no_quantities>`
+whereas a handling site would not, and intercommunication would
+happen over the bus or REST APIs that are :ref:`planned anyway for
+Anyblok WMS <blok_wms_bus>`.
+
+If well done, that can also play some kind of sharding role, but there
+are intrinsic limits as to how much simplified the view of the central
+system can be, even combined with
+:ref:`improvement_operation_superseding` to transmit only simplified
+operations.
+
+.. note:: about the central system example
+
+          For mass scalability, keeping an exact track of stock
+          levels is irrealistic anyway: the logistics system is too
+          big and has too much processing to do to ask it for realtime
+          reports.
+
+          At a certain scale, its reports would timeout or fall out of sync
+          because of, actually, general failure under the stress they
+          generate. All the federation system can achieve in that case
+          is pushing back the point of failure.
+
+          Besides, if one managed 100 orders per minute, how useful is it to
+          track them by the unit to tell customers if they are
+          available ?
+
+Obviously, many different scenarios can be achieved with well-thought
+federation, including mesh-like moving of Goods across sites, as
+needed if one has several production sites and several retail stores.
+
+Communication with other systems also fall in this category.
+
+.. _improvement_improvements:
+
+Documentation is not a proper place for collective thought
+----------------------------------------------------------
+
+Well, yeah, this page should be superseded. How ?
+
+* simply Github issues ?
+* RFC/PEP-like subdirectory to PR suggestions onto ?
+  Maybe that's too formal, but keeping somehow in the docs allows to
+  cross-reference, like we did already in :ref:`goal_stubborn_reality`
+
+
+Implemented
+~~~~~~~~~~~
+
 .. _improvement_operation_superseding:
 
 Superseding of planned operations
 ---------------------------------
+.. versionadded:: 0.9.0
+
+                  *we now have enough planning alteration primitives to
+                  support the use case detailed here, but we don't
+                  have the most general form of Operations graph
+                  manipulation suggested near the end of this section.*
+
 We should provide the means to declare that a chain of operations
 actually replaces (and maybe completes) some given (chain of?) planned
 operations.
@@ -184,7 +261,7 @@ what the core provides us (none of these is satisfactory):
      the Purchase Order, just plan an
      Arrival for the expected goods, at the unpacking location.
      Make no further attempt to predict
-     what form it will take place, but linked it with the Purchase Order
+     what form it will take place, just link it with the Purchase Order
      (that linking wouldn't be part of wms-core, but it would be
      implemented in the end application)
    * In particular, don't represent the unpacking of the parcels
@@ -325,77 +402,6 @@ which has the same incomes and outcomes, for a suitable definition of
 Maybe it's simpler to implement it in full generality rather than some
 special cases like the example above, in which the subgraph has a
 single root with no incomes, that happens to be also root in the whole DAG.
-
-
-.. _improvement_federation:
-
-Federation of Anyblok WMS instances
------------------------------------
-In a big system, especially with several sites for Goods handling
-(warehouses, retail stores),
-the detail of operations occurring at some given premises is usually
-of no interest for the big picture.
-
-For example, we could have a central system taking care of sales and
-purchases, and keeping track of rough stock levels for these purposes.
-
-Such a system would certainly not be interested by the detailed
-organization of locations inside the different warehouses, nor with
-the many operations that occur as part of the reception, keep in
-stock, then delivery process and in fact, it would burden it.
-On the other hand, it's best if handling sites don't suffer
-the network latency to an offsite system.
-
-The central system could instead have a simplified view of the
-logistics, representing each handling site as a single Location, maybe
-using :ref:`Goods lines with quantities <improvement_no_quantities>`
-whereas a handling site would not, and intercommunication would
-happen over the bus or REST APIs that are :ref:`planned anyway for
-Anyblok WMS <blok_wms_bus>`.
-
-If well done, that can also play some kind of sharding role, but there
-are intrinsic limits as to how much simplified the view of the central
-system can be, even combined with
-:ref:`improvement_operation_superseding` to transmit only simplified
-operations.
-
-.. note:: about the central system example
-
-          For mass scalability, keeping an exact track of stock
-          levels is irrealistic anyway: the logistics system is too
-          big and has too much processing to do to ask it for realtime
-          reports.
-
-          At a certain scale, its reports would timeout or fall out of sync
-          because of, actually, general failure under the stress they
-          generate. All the federation system can achieve in that case
-          is pushing back the point of failure.
-
-          Besides, if one managed 100 orders per minute, how useful is it to
-          track them by the unit to tell customers if they are
-          available ?
-
-Obviously, many different scenarios can be achieved with well-thought
-federation, including mesh-like moving of Goods across sites, as
-needed if one has several production sites and several retail stores.
-
-Communication with other systems also fall in this category.
-
-.. _improvement_improvements:
-
-Documentation is not a proper place for collective thought
-----------------------------------------------------------
-
-Well, yeah, this page should be superseded. How ?
-
-* simply Github issues ?
-* RFC/PEP-like subdirectory to PR suggestions onto ?
-  Maybe that's too formal, but keeping somehow in the docs allows to
-  cross-reference, like we did already in :ref:`goal_stubborn_reality`
-
-
-Implemented
-~~~~~~~~~~~
 
 .. _improvement_goods_location:
 

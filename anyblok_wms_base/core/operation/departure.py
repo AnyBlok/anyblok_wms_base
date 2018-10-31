@@ -54,3 +54,12 @@ class Departure(Mixin.WmsSingleInputOperation, Operation):
     def obliviate_single(self):
         self.reset_inputs_original_values(state='present')
         self.registry.flush()
+
+    def input_location_altered(self):
+        """A Departure doesn't care if its input changed locations.
+
+        Even if we have in the future Departures that check that the
+        input location is a suitable one, they should do it at execution
+        time, so that it's still possible to plan a rough Departure from
+        any location, that will have to be later refined to be executed.
+        """
