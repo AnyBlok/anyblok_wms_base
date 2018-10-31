@@ -247,7 +247,10 @@ class Assembly(Operation):
                 cls,
                 "No such assembly: {name!r} for type {outcome_type!r}",
                 name=name, outcome_type=outcome_type)
+        cls.check_inputs_locations(inputs)
 
+    @classmethod
+    def check_inputs_locations(cls, inputs):
         loc = inputs[0].location
         if any(inp.location != loc for inp in inputs[1:]):
             raise OperationInputsError(
