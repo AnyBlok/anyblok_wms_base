@@ -37,6 +37,7 @@ Model.Wms.Operation
    .. automethod:: plan_revert
    .. automethod:: obliviate
    .. automethod:: alter_destination
+   .. automethod:: refine_with_trailing_move
 
    .. raw:: html
 

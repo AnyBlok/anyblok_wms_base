@@ -341,3 +341,19 @@ class TestOperation(WmsTestCase):
         str(exc)
         self.assertEqual(exc.kwargs.get('op'), arr)
         self.assertEqual(exc.kwargs.get('state'), 'done')
+
+    def test_alter_with_trailing_move_inapplicable(self):
+        arr = self.Operation.Arrival.create(goods_type=self.goods_type,
+                                            location=self.incoming_loc,
+                                            dt_execution=self.dt_test1,
+                                            state='planned')
+        avatar = self.assert_singleton(arr.outcomes)
+        dep = self.Operation.Departure.create(input=avatar,
+                                              dt_execution=self.dt_test2,
+                                              state='planned')
+        with self.assertRaises(OperationError) as arc:
+            dep.alter_destination(self.stock)
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs.get('op'), dep)

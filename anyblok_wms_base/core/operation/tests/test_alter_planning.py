@@ -8,6 +8,7 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 from anyblok_wms_base.exceptions import (
+    OperationError,
     OperationInputsError,
     )
 
@@ -125,6 +126,59 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         self.assert_singleton(ass.outcomes, value=ass_out)
         # but its location now has changed
         self.assertEqual(ass_out.location, stock)
+
+    def test_refine_with_trailing_move_inapplicable(self):
+        dep = self.Operation.Departure.create(input=self.avatar)
+        with self.assertRaises(OperationError) as arc:
+            dep.refine_with_trailing_move(self.stock)
+        self.assertEqual(arc.exception.kwargs['op'], dep)
+
+        # same with Operations with several outcomes
+        # (very artificial setup)
+        av2 = self.Avatar.insert(obj=self.physobj,
+                                 state='future',
+                                 dt_from=self.dt_test1,
+                                 outcome_of=self.arrival,
+                                 location=self.incoming_loc)
+        self.assertEqual(len(self.arrival.outcomes), 2)
+
+        with self.assertRaises(OperationError) as arc:
+            self.arrival.refine_with_trailing_move(self.stock)
+        exc = arc.exception
+        self.assertEqual(exc.kwargs['op'], self.arrival)
+        self.assertEqual(exc.kwargs['outcomes_len'], 2)
+        self.assertEqual(set(exc.kwargs['outcomes']), {self.avatar, av2})
+
+    def test_refine_with_trailing_move(self):
+        outgoing = self.insert_location('OUTGOING')
+        stock = self.stock
+        move = self.Move.create(destination=outgoing,
+                                dt_execution=self.dt_test2,
+                                state='planned',
+                                input=self.avatar)
+        dep_input = move.outcomes[0]
+        dep = self.Operation.Departure.create(
+            dt_execution=self.dt_test3,
+            state='planned',
+            input=dep_input)
+        move.refine_with_trailing_move(stopover=stock)
+
+        new_move = self.assert_singleton(dep.follows)
+        self.assertIsInstance(new_move, self.Move)
+
+        # follower's input hasn't changed (same instance)
+        self.assert_singleton(dep.inputs, value=dep_input)
+
+        # about the new intermediate Avatar
+        new_av = self.assert_singleton(move.outcomes)
+        self.assertNotEqual(new_av, dep_input)
+        self.assertEqual(new_av.location, stock)
+        self.assertEqual(new_av.obj, dep_input.obj)
+        self.assertEqual(new_av.dt_from, self.avatar.dt_until)
+        self.assertEqual(new_av.dt_until, self.dt_test3)
+
+        self.assertEqual(dep_input.outcome_of, new_move)
+        self.assertEqual(new_move.input, new_av)
 
 
 del WmsTestCaseWithPhysObj
