@@ -109,10 +109,9 @@ class Move(Mixin.WmsSingleInputOperation, Operation):
             after = self
         else:
             # A move has at most a single follower, hence
-            # its reversal follows at most one operation, whose
-            # outcome is one PhysObj record
-            after = follows[0]
-        return self.create(input=after.outcomes[0],
+            # its reversal follows at most one operation with one outcome.
+            after = next(iter(follows))
+        return self.create(input=next(iter(after.outcomes)),
                            destination=self.input.location,
                            dt_execution=dt_execution,
                            state='planned',
