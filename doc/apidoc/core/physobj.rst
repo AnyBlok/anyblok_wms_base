@@ -102,8 +102,9 @@ Model.Wms.PhysObj.Avatar
 
       <h3>Fields and their semantics</h3>
 
-   .. autoattribute:: id
+   .. autoattribute:: outcome_of
    .. autoattribute:: location
    .. autoattribute:: state
    .. autoattribute:: dt_from
    .. autoattribute:: dt_until
+   .. autoattribute:: id

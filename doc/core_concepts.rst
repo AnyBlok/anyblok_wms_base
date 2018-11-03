@@ -52,7 +52,7 @@ Records of PhysObj have a certain :ref:`Type <physobj_type>` and
 carry additional information, including in particular the variability
 among physical objects of a given Type (e.g, serial numbers, expiry dates).
 
-The journey of the physical objects through the system, i.e, where
+The journey of the physical objects through the system, notably where
 they are and when, is represented
 by their successive :ref:`Avatars <physobj_avatar>`.
 
@@ -219,22 +219,29 @@ Avatars
 -------
 .. versionadded:: 0.6.0
 
-An Avatar (model ``Wms.PhysObj.Avatar``) represents the idea that some
-Physical Objects are, should be or were
+.. versionadded:: 0.9.0 *clarification that Avatars are history
+                  anchors, hence more than location, state and time bearers*
+
+An Avatar (model
+:class:`Wms.PhysObj.Avatar <anyblok_wms_base.core.physobj.main.Avatar>`)
+represents a step in the
+evolution of some Physical Object through the system. In particular, it
+encompasses the idea that the Physical Object is, should be or was
 somewhere in a certain state (``past``, ``present`` or ``future``) in
-a certain date and time range.
+a certain time range.
 
 .. note:: the state is actually totally independent from the times,
           and has more to do with advancement of :ref:`Operations
           <operation>` than the current clock time.
 
-They also bear a reference to the latest :ref:`operation` that
-affected them, which is the main entry point to operational history
-from the perspective of Physical Objects.
+:ref:`Operations <operation>` take Avatars as their *inputs*,
+and spawn new ones, that we call their *outcomes*. Even an Operation
+that doesn't affect locations nor time ranges has to outcome
+new Avatars, disjoint from its inputs.
 
-:ref:`Operations <operation>` take primarily Avatars as their inputs,
-and spawn new ones, but can also affect the underlying :ref:`PhysObj
-<physobj_model>` records.
+.. note:: That :ref:`Operations <operation>` work on Avatars doesn't
+          prevent them to affect the underlying :ref:`PhysObj
+          <physobj_model>` records.
 
 Here's a concrete example: a planned :ref:`op_move` inputs an Avatar in the
 ``present`` state, and produces a new one at the wished
