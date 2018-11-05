@@ -80,6 +80,7 @@ class WmsCore(Blok):
         execute = self.registry.execute
         for op, suffixes in (
                 ('arrival', ('type_id', 'properties', 'code')),
+                ('apparition', ('type_id', 'properties', 'code')),
         ):
             for suffix in suffixes:
                 execute("ALTER TABLE wms_operation_{op} "
