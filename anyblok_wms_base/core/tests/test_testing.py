@@ -30,5 +30,20 @@ class TestWmsTestCase(WmsTestCaseWithPhysObj):
             self.Avatar.query().filter_by(obj=loc).all())
         self.assertEqual(av.dt_from, self.dt_test1)
 
+    def test_assert_quantity(self):
+        self.assert_quantity(0, physobj_type=self.physobj_type)
+        self.assert_quantity(1, physobj_type=self.physobj_type,
+                             additional_states=['future'],
+                             at_datetime=self.dt_test3)
+
+    def test_assert_quantity_default_type(self):
+        self.assert_quantity(1, additional_states=['future'],
+                             at_datetime=self.dt_test3)
+
+    def test_assert_quantity_api_compat(self):
+        self.assert_quantity(1, goods_type=self.physobj_type,
+                             additional_states=['future'],
+                             at_datetime=self.dt_test3)
+
 
 del WmsTestCaseWithPhysObj

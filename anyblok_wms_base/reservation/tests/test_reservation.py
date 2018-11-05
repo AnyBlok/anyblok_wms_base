@@ -24,7 +24,7 @@ class ReservationTestCase(WmsTestCase):
         self.incoming_loc = self.insert_location('INCOMING')
         self.stock = self.insert_location('STOCK')
 
-        arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
+        arrival = self.Operation.Arrival.create(physobj_type=self.goods_type,
                                                 location=self.incoming_loc,
                                                 state='planned',
                                                 dt_execution=self.dt_test1)
