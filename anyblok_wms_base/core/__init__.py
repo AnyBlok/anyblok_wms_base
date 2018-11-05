@@ -35,6 +35,8 @@ class WmsCore(Blok):
             return
         if latest_version < '0.8.0.dev1':
             self.migr_physobj()
+        if latest_version < '0.9.0.dev1':
+            self.migr_ops_physobj_cols()
 
     def migr_physobj(self):  # pragma: no cover
         logger.info("Premigration: renaming of Goods to PhysObj")
@@ -71,6 +73,18 @@ class WmsCore(Blok):
         # delete and recreate them, that's not an issue with current volumes
         # but it would be at a later stage of development
         # TODO provide AnyBlok facilities for migrations that are just renames
+
+    def migr_ops_physobj_cols(self):  # pragma: no cover
+        logger.info("Premigration: renaming of goods_* columns of Operations "
+                    "to physobj_*")
+        execute = self.registry.execute
+        for op, suffixes in (
+                ('arrival', ('type_id', 'properties', 'code')),
+        ):
+            for suffix in suffixes:
+                execute("ALTER TABLE wms_operation_{op} "
+                        "RENAME COLUMN goods_{suffix} "
+                        "TO physobj_{suffix}".format(op=op, suffix=suffix))
 
     @classmethod
     def import_declaration_module(cls):

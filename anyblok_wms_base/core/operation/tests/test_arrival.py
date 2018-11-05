@@ -6,7 +6,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from .testcase import WmsTestCase
+import warnings
+from anyblok_wms_base.testing import WmsTestCase
 
 from anyblok_wms_base.exceptions import (
     OperationContainerExpected,
@@ -71,6 +72,56 @@ class TestArrival(WmsTestCase):
         self.assertEqual(goods.code, 'x34/7')
         self.assertEqual(goods.get_property('foo'), 2)
         self.assertEqual(goods.get_property('monty'), 'python')
+
+    def check_compatibility_goods_col(self, suffix, update_value):
+        """Test compatibility function field for the rename goods->obj.
+
+        To be removed together with that function field once the deprecation
+        has expired.
+        """
+        old_field_name = 'goods_' + suffix
+        new_field_name = 'physobj_' + suffix
+        arrival = self.Arrival.create(location=self.incoming_loc,
+                                      state='planned',
+                                      dt_execution=self.dt_test1,
+                                      physobj_code='765',
+                                      physobj_properties=dict(foo=5,
+                                                              bar='monty'),
+                                      physobj_type=self.goods_type)
+
+        def assert_warnings_goods_deprecation(got_warnings):
+            self.assert_warnings_deprecation(
+                got_warnings, "'%s'" % old_field_name,
+                "rename to '%s'" % new_field_name)
+
+        with warnings.catch_warnings(record=True) as got:
+            # reading
+            self.assertEqual(getattr(arrival, old_field_name),
+                             getattr(arrival, new_field_name))
+        assert_warnings_goods_deprecation(got)
+
+        with warnings.catch_warnings(record=True) as got:
+            arrival.update(**{old_field_name: update_value})
+        assert_warnings_goods_deprecation(got)
+        self.assertEqual(getattr(arrival, new_field_name), update_value)
+
+        with warnings.catch_warnings(record=True) as got:
+            # querying
+            self.assert_singleton(
+                self.Arrival.query().filter_by(
+                    **{old_field_name: update_value}).all(),
+                value=arrival)
+        assert_warnings_goods_deprecation(got)
+
+    def test_compatibility_goods_code(self):
+        self.check_compatibility_goods_col('code', 'ABC')
+
+    def test_compatibility_goods_properties(self):
+        self.check_compatibility_goods_col('properties', dict(foo=7))
+
+    def test_compatibility_goods_type(self):
+        pot = self.PhysObj.Type.insert(code='OTHER')
+        self.check_compatibility_goods_col('type', pot)
 
     def test_arrival_done_obliviate(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
