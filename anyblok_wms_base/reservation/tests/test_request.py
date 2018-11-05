@@ -25,7 +25,7 @@ class RequestItemTestCase(WmsTestCase):
 
         # just so that we can insert avatars
         self.arrival = Wms.Operation.Arrival.insert(
-            goods_type=gt1,
+            physobj_type=gt1,
             state='planned',
             dt_execution=self.dt_test1,
             location=self.loc)

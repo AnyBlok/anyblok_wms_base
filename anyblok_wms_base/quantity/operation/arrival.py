@@ -33,23 +33,23 @@ class Arrival:
                             name='positive_qty'),)
 
     def specific_repr(self):
-        return ("goods_type={self.goods_type!r}, "
+        return ("physobj_type={self.physobj_type!r}, "
                 "location={self.location!r}, "
                 "quantity={self.quantity}").format(self=self)
 
     def after_insert(self):
         # TODO reduce duplication
         PhysObj = self.registry.Wms.PhysObj
-        self_props = self.goods_properties
+        self_props = self.physobj_properties
         if self_props is None:
             props = None
         else:
             props = PhysObj.Properties.create(**self_props)
 
-        goods = PhysObj.insert(type=self.goods_type,
+        goods = PhysObj.insert(type=self.physobj_type,
                                properties=props,
                                quantity=self.quantity,
-                               code=self.goods_code)
+                               code=self.physobj_code)
         PhysObj.Avatar.insert(
             obj=goods,
             location=self.location,

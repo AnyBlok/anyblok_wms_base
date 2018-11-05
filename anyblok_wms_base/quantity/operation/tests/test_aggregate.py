@@ -29,7 +29,7 @@ class TestAggregate(WmsTestCase):
 
         # The arrival fields don't matter, we'll insert goods directly
         self.arrivals = [
-            Operation.Arrival.create(goods_type=self.physobj_type,
+            Operation.Arrival.create(physobj_type=self.physobj_type,
                                      location=self.loc,
                                      state='planned',
                                      dt_execution=self.dt_test1,
@@ -136,7 +136,7 @@ class TestAggregate(WmsTestCase):
         for record in self.avatars:
             record.state = 'present'
         Operation = self.registry.Wms.Operation
-        other_reason = Operation.Arrival.insert(goods_type=self.physobj_type,
+        other_reason = Operation.Arrival.insert(physobj_type=self.physobj_type,
                                                 location=self.loc,
                                                 state='done',
                                                 dt_execution=self.dt_test1,
@@ -190,7 +190,7 @@ class TestAggregate(WmsTestCase):
         with self.assertRaises(OperationMissingInputsError):
             self.plan_aggregate()
 
-    def test_create_done_ensure_goods_present(self):
+    def test_create_done_ensure_physobj_present(self):
         # nowadays, this just tests the base Operation class
         with self.assertRaises(OperationInputWrongState) as arc:
             self.Agg.create(inputs=self.avatars, state='done',
@@ -208,7 +208,7 @@ class TestAggregate(WmsTestCase):
         self.assertEqual(exc_kwargs.get('inputs'), self.avatars)
         self.assertEqual(exc_kwargs.get('record'), self.avatars[1])
 
-    def test_execute_ensure_goods_present(self):
+    def test_execute_ensure_physobj_present(self):
         # nowadays, this just tests the base Operation class
         agg = self.plan_aggregate()
         with self.assertRaises(OperationInputWrongState) as arc:

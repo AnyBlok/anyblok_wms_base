@@ -72,15 +72,20 @@ class WmsTestCase(BlokTestCase):
                 self.assertEqual(elt, value)
             return elt
 
-    def assert_quantity(self, quantity, location=_missing, goods_type=_missing,
+    def assert_quantity(self, quantity, location=_missing,
+                        goods_type=_missing, physobj_type=_missing,
                         **kwargs):
         if location is _missing:
             location = self.default_quantity_location
-        if goods_type is _missing:
-            goods_type = self.physobj_type
+        if physobj_type is _missing:
+            if goods_type is _missing:
+                # not worth a DeprecationWarning, I say
+                physobj_type = self.physobj_type
+            else:
+                physobj_type = goods_type
 
         self.assertEqual(self.Wms.quantity(location=location,
-                                           goods_type=goods_type,
+                                           goods_type=physobj_type,
                                            **kwargs), quantity)
 
     def assert_warnings_deprecation(self, got_warnings, *message_items):
@@ -167,7 +172,7 @@ class WmsTestCase(BlokTestCase):
                 dt_from=dt_from,
                 dt_until=None,
                 outcome_of=cls.Operation.Apparition.insert(
-                    goods_type=location_type,
+                    physobj_type=location_type,
                     quantity=1,
                     location=parent,
                     dt_execution=dt_from,
@@ -186,7 +191,7 @@ class WmsTestCaseWithPhysObj(SharedDataTestCase, WmsTestCase):
        actually, for now, equal to ``avatar``, but will be corrected or
        removed in a subsequent refactor (this is a leftover of the refactor
        that introduced avatars).
-    * ``goods_type``
+    * ``physobj_type``
     * ``arrival``: the reason for :attr:`avatar`
     * ``incoming_loc``: where that initial Avatar dwells
 
@@ -212,7 +217,7 @@ class WmsTestCaseWithPhysObj(SharedDataTestCase, WmsTestCase):
         cls.incoming_loc = cls.cls_insert_location('INCOMING')
         cls.stock = cls.cls_insert_location('STOCK')
 
-        cls.arrival = Operation.Arrival.create(goods_type=cls.physobj_type,
+        cls.arrival = Operation.Arrival.create(physobj_type=cls.physobj_type,
                                                location=cls.incoming_loc,
                                                state='planned',
                                                dt_execution=cls.dt_test1,

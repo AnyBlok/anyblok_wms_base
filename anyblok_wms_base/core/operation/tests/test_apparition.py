@@ -6,7 +6,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from .testcase import WmsTestCase
+import warnings
+from anyblok_wms_base.testing import WmsTestCase
 from anyblok_wms_base.exceptions import (
     OperationIrreversibleError,
     OperationForbiddenState,
@@ -19,8 +20,8 @@ class TestApparition(WmsTestCase):
     def setUp(self):
         super(TestApparition, self).setUp()
         Wms = self.registry.Wms
-        self.goods_type = Wms.PhysObj.Type.insert(label="My good type",
-                                                  code='MGT')
+        self.physobj_type = Wms.PhysObj.Type.insert(label="My good type",
+                                                    code='MGT')
         self.stock = self.insert_location('Stock')
         self.Apparition = Wms.Operation.Apparition
         self.PhysObj = Wms.PhysObj
@@ -31,16 +32,16 @@ class TestApparition(WmsTestCase):
             location=self.stock,
             state='done',
             quantity=1,
-            goods_code='x34/7',
-            goods_properties=dict(foo=2,
-                                  monty='python'),
-            goods_type=self.goods_type)
+            physobj_code='x34/7',
+            physobj_properties=dict(foo=2,
+                                    monty='python'),
+            physobj_type=self.physobj_type)
         self.assertEqual(len(apparition.follows), 0)
         avatar = self.assert_singleton(apparition.outcomes)
         goods = avatar.obj
         self.assertEqual(avatar.state, 'present')
         self.assertEqual(avatar.location, self.stock)
-        self.assertEqual(goods.type, self.goods_type)
+        self.assertEqual(goods.type, self.physobj_type)
         self.assertEqual(goods.code, 'x34/7')
         self.assertEqual(goods.get_property('foo'), 2)
         self.assertEqual(goods.get_property('monty'), 'python')
@@ -51,7 +52,7 @@ class TestApparition(WmsTestCase):
         apparition.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
         self.assertEqual(
-            self.PhysObj.query().filter_by(type=self.goods_type).count(),
+            self.PhysObj.query().filter_by(type=self.physobj_type).count(),
             0)
 
     def test_create_done_several_obliviate(self):
@@ -59,10 +60,10 @@ class TestApparition(WmsTestCase):
             location=self.stock,
             state='done',
             quantity=3,
-            goods_code='x34/7',
-            goods_properties=dict(foo=2,
-                                  monty='python'),
-            goods_type=self.goods_type)
+            physobj_code='x34/7',
+            physobj_properties=dict(foo=2,
+                                    monty='python'),
+            physobj_type=self.physobj_type)
         self.assertEqual(len(apparition.follows), 0)
         avatars = apparition.outcomes
         self.assertEqual(len(avatars), 3)
@@ -70,7 +71,7 @@ class TestApparition(WmsTestCase):
             goods = avatar.obj
             self.assertEqual(avatar.state, 'present')
             self.assertEqual(avatar.location, self.stock)
-            self.assertEqual(goods.type, self.goods_type)
+            self.assertEqual(goods.type, self.physobj_type)
             self.assertEqual(goods.code, 'x34/7')
             self.assertEqual(goods.get_property('foo'), 2)
             self.assertEqual(goods.get_property('monty'), 'python')
@@ -89,7 +90,7 @@ class TestApparition(WmsTestCase):
         apparition.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
         self.assertEqual(
-            self.PhysObj.query().filter_by(type=self.goods_type).count(),
+            self.PhysObj.query().filter_by(type=self.physobj_type).count(),
             0)
 
     def test_create_done_no_props(self):
@@ -97,14 +98,14 @@ class TestApparition(WmsTestCase):
             location=self.stock,
             state='done',
             quantity=1,
-            goods_code='x34/7',
-            goods_type=self.goods_type)
+            physobj_code='x34/7',
+            physobj_type=self.physobj_type)
         self.assertEqual(len(apparition.follows), 0)
         avatar = self.assert_singleton(apparition.outcomes)
         goods = avatar.obj
         self.assertEqual(avatar.state, 'present')
         self.assertEqual(avatar.location, self.stock)
-        self.assertEqual(goods.type, self.goods_type)
+        self.assertEqual(goods.type, self.physobj_type)
         self.assertEqual(goods.code, 'x34/7')
         self.assertIsNone(goods.properties)
 
@@ -116,8 +117,8 @@ class TestApparition(WmsTestCase):
             location=self.stock,
             state='done',
             quantity=1,
-            goods_code='x34/7',
-            goods_type=self.goods_type)
+            physobj_code='x34/7',
+            physobj_type=self.physobj_type)
         with self.assertRaises(OperationIrreversibleError) as arc:
             apparition.plan_revert()
 
@@ -131,23 +132,74 @@ class TestApparition(WmsTestCase):
             self.Apparition.create(location=self.stock,
                                    state='planned',
                                    dt_execution=self.dt_test1,
-                                   goods_code='x34/7',
-                                   goods_properties=dict(foo=2,
-                                                         monty='python'),
-                                   goods_type=self.goods_type)
+                                   physobj_code='x34/7',
+                                   physobj_properties=dict(foo=2,
+                                                           monty='python'),
+                                   physobj_type=self.physobj_type)
         exc = arc.exception
         repr(exc)
         str(exc)
         self.assertEqual(exc.kwargs.get('forbidden'), 'planned')
 
     def test_not_a_container(self):
-        wrong_loc = self.PhysObj.insert(type=self.goods_type)
+        wrong_loc = self.PhysObj.insert(type=self.physobj_type)
         with self.assertRaises(OperationContainerExpected) as arc:
             self.Apparition.create(
                 location=wrong_loc,
                 state='done',
-                goods_type=self.goods_type)
+                physobj_type=self.physobj_type)
         exc = arc.exception
         str(exc)
         repr(exc)
         self.assertEqual(exc.kwargs['offender'], wrong_loc)
+
+    def check_compatibility_goods_col(self, suffix, update_value):
+        """Test compatibility function field for the rename goods->obj.
+
+        To be removed together with that function field once the deprecation
+        has expired.
+        """
+        old_field_name = 'goods_' + suffix
+        new_field_name = 'physobj_' + suffix
+        app = self.Apparition.create(location=self.stock,
+                                     state='done',
+                                     quantity=1,
+                                     dt_execution=self.dt_test1,
+                                     physobj_code='765',
+                                     physobj_properties=dict(foo=5,
+                                                             bar='monty'),
+                                     physobj_type=self.physobj_type)
+
+        def assert_warnings_goods_deprecation(got_warnings):
+            self.assert_warnings_deprecation(
+                got_warnings, "'%s'" % old_field_name,
+                "rename to '%s'" % new_field_name)
+
+        with warnings.catch_warnings(record=True) as got:
+            # reading
+            self.assertEqual(getattr(app, old_field_name),
+                             getattr(app, new_field_name))
+        assert_warnings_goods_deprecation(got)
+
+        with warnings.catch_warnings(record=True) as got:
+            app.update(**{old_field_name: update_value})
+        assert_warnings_goods_deprecation(got)
+        self.assertEqual(getattr(app, new_field_name), update_value)
+
+        with warnings.catch_warnings(record=True) as got:
+            # querying
+            self.assert_singleton(
+                self.Apparition.query().filter_by(
+                    **{old_field_name: update_value}).all(),
+                value=app)
+        assert_warnings_goods_deprecation(got)
+
+    def test_compatibility_goods_code(self):
+        self.check_compatibility_goods_col('code', 'ABC')
+
+    def test_compatibility_goods_properties(self):
+        self.check_compatibility_goods_col('properties', dict(foo=7))
+
+    def test_compatibility_goods_type(self):
+        pot = self.PhysObj.Type.insert(code='OTHER')
+        self.check_compatibility_goods_col('type', pot)

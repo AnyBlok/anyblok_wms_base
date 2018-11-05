@@ -83,7 +83,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
                        responsibility of this method.
         :param spec: specification for these PhysObj, should be used minimally
                      in subclasses, typically for quantity related adjustments.
-                     Also, if the special ``local_goods_ids`` is provided,
+                     Also, if the special ``local_physobj_ids`` is provided,
                      this method should attempt to reuse the PhysObj record
                      with that ``id`` (interplay with quantity might depend
                      on the implementation).
@@ -93,14 +93,14 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
                  total quantity.
         """
         PhysObj = self.registry.Wms.PhysObj
-        existing_ids = spec.get('local_goods_ids')
+        existing_ids = spec.get('local_physobj_ids')
         target_qty = spec['quantity']
         if existing_ids is not None:
             if len(existing_ids) != target_qty:
                 raise OperationInputsError(
                     self,
                     "final outcome specification {spec!r} has "
-                    "'local_goods_ids' parameter, but they don't provide "
+                    "'local_physobj_ids' parameter, but they don't provide "
                     "the wished total quantity {target_qty} "
                     "Detailed input: {inputs[0]!r}",
                     spec=spec, target_qty=target_qty)
@@ -258,7 +258,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
             the lowest precedence, meaning that they will
             be overridden by properties forwarded from ``self.input``.
 
-            Also, if spec has the ``local_goods_id`` key, ``properties`` is
+            Also, if spec has the ``local_physobj_id`` key, ``properties`` is
             ignored. The rationale for this is that normally, there are no
             present or future Avatar for these PhysObj, and therefore the
             Properties of outcome should not have diverged from the contents
@@ -281,7 +281,7 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         """
         props_upd = {}
         direct_props = spec.get('properties')
-        if direct_props is not None and 'local_goods_ids' not in spec:
+        if direct_props is not None and 'local_physobj_ids' not in spec:
             props_upd.update(direct_props)
         packs = self.input.obj
         fwd_props = spec.get('forward_properties', ())

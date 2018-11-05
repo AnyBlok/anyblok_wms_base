@@ -15,13 +15,13 @@ class TestCore(BlokTestCase):
 
     def test_minimal(self):
         Wms = self.registry.Wms
-        goods_type = Wms.PhysObj.Type.insert(label="My good type",
-                                             code='MyGT')
-        self.assertEqual(goods_type.label, "My good type")
+        physobj_type = Wms.PhysObj.Type.insert(label="My good type",
+                                               code='MyGT')
+        self.assertEqual(physobj_type.label, "My good type")
 
         location_type = Wms.PhysObj.Type.insert(code="LOC")
         loc = Wms.PhysObj.insert(code="Root", type=location_type)
-        arrival = Wms.Operation.Arrival.insert(goods_type=goods_type,
+        arrival = Wms.Operation.Arrival.insert(physobj_type=physobj_type,
                                                location=loc,
                                                dt_execution=datetime.now(),
                                                state='done')

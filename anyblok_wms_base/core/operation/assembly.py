@@ -890,12 +890,12 @@ class Assembly(Operation):
 
             contents.append(unpack_outcome)
             if how == 'records':
-                # Adding local goods id so that a forthcoming unpack
-                # would produce the very same goods.
+                # Adding physobj id so that a forthcoming unpack
+                # would produce the very same physical objects.
                 # TODO this *must* be discarded in case of Departures with
                 # EDI,  and maybe some other ones. How to do that cleanly and
                 # efficiently ?
-                unpack_outcome['local_goods_ids'] = [goods.id]
+                unpack_outcome['local_physobj_ids'] = [goods.id]
 
         return contents
 

@@ -23,15 +23,15 @@ class TestUnpack(WmsTestCase):
         self.default_quantity_location = self.stock
 
     def create_packs(self, type_behaviours=None, properties=None, quantity=5):
-        self.packed_goods_type = self.PhysObj.Type.insert(
+        self.packed_physobj_type = self.PhysObj.Type.insert(
             label="Pack",
             code='PCK',
             behaviours=type_behaviours)
         self.arrival = self.Operation.Arrival.create(
-            goods_type=self.packed_goods_type,
+            physobj_type=self.packed_physobj_type,
             location=self.stock,
             dt_execution=self.dt_test1,
-            goods_properties=properties,
+            physobj_properties=properties,
             state='planned',
             quantity=quantity)
 
@@ -94,21 +94,21 @@ class TestUnpack(WmsTestCase):
                                  input=self.packs)
         self.assert_singleton(unp.follows, value=self.arrival)
 
-        unpacked_goods_cloned_props = self.single_result(
+        unpacked_physobj_cloned_props = self.single_result(
             self.PhysObj.query().filter(
                 self.PhysObj.type == unpacked_clone_type))
-        self.assertEqual(unpacked_goods_cloned_props.quantity, 10)
-        self.assertEqual(unpacked_goods_cloned_props.properties,
+        self.assertEqual(unpacked_physobj_cloned_props.quantity, 10)
+        self.assertEqual(unpacked_physobj_cloned_props.properties,
                          self.packs.obj.properties)
 
-        unpacked_goods_fwd_props = self.single_result(
+        unpacked_physobj_fwd_props = self.single_result(
             self.PhysObj.query().filter(
                 self.PhysObj.type == unpacked_fwd_type))
-        self.assertEqual(unpacked_goods_fwd_props.quantity, 15)
-        self.assertNotEqual(unpacked_goods_fwd_props.properties,
+        self.assertEqual(unpacked_physobj_fwd_props.quantity, 15)
+        self.assertNotEqual(unpacked_physobj_fwd_props.properties,
                             self.packs.obj.properties)
-        self.assertIsNone(unpacked_goods_fwd_props.get_property('other'))
-        self.assertEqual(unpacked_goods_fwd_props.get_property('foo'), 3)
+        self.assertIsNone(unpacked_physobj_fwd_props.get_property('other'))
+        self.assertEqual(unpacked_physobj_fwd_props.get_property('foo'), 3)
 
     def test_whole_done_one_unpacked_unform(self):
         unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
@@ -284,7 +284,7 @@ class TestUnpack(WmsTestCase):
         exc_kwargs = arc.exception.kwargs
         self.assertEqual(list(exc_kwargs.get('inputs')), [self.packs])
         self.assertEqual(exc_kwargs.get('req_props'), ['foo'])
-        self.assertEqual(exc_kwargs.get('type'), self.packed_goods_type)
+        self.assertEqual(exc_kwargs.get('type'), self.packed_physobj_type)
         # we also have an 'operation' kwarg, because that exc is raised
         # after actual instantiation, but we can't test it because
         # we don't have a create() returned value to compare
@@ -364,7 +364,7 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(avatar.outcome_of, unp)
 
         self.assert_quantity(0,
-                             goods_type=self.packed_goods_type,
+                             physobj_type=self.packed_physobj_type,
                              at_datetime=self.dt_test2,
                              additional_states=['future'])
 
@@ -375,12 +375,12 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(self.packs.state, 'past')
 
         self.assert_quantity(0,
-                             goods_type=self.packed_goods_type,
+                             physobj_type=self.packed_physobj_type,
                              at_datetime=self.dt_test2,
                              additional_states=['future'])
         self.assertEqual(
             self.Avatar.query().join(self.Avatar.obj).filter(
-                self.PhysObj.type == self.packed_goods_type,
+                self.PhysObj.type == self.packed_physobj_type,
                 self.Avatar.state == 'future').count(),
             0)
 
@@ -419,7 +419,7 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(avatar.state, 'future')
 
         self.assert_quantity(1,
-                             goods_type=self.packed_goods_type,
+                             physobj_type=self.packed_physobj_type,
                              additional_states=['future'],
                              at_datetime=self.dt_test2)
 
@@ -429,10 +429,10 @@ class TestUnpack(WmsTestCase):
         PhysObj, Avatar = self.PhysObj, self.Avatar
 
         # not unpacked
-        packs_goods_query = PhysObj.query().filter(
-            PhysObj.type == self.packed_goods_type)
+        packs_physobj_query = PhysObj.query().filter(
+            PhysObj.type == self.packed_physobj_type)
         still_packed = self.single_result(
-            packs_goods_query.join(Avatar.obj).filter(
+            packs_physobj_query.join(Avatar.obj).filter(
                 Avatar.state == 'present'))
         self.assertEqual(still_packed.quantity, 1)
 
@@ -470,7 +470,7 @@ class TestUnpack(WmsTestCase):
             PhysObj.query().filter(PhysObj.type == unpacked_type).count(),
             0)
         self.assert_quantity(5,
-                             goods_type=self.packed_goods_type,
+                             physobj_type=self.packed_physobj_type,
                              additional_states=['future'],
                              at_datetime=self.dt_test2)
 
@@ -488,7 +488,7 @@ class TestUnpack(WmsTestCase):
         str(arc.exception)
         repr(arc.exception)
         exc_kwargs = arc.exception.kwargs
-        self.assertEqual(exc_kwargs.get('type'), self.packed_goods_type)
+        self.assertEqual(exc_kwargs.get('type'), self.packed_physobj_type)
         self.assertEqual(list(exc_kwargs.get('inputs')), [self.packs])
         self.assertEqual(exc_kwargs.get('behaviour'), dict(outcomes=[]))
         self.assertEqual(exc_kwargs.get('specific'), ())
@@ -510,7 +510,7 @@ class TestUnpack(WmsTestCase):
         str(arc.exception)
         repr(arc.exception)
         exc_kwargs = arc.exception.kwargs
-        self.assertEqual(exc_kwargs.get('type'), self.packed_goods_type)
+        self.assertEqual(exc_kwargs.get('type'), self.packed_physobj_type)
         self.assertEqual(list(exc_kwargs.get('inputs')), [self.packs])
 
     def test_repr(self):

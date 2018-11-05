@@ -23,17 +23,18 @@ class TestPhysObj(WmsTestCase):
 
         self.PhysObj = Wms.PhysObj
         self.Avatar = Wms.PhysObj.Avatar
-        self.goods_type = self.PhysObj.Type.insert(label="My goods", code="MG")
+        self.physobj_type = self.PhysObj.Type.insert(label="My goods",
+                                                     code="MG")
         self.stock = self.insert_location('Stock')
         self.arrival = Wms.Operation.Arrival.insert(
-            goods_type=self.goods_type,
+            physobj_type=self.physobj_type,
             location=self.stock,
             dt_execution=self.dt_test1,
             state='done',
             quantity=1)
 
     def test_str(self):
-        gt = self.goods_type
+        gt = self.physobj_type
         goods = self.PhysObj.insert(type=gt, quantity=D('2.5'))
         self.assertEqual(repr(goods),
                          "Wms.PhysObj(id=%d, type="

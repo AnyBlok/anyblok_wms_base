@@ -24,7 +24,7 @@ class TestContainers(WmsTestCase):
 
         # just a placeholder for subsequent Avatar insertions
         self.arrival = self.Operation.Arrival.insert(
-            goods_type=self.physobj_type,
+            physobj_type=self.physobj_type,
             location=self.stock,
             dt_execution=self.dt_test1,
             state='done')

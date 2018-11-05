@@ -14,8 +14,8 @@ class TestArrival(WmsTestCase):
     def setUp(self):
         super(TestArrival, self).setUp()
         Wms = self.registry.Wms
-        self.goods_type = Wms.PhysObj.Type.insert(label="My good type",
-                                                  code='MyGT')
+        self.physobj_type = Wms.PhysObj.Type.insert(label="My good type",
+                                                    code='MyGT')
         self.incoming_loc = self.insert_location('Incoming')
         self.stock = self.insert_location('Stock')
         self.Arrival = Wms.Operation.Arrival
@@ -27,17 +27,17 @@ class TestArrival(WmsTestCase):
                                       quantity=3,
                                       state='planned',
                                       dt_execution=self.dt_test1,
-                                      goods_code='765',
-                                      goods_properties=dict(foo=5,
-                                                            bar='monty'),
-                                      goods_type=self.goods_type)
+                                      physobj_code='765',
+                                      physobj_properties=dict(foo=5,
+                                                              bar='monty'),
+                                      physobj_type=self.physobj_type)
         self.assertEqual(len(arrival.follows), 0)
         avatar = self.assert_singleton(arrival.outcomes)
         goods = avatar.obj
         self.assertEqual(avatar.state, 'future')
         self.assertEqual(avatar.location, self.incoming_loc)
         self.assertEqual(goods.quantity, 3)
-        self.assertEqual(goods.type, self.goods_type)
+        self.assertEqual(goods.type, self.physobj_type)
         self.assertEqual(goods.code, '765')
         self.assertEqual(goods.get_property('foo'), 5)
         self.assertEqual(goods.get_property('bar'), 'monty')
@@ -57,17 +57,17 @@ class TestArrival(WmsTestCase):
         arrival = self.Arrival.create(location=self.incoming_loc,
                                       quantity=3,
                                       state='done',
-                                      goods_code='x34/7',
-                                      goods_properties=dict(foo=2,
-                                                            monty='python'),
-                                      goods_type=self.goods_type)
+                                      physobj_code='x34/7',
+                                      physobj_properties=dict(foo=2,
+                                                              monty='python'),
+                                      physobj_type=self.physobj_type)
         self.assertEqual(len(arrival.follows), 0)
         avatar = self.assert_singleton(arrival.outcomes)
         self.assertEqual(avatar.state, 'present')
         self.assertEqual(avatar.location, self.incoming_loc)
         goods = avatar.obj
         self.assertEqual(goods.quantity, 3)
-        self.assertEqual(goods.type, self.goods_type)
+        self.assertEqual(goods.type, self.physobj_type)
         self.assertEqual(goods.code, 'x34/7')
         self.assertEqual(goods.get_property('foo'), 2)
         self.assertEqual(goods.get_property('monty'), 'python')
@@ -76,14 +76,14 @@ class TestArrival(WmsTestCase):
         arrival = self.Arrival.create(location=self.incoming_loc,
                                       quantity=3,
                                       state='done',
-                                      goods_code='x34/7',
-                                      goods_properties=dict(foo=2,
-                                                            monty='python'),
-                                      goods_type=self.goods_type)
+                                      physobj_code='x34/7',
+                                      physobj_properties=dict(foo=2,
+                                                              monty='python'),
+                                      physobj_type=self.physobj_type)
         arrival.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
         self.assertEqual(
-            self.PhysObj.query().filter_by(type=self.goods_type).count(),
+            self.PhysObj.query().filter_by(type=self.physobj_type).count(),
             0)
 
     def test_arrival_planned_execute_obliviate(self):
@@ -91,24 +91,24 @@ class TestArrival(WmsTestCase):
                                       quantity=3,
                                       state='planned',
                                       dt_execution=self.dt_test1,
-                                      goods_code='x34/7',
-                                      goods_properties=dict(foo=2,
-                                                            monty='python'),
-                                      goods_type=self.goods_type)
+                                      physobj_code='x34/7',
+                                      physobj_properties=dict(foo=2,
+                                                              monty='python'),
+                                      physobj_type=self.physobj_type)
         arrival.execute()
         arrival.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
         self.assertEqual(
-            self.PhysObj.query().filter_by(type=self.goods_type).count(),
+            self.PhysObj.query().filter_by(type=self.physobj_type).count(),
             0)
 
     def test_repr(self):
         arrival = self.Arrival(location=self.incoming_loc,
                                quantity=3,
                                state='done',
-                               goods_code='x34/7',
-                               goods_properties=dict(foo=2,
-                                                     monty='python'),
-                               goods_type=self.goods_type)
+                               physobj_code='x34/7',
+                               physobj_properties=dict(foo=2,
+                                                       monty='python'),
+                               physobj_type=self.physobj_type)
         repr(arrival)
         str(arrival)
