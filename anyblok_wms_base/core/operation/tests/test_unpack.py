@@ -172,10 +172,10 @@ class TestUnpack(WmsTestCase):
             self.assertEqual(unpacked_goods.get_property('baz'), 'second hand')
 
     def test_done_non_uniform_local_id(self):
-        """Unpack with local_goods_ids in pack properties.
+        """Unpack with local_physobj_ids in pack properties.
 
         The unpacked PhysObj are directly picked by the specified values of
-        ``local_goods_ids``.
+        ``local_physobj_ids``.
 
         Properties after unpack are still forwarded according to configuration
         on the packs' PhysObj Type and on the packs' properties.
@@ -196,13 +196,13 @@ class TestUnpack(WmsTestCase):
                             contents=[
                                 dict(type=unpacked_type.code,
                                      quantity=1,
-                                     local_goods_ids=[outcome1.id],
+                                     local_physobj_ids=[outcome1.id],
                                      properties=dict(direct='ignored'),
                                      forward_properties=['bar']
                                      ),
                                 dict(type=unpacked_type.code,
                                      quantity=1,
-                                     local_goods_ids=[outcome2.id],
+                                     local_physobj_ids=[outcome2.id],
                                      properties=dict(direct='ignored'),
                                      forward_properties=['bar']
                                      )
@@ -224,7 +224,7 @@ class TestUnpack(WmsTestCase):
             self.assertEqual(unpacked.get_property('bar'), 'yes')
 
     def test_done_non_uniform_local_id_wrong_qty(self):
-        """Unpack with local_goods_ids in pack properties, wrong quantity
+        """Unpack with local_physobj_ids in pack properties, wrong quantity
         """
         unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
         outcome1 = self.PhysObj.insert(type=unpacked_type)
@@ -239,7 +239,7 @@ class TestUnpack(WmsTestCase):
                             contents=[
                                 dict(type=unpacked_type.code,
                                      quantity=2,
-                                     local_goods_ids=[outcome1.id],
+                                     local_physobj_ids=[outcome1.id],
                                      ),
                             ]))
         self.packs.update(state='present')
@@ -254,7 +254,7 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(exckw.get('spec'),
                          dict(type=unpacked_type.code,
                               quantity=2,
-                              local_goods_ids=[outcome1.id],
+                              local_physobj_ids=[outcome1.id],
                               forward_properties=['foo'],
                               required_properties=['foo']))
 

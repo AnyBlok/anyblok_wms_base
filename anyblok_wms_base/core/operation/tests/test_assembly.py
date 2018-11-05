@@ -753,7 +753,7 @@ class TestAssembly(WmsTestCase):
                                forward_properties=['foo'],
                                properties=dict(batch=None),
                                quantity=1,
-                               local_goods_ids=[avatars[-1].obj.id])])
+                               local_physobj_ids=[avatars[-1].obj.id])])
         self.assertEqual(len(assembly.match), 1)
         self.assertEqual(set(assembly.match[0]),
                          set(av.id for av in avatars[:2]))

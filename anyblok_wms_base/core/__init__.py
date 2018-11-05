@@ -10,6 +10,7 @@ import logging
 
 from anyblok.blok import Blok
 from .. import version
+from ..constants import CONTENTS_PROPERTY
 from . import physobj
 from . import operation
 
@@ -86,6 +87,48 @@ class WmsCore(Blok):
                 execute("ALTER TABLE wms_operation_{op} "
                         "RENAME COLUMN goods_{suffix} "
                         "TO physobj_{suffix}".format(op=op, suffix=suffix))
+
+    def update(self, latest_version):  # pragma: no cover
+        if latest_version is None:
+            return
+
+        if latest_version < '0.9.0.dev1':
+            self.update_contents_property_local_goods_id()
+
+    def update_contents_property_local_goods_id(self):
+        """Replace existing occurrences of ``local_goods_ids``.
+
+        Update the values of the :data:`contents Property
+        <anyblok_wms_base.constants.CONTENTS_PROPERTY>` that have the
+        ``local_goods_ids`` key, which has been renamed as
+        ``local_physobj_ids``.
+
+        At this stage of development, there shouldn't be production databases
+        with large volumes of Properties records having the contents Property.
+        Therefore, the implementation can stay simplistic.
+
+        Also, this doesn't cover the case where some application would have
+        made a true column of the contents Property.
+        I don't believe anyone tried that yet.
+        """
+        Properties = self.registry.Wms.PhysObj.Properties
+        for props in Properties.query().filter(
+                Properties.flexible
+                .has_key(CONTENTS_PROPERTY)  # noqa pep8 thinks it's dict API
+                ).all():
+
+            contents = props[CONTENTS_PROPERTY]
+            changed = False
+            for entry in contents:
+                local_ids = entry.pop('local_goods_ids', None)
+                if local_ids is None:
+                    continue
+                entry['local_physobj_ids'] = local_ids
+                changed = True
+
+            if changed:
+                # marks as to be updated in the session
+                props[CONTENTS_PROPERTY] = contents
 
     @classmethod
     def import_declaration_module(cls):

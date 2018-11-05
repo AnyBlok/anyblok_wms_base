@@ -152,3 +152,46 @@ class TestPhysObjProperties(BlokTestCase):
                 props.pop(k)
         with self.assertRaises(TypeError):
             props.pop('foo', 1, 2)
+
+    def test_upgrade_contents_local_goods_ids(self):
+        Props = self.Props
+        p1_id = Props.insert(flexible=dict(foo='bar')).id
+        p2_id = Props.insert(flexible=dict(
+            monty='python',
+            contents=[
+                dict(type='POT1',
+                     forward_properties=['foo'],
+                     quantity=3,
+                     local_goods_ids=[1, 3, 7]),
+                dict(type='POT2',
+                     forward_properties=['foo'],
+                     quantity=3),
+            ])).id
+        from anyblok.blok import BlokManager
+        wms_core = BlokManager.get('wms-core')(self.registry)
+
+        # make sure we have no side effect of Property instances in the
+        # session
+        self.registry.session.expire_all()
+
+        wms_core.update_contents_property_local_goods_id()
+
+        # and again
+        self.registry.flush()
+        self.registry.session.expire_all()
+
+        # time for assertions
+        p1 = Props.query().get(p1_id)
+        self.assertEqual(p1.flexible, dict(foo='bar'))
+        p2 = Props.query().get(p2_id)
+        self.assertEqual(p2.flexible, dict(
+            monty='python',
+            contents=[
+                dict(type='POT1',
+                     forward_properties=['foo'],
+                     quantity=3,
+                     local_physobj_ids=[1, 3, 7]),
+                dict(type='POT2',
+                     forward_properties=['foo'],
+                     quantity=3)
+                ]))
