@@ -40,6 +40,7 @@ get a grasp of what it intends to do.
    CHANGES
    improvements
    apidoc/index
+   credits
 
 .. toctree::
    :hidden:
