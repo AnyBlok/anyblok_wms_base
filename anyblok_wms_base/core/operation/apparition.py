@@ -98,7 +98,7 @@ class Apparition(Operation):
     """This Operation is a purely creative one."""
 
     def specific_repr(self):
-        return ("goods_type={self.goods_type!r}, "
+        return ("physobj_type={self.physobj_type!r}, "
                 "location={self.location!r}").format(self=self)
 
     def _goods_col_get(self, suffix):
@@ -176,7 +176,7 @@ class Apparition(Operation):
         gives rise to as many PhysObj records.
         """
         PhysObj = self.registry.Wms.PhysObj
-        self_props = self.goods_properties
+        self_props = self.physobj_properties
         if self_props is None:
             props = None
         else:
@@ -185,9 +185,9 @@ class Apparition(Operation):
         for _ in range(self.quantity):
             PhysObj.Avatar.insert(
                 obj=PhysObj.insert(
-                    type=self.goods_type,
+                    type=self.physobj_type,
                     properties=props,
-                    code=self.goods_code),
+                    code=self.physobj_code),
                 location=self.location,
                 outcome_of=self,
                 state='present',

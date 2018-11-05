@@ -25,7 +25,7 @@ class TestQuantity(WmsTestCase):
 
         # just a placeholder for subsequent Avatar insertions
         self.arrival = self.Operation.Arrival.insert(
-            goods_type=self.physobj_type,
+            physobj_type=self.physobj_type,
             location=self.stock,
             dt_execution=self.dt_test1,
             state='done')
@@ -157,8 +157,8 @@ class TestQuantity(WmsTestCase):
         self.insert_goods(2, 'past', self.dt_test1, until=self.dt_test2)
 
         self.assert_quantity(3)
-        self.assert_quantity(3, goods_type=self.physobj_type)
-        self.assert_quantity(0, goods_type=self.PhysObj.Type.insert(
+        self.assert_quantity(3, physobj_type=self.physobj_type)
+        self.assert_quantity(0, physobj_type=self.PhysObj.Type.insert(
             code='other'))
 
         self.assert_quantity(7, additional_states=['future'],
@@ -180,10 +180,10 @@ class TestQuantity(WmsTestCase):
         self.insert_goods(2, 'present', self.dt_test1, location=sub)
         self.insert_goods(1, 'present', self.dt_test1, location=self.stock)
 
-        self.assert_quantity(1, goods_type=self.physobj_type,
+        self.assert_quantity(1, physobj_type=self.physobj_type,
                              location=self.stock,
                              location_recurse=False)
-        self.assert_quantity(2, goods_type=self.physobj_type,
+        self.assert_quantity(2, physobj_type=self.physobj_type,
                              location=sub,
                              location_recurse=False)
 

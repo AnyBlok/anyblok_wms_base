@@ -25,20 +25,20 @@ class TestOperation(WmsTestCase):
         self.incoming_loc = self.insert_location('INCOMING')
         self.stock = self.insert_location('STOCK')
 
-        self.goods_type = PhysObj.Type.insert(label="My good type",
-                                              code='MyGT')
+        self.physobj_type = PhysObj.Type.insert(label="My good type",
+                                                code='MyGT')
 
     def test_execute_idempotency(self):
         op = self.Operation.Arrival.create(location=self.incoming_loc,
                                            state='planned',
                                            dt_execution=self.dt_test2,
-                                           goods_type=self.goods_type)
+                                           physobj_type=self.physobj_type)
         op.state = 'done'
         op.execute_planned = lambda: self.fail("Should not be called")
         op.execute()
 
     def test_history(self):
-        arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
+        arrival = self.Operation.Arrival.create(physobj_type=self.physobj_type,
                                                 dt_execution=self.dt_test1,
                                                 location=self.incoming_loc,
                                                 state='planned')
@@ -51,12 +51,12 @@ class TestOperation(WmsTestCase):
         self.assert_singleton(arrival.followers, value=move)
 
     def test_len_inputs(self):
-        arrival = self.Operation.Arrival.insert(goods_type=self.goods_type,
+        arrival = self.Operation.Arrival.insert(physobj_type=self.physobj_type,
                                                 dt_execution=self.dt_test1,
                                                 location=self.incoming_loc,
                                                 state='planned')
         Avatar = self.PhysObj.Avatar
-        goods = [Avatar.insert(obj=self.PhysObj.insert(type=self.goods_type),
+        goods = [Avatar.insert(obj=self.PhysObj.insert(type=self.physobj_type),
                                location=self.incoming_loc,
                                dt_from=self.dt_test1,
                                state='future',
@@ -70,14 +70,14 @@ class TestOperation(WmsTestCase):
         self.assertEqual(arc.exception.kwargs.get('nb'), 2)
 
     def test_link_inputs(self):
-        arrival = self.Operation.Arrival.insert(goods_type=self.goods_type,
+        arrival = self.Operation.Arrival.insert(physobj_type=self.physobj_type,
                                                 dt_execution=self.dt_test1,
                                                 location=self.incoming_loc,
                                                 state='planned')
         Avatar = self.PhysObj.Avatar
         avatars = [
             Avatar.insert(
-                obj=self.PhysObj.insert(type=self.goods_type),
+                obj=self.PhysObj.insert(type=self.physobj_type),
                 location=self.incoming_loc,
                 dt_from=self.dt_test1,
                 dt_until=dt,
@@ -131,7 +131,7 @@ class TestOperation(WmsTestCase):
         orig_before_insert = Arrival.before_insert
         Arrival.before_insert = before_insert
         try:
-            arrival = Arrival.create(goods_type=self.goods_type,
+            arrival = Arrival.create(physobj_type=self.physobj_type,
                                      location=self.incoming_loc,
                                      dt_execution=self.dt_test1,
                                      state='planned')
@@ -142,7 +142,7 @@ class TestOperation(WmsTestCase):
         self.assertEqual(arrival.outcomes[0].location, other_loc)
 
     def test_cancel(self):
-        arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
+        arrival = self.Operation.Arrival.create(physobj_type=self.physobj_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
                                                 state='planned')
@@ -156,7 +156,7 @@ class TestOperation(WmsTestCase):
 
     def test_cancel_done(self):
         """One can't cancel an operation that's already done."""
-        arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
+        arrival = self.Operation.Arrival.create(physobj_type=self.physobj_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
                                                 state='done')
@@ -164,7 +164,7 @@ class TestOperation(WmsTestCase):
             arrival.cancel()
 
     def test_cancel_recursion(self):
-        arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
+        arrival = self.Operation.Arrival.create(physobj_type=self.physobj_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
                                                 state='planned')
@@ -193,7 +193,7 @@ class TestOperation(WmsTestCase):
     def test_plan_revert_recurse_linear(self):
         workshop = self.PhysObj.insert(code="Workshop",
                                        type=self.stock.type)
-        arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
+        arrival = self.Operation.Arrival.create(physobj_type=self.physobj_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
                                                 state='done')
@@ -235,7 +235,7 @@ class TestOperation(WmsTestCase):
         self.assertEqual(avatar.location, self.incoming_loc)
 
     def test_plan_revert_recurse_wrong_state(self):
-        arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
+        arrival = self.Operation.Arrival.create(physobj_type=self.physobj_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
                                                 state='done')
@@ -249,7 +249,7 @@ class TestOperation(WmsTestCase):
             move.plan_revert()
 
     def test_plan_revert_recurse_irreversible(self):
-        arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
+        arrival = self.Operation.Arrival.create(physobj_type=self.physobj_type,
                                                 location=self.incoming_loc,
                                                 state='done',
                                                 dt_execution=self.dt_test1)
@@ -272,7 +272,7 @@ class TestOperation(WmsTestCase):
         self.assertEqual(exc.kwargs.get('op'), departure)
 
     def test_obliviate_planned(self):
-        arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
+        arrival = self.Operation.Arrival.create(physobj_type=self.physobj_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
                                                 state='planned')
@@ -284,7 +284,7 @@ class TestOperation(WmsTestCase):
     def test_obliviate_recurse_linear(self):
         workshop = self.PhysObj.insert(code="Workshop",
                                        type=self.stock.type)
-        arrival = self.Operation.Arrival.create(goods_type=self.goods_type,
+        arrival = self.Operation.Arrival.create(physobj_type=self.physobj_type,
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
                                                 state='done')
@@ -314,13 +314,13 @@ class TestOperation(WmsTestCase):
 
     def test_planned_default_dt_execution_no_inputs(self):
         now = datetime.now(tz=self.dt_test1.tzinfo)
-        arr = self.Operation.Arrival.create(goods_type=self.goods_type,
+        arr = self.Operation.Arrival.create(physobj_type=self.physobj_type,
                                             location=self.incoming_loc,
                                             state='planned')
         self.assertTrue(arr.dt_execution > now)
 
     def test_planned_default_dt_execution_inputs(self):
-        arr = self.Operation.Arrival.create(goods_type=self.goods_type,
+        arr = self.Operation.Arrival.create(physobj_type=self.physobj_type,
                                             location=self.incoming_loc,
                                             dt_execution=self.dt_test1,
                                             state='planned')
@@ -329,7 +329,7 @@ class TestOperation(WmsTestCase):
         self.assertEqual(departure.dt_execution, self.dt_test1)
 
     def test_check_alterable(self):
-        arr = self.Operation.Arrival.create(goods_type=self.goods_type,
+        arr = self.Operation.Arrival.create(physobj_type=self.physobj_type,
                                             location=self.incoming_loc,
                                             dt_execution=self.dt_test1,
                                             state='planned')
@@ -343,7 +343,7 @@ class TestOperation(WmsTestCase):
         self.assertEqual(exc.kwargs.get('state'), 'done')
 
     def test_alter_with_trailing_move_inapplicable(self):
-        arr = self.Operation.Arrival.create(goods_type=self.goods_type,
+        arr = self.Operation.Arrival.create(physobj_type=self.physobj_type,
                                             location=self.incoming_loc,
                                             dt_execution=self.dt_test1,
                                             state='planned')

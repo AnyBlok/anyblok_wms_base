@@ -19,8 +19,8 @@ class TestArrival(WmsTestCase):
     def setUp(self):
         super(TestArrival, self).setUp()
         PhysObj = self.PhysObj
-        self.goods_type = PhysObj.Type.insert(label="My good type",
-                                              code='MGT')
+        self.physobj_type = PhysObj.Type.insert(label="My good type",
+                                                code='MGT')
         self.incoming_loc = self.insert_location('INCOMING')
         self.stock = self.insert_location('STOCK')
 
@@ -31,16 +31,16 @@ class TestArrival(WmsTestCase):
         arrival = self.Arrival.create(location=self.incoming_loc,
                                       state='planned',
                                       dt_execution=self.dt_test1,
-                                      goods_code='765',
-                                      goods_properties=dict(foo=5,
-                                                            bar='monty'),
-                                      goods_type=self.goods_type)
+                                      physobj_code='765',
+                                      physobj_properties=dict(foo=5,
+                                                              bar='monty'),
+                                      physobj_type=self.physobj_type)
         self.assertEqual(len(arrival.follows), 0)
         avatar = self.assert_singleton(arrival.outcomes)
         goods = avatar.obj
         self.assertEqual(avatar.state, 'future')
         self.assertEqual(avatar.location, self.incoming_loc)
-        self.assertEqual(goods.type, self.goods_type)
+        self.assertEqual(goods.type, self.physobj_type)
         self.assertEqual(goods.code, '765')
         self.assertEqual(goods.get_property('foo'), 5)
         self.assertEqual(goods.get_property('bar'), 'monty')
@@ -59,16 +59,16 @@ class TestArrival(WmsTestCase):
     def test_create_done(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
                                       state='done',
-                                      goods_code='x34/7',
-                                      goods_properties=dict(foo=2,
-                                                            monty='python'),
-                                      goods_type=self.goods_type)
+                                      physobj_code='x34/7',
+                                      physobj_properties=dict(foo=2,
+                                                              monty='python'),
+                                      physobj_type=self.physobj_type)
         self.assertEqual(len(arrival.follows), 0)
         avatar = self.assert_singleton(arrival.outcomes)
         goods = avatar.obj
         self.assertEqual(avatar.state, 'present')
         self.assertEqual(avatar.location, self.incoming_loc)
-        self.assertEqual(goods.type, self.goods_type)
+        self.assertEqual(goods.type, self.physobj_type)
         self.assertEqual(goods.code, 'x34/7')
         self.assertEqual(goods.get_property('foo'), 2)
         self.assertEqual(goods.get_property('monty'), 'python')
@@ -87,7 +87,7 @@ class TestArrival(WmsTestCase):
                                       physobj_code='765',
                                       physobj_properties=dict(foo=5,
                                                               bar='monty'),
-                                      physobj_type=self.goods_type)
+                                      physobj_type=self.physobj_type)
 
         def assert_warnings_goods_deprecation(got_warnings):
             self.assert_warnings_deprecation(
@@ -126,46 +126,46 @@ class TestArrival(WmsTestCase):
     def test_arrival_done_obliviate(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
                                       state='done',
-                                      goods_code='x34/7',
-                                      goods_properties=dict(foo=2,
-                                                            monty='python'),
-                                      goods_type=self.goods_type)
+                                      physobj_code='x34/7',
+                                      physobj_properties=dict(foo=2,
+                                                              monty='python'),
+                                      physobj_type=self.physobj_type)
         arrival.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
         self.assertEqual(
-            self.PhysObj.query().filter_by(type=self.goods_type).count(), 0)
+            self.PhysObj.query().filter_by(type=self.physobj_type).count(), 0)
 
     def test_arrival_planned_execute_obliviate(self):
         arrival = self.Arrival.create(location=self.incoming_loc,
                                       state='planned',
                                       dt_execution=self.dt_test1,
-                                      goods_code='x34/7',
-                                      goods_properties=dict(foo=2,
-                                                            monty='python'),
-                                      goods_type=self.goods_type)
+                                      physobj_code='x34/7',
+                                      physobj_properties=dict(foo=2,
+                                                              monty='python'),
+                                      physobj_type=self.physobj_type)
         arrival.execute()
         arrival.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
         self.assertEqual(
-            self.PhysObj.query().filter_by(type=self.goods_type).count(), 0)
+            self.PhysObj.query().filter_by(type=self.physobj_type).count(), 0)
 
     def test_repr(self):
         arrival = self.Arrival(location=self.incoming_loc,
                                state='done',
-                               goods_code='x34/7',
-                               goods_properties=dict(foo=2,
-                                                     monty='python'),
-                               goods_type=self.goods_type)
+                               physobj_code='x34/7',
+                               physobj_properties=dict(foo=2,
+                                                       monty='python'),
+                               physobj_type=self.physobj_type)
         repr(arrival)
         str(arrival)
 
     def test_not_a_container(self):
-        wrong_loc = self.PhysObj.insert(type=self.goods_type)
+        wrong_loc = self.PhysObj.insert(type=self.physobj_type)
         with self.assertRaises(OperationContainerExpected) as arc:
             self.Arrival.create(
                 location=wrong_loc,
                 state='done',
-                goods_type=self.goods_type)
+                physobj_type=self.physobj_type)
         exc = arc.exception
         str(exc)
         repr(exc)

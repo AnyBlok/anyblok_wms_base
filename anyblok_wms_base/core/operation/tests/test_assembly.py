@@ -49,7 +49,7 @@ class TestAssembly(WmsTestCase):
             location = self.stock
         for gt, qty in spec:
             for _ in range(qty):
-                arrival = Arrival.create(goods_type=gt,
+                arrival = Arrival.create(physobj_type=gt,
                                          location=location,
                                          state=arrival_state,
                                          dt_execution=self.dt_test1)

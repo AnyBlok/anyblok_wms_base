@@ -23,26 +23,26 @@ class TestUnpack(WmsTestCase):
         self.default_quantity_location = self.stock
 
     def create_packs(self, type_behaviours=None, properties=None):
-        self.packed_goods_type = self.PhysObj.Type.insert(
+        self.packed_physobj_type = self.PhysObj.Type.insert(
             label="Pack",
             code='PACK',
             behaviours=type_behaviours)
         self.arrival = self.Operation.Arrival.create(
-            goods_type=self.packed_goods_type,
+            physobj_type=self.packed_physobj_type,
             location=self.stock,
             dt_execution=self.dt_test1,
-            goods_properties=properties,
+            physobj_properties=properties,
             state='planned')
 
         self.packs = self.assert_singleton(self.arrival.outcomes)
 
-    def assert_goods_records(self, count, goods_type):
+    def assert_physobj_records(self, count, physobj_type):
         """Assert count of PhysObj with given type and return them.
 
         This is primarily meant for PhysObj produced by the Unpack
         """
         records = self.PhysObj.query().filter(
-            self.PhysObj.type == goods_type).all()
+            self.PhysObj.type == physobj_type).all()
         self.assertEqual(len(records), count)
         return records
 
@@ -70,7 +70,7 @@ class TestUnpack(WmsTestCase):
                                  input=self.packs)
         self.assert_singleton(unp.follows, value=self.arrival)
 
-        for unpacked_goods in self.assert_goods_records(3, unpacked_type):
+        for unpacked_goods in self.assert_physobj_records(3, unpacked_type):
             self.assertEqual(unpacked_goods.type, unpacked_type)
 
     def test_done_clone_one_not_clone(self):
@@ -102,11 +102,11 @@ class TestUnpack(WmsTestCase):
                                  input=self.packs)
         self.assert_singleton(unp.follows, value=self.arrival)
 
-        for goods in self.assert_goods_records(2, unpacked_clone_type):
+        for goods in self.assert_physobj_records(2, unpacked_clone_type):
             self.assertEqual(goods.properties,
                              self.packs.obj.properties)
 
-        for goods in self.assert_goods_records(3, unpacked_fwd_type):
+        for goods in self.assert_physobj_records(3, unpacked_fwd_type):
             self.assertNotEqual(goods.properties,
                                 self.packs.obj.properties)
             self.assertIsNone(goods.get_property('other'))
@@ -131,7 +131,7 @@ class TestUnpack(WmsTestCase):
                                  input=self.packs)
         self.assert_singleton(unp.follows, value=self.arrival)
 
-        for goods in self.assert_goods_records(3, unpacked_type):
+        for goods in self.assert_physobj_records(3, unpacked_type):
             self.assertEqual(goods.properties,
                              self.packs.obj.properties)
 
@@ -165,7 +165,7 @@ class TestUnpack(WmsTestCase):
                                  input=self.packs)
         self.assert_singleton(unp.follows, value=self.arrival)
 
-        for unpacked_goods in self.assert_goods_records(2, unpacked_type):
+        for unpacked_goods in self.assert_physobj_records(2, unpacked_type):
             self.assertEqual(unpacked_goods.type, unpacked_type)
             self.assertEqual(unpacked_goods.get_property('direct'), 'hop')
             self.assertEqual(unpacked_goods.get_property('foo'), 3)
@@ -213,7 +213,7 @@ class TestUnpack(WmsTestCase):
                                  input=self.packs)
         self.assert_singleton(unp.follows, value=self.arrival)
 
-        unpacked_goods = self.assert_goods_records(2, unpacked_type)
+        unpacked_goods = self.assert_physobj_records(2, unpacked_type)
         self.assertEqual(
             set((g, g.get_property('grade')) for g in unpacked_goods),
             set(((outcome1, 'best'), (outcome2, 'regular'))))
@@ -286,7 +286,7 @@ class TestUnpack(WmsTestCase):
         exc_kwargs = arc.exception.kwargs
         self.assertEqual(list(exc_kwargs.get('inputs')), [self.packs])
         self.assertEqual(exc_kwargs.get('req_props'), ['foo'])
-        self.assertEqual(exc_kwargs.get('type'), self.packed_goods_type)
+        self.assertEqual(exc_kwargs.get('type'), self.packed_physobj_type)
         # we also have an 'operation' kwarg, because that exc is raised
         # after actual instantiation, but we can't test it because
         # we don't have a create() returned value to compare
@@ -319,7 +319,7 @@ class TestUnpack(WmsTestCase):
                                  input=self.packs)
         self.assert_singleton(unp.follows, value=self.arrival)
 
-        for unpacked_goods in self.assert_goods_records(3, unpacked_type):
+        for unpacked_goods in self.assert_physobj_records(3, unpacked_type):
             self.assertEqual(unpacked_goods.type, unpacked_type)
             self.assertEqual(unpacked_goods.properties, None)
 
@@ -350,7 +350,7 @@ class TestUnpack(WmsTestCase):
         self.assert_singleton(unp.follows, value=self.arrival)
 
         self.assertEqual(len(unp.outcomes), 2)
-        for unpacked_goods in self.assert_goods_records(2, unpacked_type):
+        for unpacked_goods in self.assert_physobj_records(2, unpacked_type):
             self.assertEqual(unpacked_goods.type, unpacked_type)
             self.assertEqual(unpacked_goods.get_property('foo'), 3)
             self.assertEqual(unpacked_goods.get_property('baz'), 'second hand')
@@ -360,7 +360,7 @@ class TestUnpack(WmsTestCase):
             self.assertEqual(avatar.outcome_of, unp)
 
         self.assert_quantity(0,
-                             goods_type=self.packed_goods_type,
+                             physobj_type=self.packed_physobj_type,
                              at_datetime=self.dt_test2,
                              additional_states=['future'])
 
@@ -372,12 +372,12 @@ class TestUnpack(WmsTestCase):
         self.assertEqual(self.packs.state, 'past')
 
         self.assert_quantity(0,
-                             goods_type=self.packed_goods_type,
+                             physobj_type=self.packed_physobj_type,
                              at_datetime=self.dt_test2,
                              additional_states=['future']),
         self.assertEqual(
             self.Avatar.query().join(self.Avatar.obj).filter(
-                self.PhysObj.type == self.packed_goods_type,
+                self.PhysObj.type == self.packed_physobj_type,
                 self.Avatar.state == 'future').count(),
             0)
 
@@ -394,7 +394,7 @@ class TestUnpack(WmsTestCase):
         str(arc.exception)
         repr(arc.exception)
         exc_kwargs = arc.exception.kwargs
-        self.assertEqual(exc_kwargs.get('type'), self.packed_goods_type)
+        self.assertEqual(exc_kwargs.get('type'), self.packed_physobj_type)
         self.assertEqual(list(exc_kwargs.get('inputs')), [self.packs])
         self.assertEqual(exc_kwargs.get('behaviour'), dict(outcomes=[]))
         self.assertEqual(exc_kwargs.get('specific'), ())
@@ -415,7 +415,7 @@ class TestUnpack(WmsTestCase):
         str(arc.exception)
         repr(arc.exception)
         exc_kwargs = arc.exception.kwargs
-        self.assertEqual(exc_kwargs.get('type'), self.packed_goods_type)
+        self.assertEqual(exc_kwargs.get('type'), self.packed_physobj_type)
         self.assertEqual(list(exc_kwargs.get('inputs')), [self.packs])
 
     def test_repr(self):
@@ -450,7 +450,7 @@ class TestUnpack(WmsTestCase):
         unp = self.Unpack.create(state='planned', input=self.packs,
                                  dt_execution=self.dt_test2)
 
-        del self.packed_goods_type.behaviours['unpack']
+        del self.packed_physobj_type.behaviours['unpack']
         self.assertEqual(unp.reverse_assembly_name(), 'pack')
 
     def test_revert_default_assembly_final(self):
@@ -479,10 +479,10 @@ class TestUnpack(WmsTestCase):
         assembly, _ = unp.plan_revert()
         assembly.execute()
 
-        self.assert_quantity(0, location=None, goods_type=unpacked_type)
+        self.assert_quantity(0, location=None, physobj_type=unpacked_type)
         self.assert_quantity(1,
                              location=None,
-                             goods_type=self.packed_goods_type)
+                             physobj_type=self.packed_physobj_type)
 
     def test_revert_default_assembly_not_final(self):
         unpacked_type = self.PhysObj.Type.insert(code="GT")
@@ -522,9 +522,10 @@ class TestUnpack(WmsTestCase):
         move_back.execute()
         assembly.execute()
 
-        self.assert_quantity(0, location=None, goods_type=unpacked_type)
+        self.assert_quantity(0, location=None, physobj_type=unpacked_type)
         self.assert_quantity(1,
-                             location=None, goods_type=self.packed_goods_type)
+                             location=None,
+                             physobj_type=self.packed_physobj_type)
 
     def test_revert_specified_assembly(self):
         unpacked_type = self.PhysObj.Type.insert(label="Unpacked", code='PCK')
@@ -582,7 +583,7 @@ class TestUnpack(WmsTestCase):
             PhysObj.query().filter(PhysObj.type == unpacked_type).count(),
             0)
         self.assert_quantity(1,
-                             goods_type=self.packed_goods_type,
+                             physobj_type=self.packed_physobj_type,
                              additional_states=['future'],
                              at_datetime=self.dt_test2)
 
@@ -604,7 +605,7 @@ class TestUnpack(WmsTestCase):
         for i in range(2):
             outcomes.update(self.Operation.Arrival.create(
                 state='planned',
-                goods_type=unpacked_type,
+                physobj_type=unpacked_type,
                 dt_execution=self.dt_test1,
                 location=location).outcomes)
 
@@ -634,7 +635,7 @@ class TestUnpack(WmsTestCase):
         for i in range(2):
             outcomes.update(self.Operation.Arrival.create(
                 state='planned',
-                goods_type=unpacked_type,
+                physobj_type=unpacked_type,
                 dt_execution=self.dt_test1,
                 location=location).outcomes)
 
@@ -670,8 +671,8 @@ class TestUnpack(WmsTestCase):
             outcomes.extend(
                 self.Operation.Arrival.create(
                     state='planned',
-                    goods_type=unpacked_type,
-                    goods_properties=dict(foo=7+i),
+                    physobj_type=unpacked_type,
+                    physobj_properties=dict(foo=7+i),
                     dt_execution=self.dt_test1,
                     location=location).outcomes)
 
@@ -705,7 +706,7 @@ class TestUnpack(WmsTestCase):
         for i in range(2):
             outcomes.update(self.Operation.Arrival.create(
                 state='planned',
-                goods_type=unpacked_type,
+                physobj_type=unpacked_type,
                 dt_execution=self.dt_test1,
                 location=location).outcomes)
 

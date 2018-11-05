@@ -20,8 +20,8 @@ class TestApparition(WmsTestCase):
     def setUp(self):
         super(TestApparition, self).setUp()
         Wms = self.registry.Wms
-        self.goods_type = Wms.PhysObj.Type.insert(label="My good type",
-                                                  code='MGT')
+        self.physobj_type = Wms.PhysObj.Type.insert(label="My good type",
+                                                    code='MGT')
         self.stock = self.insert_location('Stock')
         self.Apparition = Wms.Operation.Apparition
         self.PhysObj = Wms.PhysObj
@@ -32,16 +32,16 @@ class TestApparition(WmsTestCase):
             location=self.stock,
             state='done',
             quantity=1,
-            goods_code='x34/7',
-            goods_properties=dict(foo=2,
-                                  monty='python'),
-            goods_type=self.goods_type)
+            physobj_code='x34/7',
+            physobj_properties=dict(foo=2,
+                                    monty='python'),
+            physobj_type=self.physobj_type)
         self.assertEqual(len(apparition.follows), 0)
         avatar = self.assert_singleton(apparition.outcomes)
         goods = avatar.obj
         self.assertEqual(avatar.state, 'present')
         self.assertEqual(avatar.location, self.stock)
-        self.assertEqual(goods.type, self.goods_type)
+        self.assertEqual(goods.type, self.physobj_type)
         self.assertEqual(goods.code, 'x34/7')
         self.assertEqual(goods.get_property('foo'), 2)
         self.assertEqual(goods.get_property('monty'), 'python')
@@ -52,7 +52,7 @@ class TestApparition(WmsTestCase):
         apparition.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
         self.assertEqual(
-            self.PhysObj.query().filter_by(type=self.goods_type).count(),
+            self.PhysObj.query().filter_by(type=self.physobj_type).count(),
             0)
 
     def test_create_done_several_obliviate(self):
@@ -60,10 +60,10 @@ class TestApparition(WmsTestCase):
             location=self.stock,
             state='done',
             quantity=3,
-            goods_code='x34/7',
-            goods_properties=dict(foo=2,
-                                  monty='python'),
-            goods_type=self.goods_type)
+            physobj_code='x34/7',
+            physobj_properties=dict(foo=2,
+                                    monty='python'),
+            physobj_type=self.physobj_type)
         self.assertEqual(len(apparition.follows), 0)
         avatars = apparition.outcomes
         self.assertEqual(len(avatars), 3)
@@ -71,7 +71,7 @@ class TestApparition(WmsTestCase):
             goods = avatar.obj
             self.assertEqual(avatar.state, 'present')
             self.assertEqual(avatar.location, self.stock)
-            self.assertEqual(goods.type, self.goods_type)
+            self.assertEqual(goods.type, self.physobj_type)
             self.assertEqual(goods.code, 'x34/7')
             self.assertEqual(goods.get_property('foo'), 2)
             self.assertEqual(goods.get_property('monty'), 'python')
@@ -90,7 +90,7 @@ class TestApparition(WmsTestCase):
         apparition.obliviate()
         self.assertEqual(self.Avatar.query().count(), 0)
         self.assertEqual(
-            self.PhysObj.query().filter_by(type=self.goods_type).count(),
+            self.PhysObj.query().filter_by(type=self.physobj_type).count(),
             0)
 
     def test_create_done_no_props(self):
@@ -98,14 +98,14 @@ class TestApparition(WmsTestCase):
             location=self.stock,
             state='done',
             quantity=1,
-            goods_code='x34/7',
-            goods_type=self.goods_type)
+            physobj_code='x34/7',
+            physobj_type=self.physobj_type)
         self.assertEqual(len(apparition.follows), 0)
         avatar = self.assert_singleton(apparition.outcomes)
         goods = avatar.obj
         self.assertEqual(avatar.state, 'present')
         self.assertEqual(avatar.location, self.stock)
-        self.assertEqual(goods.type, self.goods_type)
+        self.assertEqual(goods.type, self.physobj_type)
         self.assertEqual(goods.code, 'x34/7')
         self.assertIsNone(goods.properties)
 
@@ -117,8 +117,8 @@ class TestApparition(WmsTestCase):
             location=self.stock,
             state='done',
             quantity=1,
-            goods_code='x34/7',
-            goods_type=self.goods_type)
+            physobj_code='x34/7',
+            physobj_type=self.physobj_type)
         with self.assertRaises(OperationIrreversibleError) as arc:
             apparition.plan_revert()
 
@@ -132,22 +132,22 @@ class TestApparition(WmsTestCase):
             self.Apparition.create(location=self.stock,
                                    state='planned',
                                    dt_execution=self.dt_test1,
-                                   goods_code='x34/7',
-                                   goods_properties=dict(foo=2,
-                                                         monty='python'),
-                                   goods_type=self.goods_type)
+                                   physobj_code='x34/7',
+                                   physobj_properties=dict(foo=2,
+                                                           monty='python'),
+                                   physobj_type=self.physobj_type)
         exc = arc.exception
         repr(exc)
         str(exc)
         self.assertEqual(exc.kwargs.get('forbidden'), 'planned')
 
     def test_not_a_container(self):
-        wrong_loc = self.PhysObj.insert(type=self.goods_type)
+        wrong_loc = self.PhysObj.insert(type=self.physobj_type)
         with self.assertRaises(OperationContainerExpected) as arc:
             self.Apparition.create(
                 location=wrong_loc,
                 state='done',
-                goods_type=self.goods_type)
+                physobj_type=self.physobj_type)
         exc = arc.exception
         str(exc)
         repr(exc)
@@ -168,7 +168,7 @@ class TestApparition(WmsTestCase):
                                      physobj_code='765',
                                      physobj_properties=dict(foo=5,
                                                              bar='monty'),
-                                     physobj_type=self.goods_type)
+                                     physobj_type=self.physobj_type)
 
         def assert_warnings_goods_deprecation(got_warnings):
             self.assert_warnings_deprecation(

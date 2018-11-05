@@ -84,6 +84,7 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         # and that's been propagated to the unpack outcomes
         self.assertTrue(all(oc.location == incoming) for oc in unp.outcomes)
         # which haven't changed btw
+        self.MAXDIFF = None
         self.assertEqual(unp.outcomes, unp_outcomes)
 
     def test_inconsistent_alter_destination_before_assembly(self):
@@ -93,7 +94,7 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         arrival2 = self.Operation.Arrival.create(
             location=incoming,
             dt_execution=self.dt_test1,
-            goods_type=self.physobj_type)
+            physobj_type=self.physobj_type)
 
         ass_inputs = [arrival1.outcomes[0], arrival2.outcomes[0]]
 
@@ -219,7 +220,7 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
                                                    dt_unpack=None):
         Arrival = self.Operation.Arrival
         arrival, avatar = self.arrival, self.avatar
-        arrival2 = Arrival.create(goods_type=self.physobj_type,
+        arrival2 = Arrival.create(physobj_type=self.physobj_type,
                                   location=self.incoming_loc,
                                   state='planned',
                                   dt_execution=self.dt_test1)
@@ -302,7 +303,7 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         self.assertEqual(exc.kwargs['arrivals'], ())
 
         # different locations
-        arrival2 = Arrival.create(goods_type=self.physobj_type,
+        arrival2 = Arrival.create(physobj_type=self.physobj_type,
                                   location=self.stock,
                                   state='planned',
                                   dt_execution=self.dt_test1)
@@ -334,7 +335,7 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         downstreams = []
         original_avatars = set()
         for i in range(5):
-            arrival = Arrival.create(goods_type=unpacked_type,
+            arrival = Arrival.create(physobj_type=unpacked_type,
                                      location=unpack_area,
                                      state='planned',
                                      dt_execution=self.dt_test2)
@@ -371,7 +372,7 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
 
         # here's the final picture
         parcel_arrivals = Arrival.query().filter_by(
-            goods_type=parcel_type).all()
+            physobj_type=parcel_type).all()
         self.assertEqual(len(parcel_arrivals), 2)
         all_unpacks_outcomes = set()
         for arr in parcel_arrivals:

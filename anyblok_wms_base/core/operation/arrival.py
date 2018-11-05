@@ -108,7 +108,7 @@ class Arrival(Operation):
     destination_field = 'location'
 
     def specific_repr(self):
-        return ("goods_type={self.goods_type!r}, "
+        return ("physobj_type={self.physobj_type!r}, "
                 "location={self.location!r}").format(self=self)
 
     def _goods_col_get(self, suffix):
@@ -167,15 +167,15 @@ class Arrival(Operation):
 
     def after_insert(self):
         PhysObj = self.registry.Wms.PhysObj
-        self_props = self.goods_properties
+        self_props = self.physobj_properties
         if self_props is None:
             props = None
         else:
             props = PhysObj.Properties.create(**self_props)
 
-        goods = PhysObj.insert(type=self.goods_type,
+        goods = PhysObj.insert(type=self.physobj_type,
                                properties=props,
-                               code=self.goods_code)
+                               code=self.physobj_code)
         PhysObj.Avatar.insert(
             obj=goods,
             location=self.location,
@@ -256,9 +256,9 @@ class Arrival(Operation):
             dt_pack_arrival = min(arr.dt_execution for arr in arrivals)
         pack_arr = cls.create(location=location,
                               dt_execution=dt_pack_arrival,
-                              goods_type=pack_type,
-                              goods_properties=pack_properties,
-                              goods_code=pack_code,
+                              physobj_type=pack_type,
+                              physobj_properties=pack_properties,
+                              physobj_code=pack_code,
                               state='planned')
 
         arrivals_outcomes = {arr.outcomes[0]: arr for arr in arrivals}
