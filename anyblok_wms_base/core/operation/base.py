@@ -835,3 +835,33 @@ class Operation:
             outcome.location = destination
         for follower in self.followers:
             follower.input_location_altered()
+
+    def transitive_followers(self, seen=None):
+        """Return a list of transitive followers, in execution order
+
+        This is exclusive of self and from the closest to execute to the
+        farthest. The execution order is also the topological order of
+        the DAG, i.e, no Operation in that list is before one it (transitively)
+        follows.
+
+        The implementation is rather simple (a variation over the Depth-first
+        search explained in https://en.wikipedia.org/wiki/Topological_sorting
+        but has disandvantages :
+
+        - not being directly convertible to an iterator: it must keep all
+          Operations, and that may be a problem if the graph is really big
+        - uses recursion, again a problem on huge graphs
+
+        TODO: check more DAG classics
+        """
+        res = []
+        if seen is None:
+            seen = set()
+        followers = self.followers
+        for fol in followers:
+            if fol in seen:
+                continue
+            res[:0] = fol.transitive_followers(seen=seen)
+            res.insert(0, fol)
+            seen.add(fol)
+        return res
