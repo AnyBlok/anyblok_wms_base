@@ -252,6 +252,10 @@ class AssemblyExtraInputs(OperationInputsError):
                                       **kwargs)
 
 
+class ObservationError(OperationError):
+    """For specific errors of Observations."""
+
+
 class UnknownExpressionType(OperationError):
 
     def __init__(self, op, etype, evalue,

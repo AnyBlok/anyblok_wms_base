@@ -20,6 +20,7 @@ def import_declarations(reload=None):
     from . import apparition
     from . import disparition
     from . import teleportation
+    from . import observation
 
     if reload is not None:
         reload(ns)
@@ -32,3 +33,4 @@ def import_declarations(reload=None):
         reload(apparition)
         reload(disparition)
         reload(teleportation)
+        reload(observation)

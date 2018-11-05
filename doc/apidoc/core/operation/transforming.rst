@@ -66,6 +66,43 @@ This Operation Model inherits from :class:`Mixin.WmsSingleInput
 
    .. automethod:: check_create_conditions
 
+Model.Wms.Operation.Observation
+-------------------------------
+This Operation Model inherits from :class:`Mixin.WmsSingleInput
+<anyblok_wms_base.core.operation.single_input.WmsSingleInputOperation>`
+
+.. autoclass:: anyblok_wms_base.core.operation.observation.Observation
+
+   .. raw:: html
+
+      <h3>Fields and their semantics</h3>
+
+   .. autoattribute:: name
+   .. autoattribute:: observed_properties
+   .. autoattribute:: required_properties
+   .. autoattribute:: previous_properties
+   .. autoattribute:: id
+
+   .. raw:: html
+
+      <h3>Overridden methods of Operation</h3>
+   .. automethod:: obliviate_single
+   .. automethod:: is_reversible
+   .. automethod:: plan_revert_single
+
+   .. raw:: html
+
+      <h3>Mandatory methods of Operation subclasses</h3>
+
+   .. automethod:: after_insert
+   .. automethod:: execute_planned
+
+   .. raw:: html
+
+      <h3>Specific members</h3>
+
+   .. automethod:: apply_properties
+
 Model.Wms.Operation.Unpack
 --------------------------
 This Operation Model inherits from :class:`Mixin.WmsSingleInput

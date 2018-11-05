@@ -614,6 +614,21 @@ In other words, they are to
 
 Apart from that, their have the same effect as :ref:`Moves <op_move>`.
 
+.. _op_observation:
+
+Observation
+-----------
+.. note:: This is an overview, see :class:`the code documentation
+          <anyblok_wms_base.core.operation.observation.Observation>`
+          for more details.
+
+Observations are the preferred way to alter the Properties of Physical
+Objects and give it a timely feeling.
+
+The idea is to represent that at
+some point in time and space, something has been measured or assessed
+about the object, such as physical measurements (weight etc.) or
+conditions (quality control etc.).
 
 .. _op_unpack:
 
