@@ -247,10 +247,20 @@ class Assembly(Operation):
                 cls,
                 "No such assembly: {name!r} for type {outcome_type!r}",
                 name=name, outcome_type=outcome_type)
-        cls.check_inputs_locations(inputs)
+        cls.check_inputs_locations(inputs,
+                                   outcome_type=outcome_type,
+                                   name=name)
 
     @classmethod
-    def check_inputs_locations(cls, inputs):
+    def check_inputs_locations(cls, inputs, **kwargs):
+        """Check consistency of inputs locations.
+
+        This method is singled out for easy override by applicative code.
+        Indeed applicative code can consider that the inputs may be in
+        a bunch of related locations, with a well defined output location.
+        In particular, it receives keyword arguments ``kwargs``  that we
+        don't need in this default implementation.
+        """
         loc = inputs[0].location
         if any(inp.location != loc for inp in inputs[1:]):
             raise OperationInputsError(
@@ -936,11 +946,22 @@ class Assembly(Operation):
                 type=self.outcome_type,
                 properties=PhysObj.Properties.create(
                     **self.outcome_properties(state, for_creation=True))),
-            location=self.inputs[0].location,
+            location=self.outcome_location(),
             outcome_of=self,
             state=outcome_state,
             dt_from=dt_exec,
             dt_until=None)
+
+    def outcome_location(self):
+        """Find where the new assembled physical object should appear.
+
+        In this default implementation, we insist on the inputs being in
+        a common location (see :meth:`check_inputs_locations` and we
+        decide this is the location of the outcome.
+
+        Applicative code is welcomed to refine this by overriding this method.
+        """
+        return next(iter(self.inputs)).location
 
     def execute_planned(self):
         """Check or rematch inputs, update properties and states.

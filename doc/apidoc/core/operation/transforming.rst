@@ -164,7 +164,9 @@ Model.Wms.Operation.Assembly
    .. autoattribute:: specification
    .. autoattribute:: DEFAULT_FOR_CONTENTS
    .. autoattribute:: SPEC_LIST_MERGE
+   .. automethod:: check_inputs_locations
    .. automethod:: outcome_properties
+   .. automethod:: outcome_location
    .. automethod:: eval_typed_expr
    .. automethod:: specific_outcome_properties
    .. autoattribute:: props_hook_fmt
