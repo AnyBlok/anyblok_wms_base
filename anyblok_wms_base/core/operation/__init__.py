@@ -13,6 +13,7 @@ def import_declarations(reload=None):
     from . import base
     from . import single_input
     from . import single_outcome
+    from . import in_place
     from . import arrival
     from . import departure
     from . import move

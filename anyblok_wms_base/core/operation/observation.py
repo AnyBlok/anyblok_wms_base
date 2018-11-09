@@ -24,6 +24,7 @@ _missing = object()
 @register(Operation)
 class Observation(Mixin.WmsSingleInputOperation,
                   Mixin.WmsSingleOutcomeOperation,
+                  Mixin.WmsInPlaceOperation,
                   Operation):
     """Operation to change PhysObj Properties.
 

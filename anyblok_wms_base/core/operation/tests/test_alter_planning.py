@@ -108,7 +108,8 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         ass = self.Operation.Assembly.create(inputs=ass_inputs,
                                              name='default',
                                              outcome_type=assembled_type)
-        # Assembly happens in-place
+        # By default Assembly happens in-place
+        # (but Assembly can be overridden to not be in place)
         ass_out = self.assert_singleton(ass.outcomes)
         self.assertEqual(ass_out.location, incoming)
 
