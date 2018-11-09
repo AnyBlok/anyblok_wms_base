@@ -168,7 +168,7 @@ class TestObservation(WmsTestCaseWithPhysObj):
                                       dt_execution=self.dt_test3,
                                       inputs=pre_move.outcomes)
         self.assertEqual(phobj.get_property('weight'), 2.3)
-        post_move = self.Operation.Move.create(input=next(iter(obs.outcomes)),
+        post_move = self.Operation.Move.create(input=obs.outcome,
                                                destination=outgoing,
                                                dt_execution=self.dt_test3,
                                                state='done')

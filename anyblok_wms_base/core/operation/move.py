@@ -112,6 +112,8 @@ class Move(Mixin.WmsSingleInputOperation,
             # A move has at most a single follower, hence
             # its reversal follows at most one operation with one outcome.
             after = next(iter(follows))
+        # but nothing guarantees that 'after' is an instance of the
+        # single outcome mixin
         return self.create(input=next(iter(after.outcomes)),
                            destination=self.input.location,
                            dt_execution=dt_execution,
