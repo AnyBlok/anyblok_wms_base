@@ -35,7 +35,7 @@ class TestAggregate(WmsTestCase):
                                      dt_execution=self.dt_test1,
                                      quantity=qty)
             for qty in (1, 2)]
-        self.avatars = [op.outcomes[0] for op in self.arrivals]
+        self.avatars = [op.outcome for op in self.arrivals]
         self.Agg = Operation.Aggregate
 
         self.default_quantity_location = self.loc

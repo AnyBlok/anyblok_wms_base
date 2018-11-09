@@ -19,11 +19,12 @@ from anyblok_wms_base.exceptions import (
     )
 
 register = Declarations.register
+Mixin = Declarations.Mixin
 Operation = Declarations.Model.Wms.Operation
 
 
 @register(Operation)
-class Arrival(Operation):
+class Arrival(Mixin.WmsSingleOutcomeOperation, Operation):
     """Operation to describe physical arrival of goods in some location.
 
     Arrivals store data about the expected or arrived physical objects:
@@ -185,7 +186,7 @@ class Arrival(Operation):
         )
 
     def execute_planned(self):
-        self.outcomes[0].update(state='present', dt_from=self.dt_execution)
+        self.outcome.update(state='present', dt_from=self.dt_execution)
 
     @classmethod
     def refine_with_trailing_unpack(cls, arrivals, pack_type,
@@ -261,7 +262,7 @@ class Arrival(Operation):
                               physobj_code=pack_code,
                               state='planned')
 
-        arrivals_outcomes = {arr.outcomes[0]: arr for arr in arrivals}
+        arrivals_outcomes = {arr.outcome: arr for arr in arrivals}
         unpack, attached_avatars = Unpack.plan_for_outcomes(
             pack_arr.outcomes,
             arrivals_outcomes.keys(),

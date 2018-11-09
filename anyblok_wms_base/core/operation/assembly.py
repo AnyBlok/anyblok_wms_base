@@ -148,7 +148,7 @@ def merge_state_sub_parameters(spec, from_state, to_state, *subkeys):
 
 
 @register(Operation)
-class Assembly(Operation):
+class Assembly(Mixin.WmsSingleOutcomeOperation, Operation):
     """Assembly/Pack Operation.
 
     This operation covers simple packing and assembly needs : those for which
@@ -970,8 +970,7 @@ class Assembly(Operation):
         # TODO PERF direct update query would probably be faster
         for inp in self.inputs:
             inp.state = 'past'
-        outcome = self.outcomes[0]
-
+        outcome = self.outcome
         outcome.obj.update_properties(self.outcome_properties('done'))
         outcome.state = 'present'
 
@@ -1018,7 +1017,7 @@ class Assembly(Operation):
         Also it should recheck that all inputs are in the same place.
         """
         self.check_inputs_locations(self.inputs)
-        outcome = self.outcomes[0]
+        outcome = self.outcome
         outcome.location = self.inputs[0].location
 
         for follower in self.followers:

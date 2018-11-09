@@ -139,7 +139,7 @@ class TestOperation(WmsTestCase):
             Arrival.before_insert = orig_before_insert
         self.assertEqual(arrival.location, other_loc)
         # and it's been done at the right time, before creating outcomes
-        self.assertEqual(arrival.outcomes[0].location, other_loc)
+        self.assertEqual(arrival.outcome.location, other_loc)
 
     def test_cancel(self):
         arrival = self.Operation.Arrival.create(physobj_type=self.physobj_type,
@@ -324,8 +324,7 @@ class TestOperation(WmsTestCase):
                                             location=self.incoming_loc,
                                             dt_execution=self.dt_test1,
                                             state='planned')
-        avatar = arr.outcomes[0]
-        departure = self.Operation.Departure.create(input=avatar)
+        departure = self.Operation.Departure.create(input=arr.outcome)
         self.assertEqual(departure.dt_execution, self.dt_test1)
 
     def test_check_alterable(self):

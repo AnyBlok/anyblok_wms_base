@@ -21,7 +21,9 @@ Operation = Declarations.Model.Wms.Operation
 
 
 @register(Operation)
-class Teleportation(Mixin.WmsSingleInputOperation, Operation):
+class Teleportation(Mixin.WmsSingleInputOperation,
+                    Mixin.WmsSingleOutcomeOperation,
+                    Operation):
     """Inventory Operation to record unexpected change of location for PhysObj.
 
     This is similar to Move, but has a distinct functional meaning: the

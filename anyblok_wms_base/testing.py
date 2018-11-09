@@ -224,7 +224,7 @@ class WmsTestCaseWithPhysObj(SharedDataTestCase, WmsTestCase):
                                                **cls.arrival_kwargs)
 
         assert len(cls.arrival.outcomes) == 1
-        cls.avatar = cls.arrival.outcomes[0]
+        cls.avatar = cls.arrival.outcome
         cls.physobj = cls.avatar.obj
         cls.Avatar = cls.PhysObj.Avatar
 

@@ -22,7 +22,9 @@ Operation = Declarations.Model.Wms.Operation
 
 
 @register(Operation)
-class Move(Mixin.WmsSingleInputOperation, Operation):
+class Move(Mixin.WmsSingleInputOperation,
+           Mixin.WmsSingleOutcomeOperation,
+           Operation):
     """A stock move
     """
     TYPE = 'wms_move'
@@ -89,9 +91,8 @@ class Move(Mixin.WmsSingleInputOperation, Operation):
     def execute_planned(self):
         dt_execution = self.dt_execution
 
-        after_move = self.outcomes[0]
-        after_move.update(state='present', dt_from=dt_execution)
-        self.registry.flush()
+        self.outcome.update(state='present', dt_from=dt_execution)
+        self.registry.flush()  # TODO should now been unneeded
 
         self.input.update(state='past', dt_until=dt_execution)
 
@@ -111,6 +112,8 @@ class Move(Mixin.WmsSingleInputOperation, Operation):
             # A move has at most a single follower, hence
             # its reversal follows at most one operation with one outcome.
             after = next(iter(follows))
+        # but nothing guarantees that 'after' is an instance of the
+        # single outcome mixin
         return self.create(input=next(iter(after.outcomes)),
                            destination=self.input.location,
                            dt_execution=dt_execution,

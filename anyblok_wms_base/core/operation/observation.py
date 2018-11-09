@@ -22,7 +22,9 @@ _missing = object()
 
 
 @register(Operation)
-class Observation(Mixin.WmsSingleInputOperation, Operation):
+class Observation(Mixin.WmsSingleInputOperation,
+                  Mixin.WmsSingleOutcomeOperation,
+                  Operation):
     """Operation to change PhysObj Properties.
 
     Besides being commonly associated with some measurement or assessment
@@ -158,7 +160,7 @@ class Observation(Mixin.WmsSingleInputOperation, Operation):
         self.apply_properties()
         dt_exec = self.dt_execution
         self.input.update(dt_until=dt_exec, state='past')
-        self.outcomes[0].update(dt_from=dt_exec, state='present')
+        self.outcome.update(dt_from=dt_exec, state='present')
 
     def obliviate_single(self):
         """Restore the Properties as they were before execution.
