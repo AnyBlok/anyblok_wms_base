@@ -19,10 +19,11 @@ from anyblok_wms_base.exceptions import (
 register = Declarations.register
 Operation = Declarations.Model.Wms.Operation
 SingleInput = Declarations.Mixin.WmsSingleInputOperation
+InPlace = Declarations.Mixin.WmsInPlaceOperation
 
 
 @register(Operation)
-class Split(SingleInput, Operation):
+class Split(SingleInput, InPlace, Operation):
     """A split of PhysObj record in two.
 
     Splits replace their input's :class:`PhysObj

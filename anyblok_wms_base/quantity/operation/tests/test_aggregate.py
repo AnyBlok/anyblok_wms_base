@@ -160,18 +160,6 @@ class TestAggregate(WmsTestCase):
         # CASCADE options did the necessary cleanups
         self.assertEqual(Operation.HistoryInput.query().count(), 0)
 
-    def test_forbid_differences_avatars(self):
-        """Forbid differences among avatars own fields"""
-        other_loc = self.insert_location('Other')
-        self.avatars[1].location = other_loc
-        with self.assertRaises(OperationInputsError) as arc:
-            self.plan_aggregate()
-        exc = arc.exception
-        diff = exc.kwargs.get('diff')
-        self.assertIsNotNone(diff)
-        self.assertEqual(set(diff.get('location')),
-                         set((other_loc, self.loc)))
-
     def test_forbid_differences_goods(self):
         """Forbid differences among avatars' PhysObj."""
         self.avatars[0].obj.code = 'AB'

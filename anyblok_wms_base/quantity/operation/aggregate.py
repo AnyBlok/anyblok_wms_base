@@ -21,7 +21,9 @@ Operation = Declarations.Model.Wms.Operation
 
 
 @register(Operation)
-class Aggregate(Mixin.WmsSingleOutcomeOperation, Operation):
+class Aggregate(Mixin.WmsSingleOutcomeOperation,
+                Mixin.WmsInPlaceOperation,
+                Operation):
     """An aggregation of PhysObj record.
 
     Aggregate is the converse of Split.
@@ -51,7 +53,6 @@ class Aggregate(Mixin.WmsSingleOutcomeOperation, Operation):
     """
     TYPE = 'wms_aggregate'
     UNIFORM_PHYSOBJ_FIELDS = ('type', 'properties', 'code')
-    UNIFORM_AVATAR_FIELDS = ('location', )
 
     id = Integer(label="Identifier",
                  primary_key=True,
@@ -89,8 +90,7 @@ class Aggregate(Mixin.WmsSingleOutcomeOperation, Operation):
         """Check that the inputs to aggregate are indeed indistinguishable.
 
         This performs the check from superclasses, and then compares all
-        fields from :attr:`UNIFROM_AVATAR_FIELDS` on the inputs (Avatars) and
-        :attr:`UNIFORM_GOODS_FIELDS` (on the underlying PhysObj).
+        fields from :attr:`UNIFORM_GOODS_FIELDS` (on the underlying PhysObj).
         """
         super(Aggregate, cls).check_create_conditions(
             state, dt_execution, inputs=inputs, **kwargs)
@@ -103,12 +103,8 @@ class Aggregate(Mixin.WmsSingleOutcomeOperation, Operation):
                 if not cls.field_is_equal(field, first_physobj, physobj):
                     diff[field] = (getattr(first_physobj, field),
                                    getattr(physobj, field))
-            for field in cls.UNIFORM_AVATAR_FIELDS:
-                first_value = getattr(first, field)
-                second_value = getattr(avatar, field)
-                if first_value != second_value:
-                    diff[field] = (first_value, second_value)
-
+            # consistency of the Avatars is just about Location
+            # and that's checked by WmsInPlaceOperation
             if diff:
                 raise OperationInputsError(
                     cls,
@@ -139,12 +135,10 @@ class Aggregate(Mixin.WmsSingleOutcomeOperation, Operation):
         for record in inputs:
             record.update(**update)
 
-        tpl_avatar = inputs[0]
+        tpl_avatar = next(iter(inputs))
         tpl_physobj = tpl_avatar.obj
         uniform_physobj_fields = {field: getattr(tpl_physobj, field)
                                   for field in self.UNIFORM_PHYSOBJ_FIELDS}
-        uniform_avatar_fields = {field: getattr(tpl_avatar, field)
-                                 for field in self.UNIFORM_AVATAR_FIELDS}
         aggregated_physobj = PhysObj.insert(
             quantity=sum(a.obj.quantity for a in inputs),
             **uniform_physobj_fields)
@@ -156,7 +150,7 @@ class Aggregate(Mixin.WmsSingleOutcomeOperation, Operation):
             # dt_until in states 'present' and 'future' is theoretical anyway
             dt_until=outcome_dt_until,
             state='present' if self.state == 'done' else 'future',
-            **uniform_avatar_fields)
+            location=self.unique_inputs_location(inputs))
 
     def execute_planned(self):
         self.outcome.update(state='present', dt_from=self.dt_execution)
