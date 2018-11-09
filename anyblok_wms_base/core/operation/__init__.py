@@ -12,6 +12,7 @@ def import_declarations(reload=None):
     from . import ns
     from . import base
     from . import single_input
+    from . import single_outcome
     from . import arrival
     from . import departure
     from . import move
