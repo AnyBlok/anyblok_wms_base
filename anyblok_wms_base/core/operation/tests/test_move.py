@@ -56,7 +56,7 @@ class TestMove(WmsTestCaseWithPhysObj):
                                 input=self.avatar)
         self.assert_singleton(move.follows, value=self.arrival)
 
-        after_move = move.outcomes[0]
+        after_move = move.outcome
         self.assertEqual(after_move.location, self.stock)
         self.assertEqual(after_move.state, 'present')
 

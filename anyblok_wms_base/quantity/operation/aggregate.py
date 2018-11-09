@@ -16,11 +16,12 @@ from anyblok_wms_base.exceptions import (
 )
 
 register = Declarations.register
+Mixin = Declarations.Mixin
 Operation = Declarations.Model.Wms.Operation
 
 
 @register(Operation)
-class Aggregate(Operation):
+class Aggregate(Mixin.WmsSingleOutcomeOperation, Operation):
     """An aggregation of PhysObj record.
 
     Aggregate is the converse of Split.
@@ -158,7 +159,7 @@ class Aggregate(Operation):
             **uniform_avatar_fields)
 
     def execute_planned(self):
-        self.outcomes[0].update(state='present', dt_from=self.dt_execution)
+        self.outcome.update(state='present', dt_from=self.dt_execution)
         for record in self.inputs:
             record.update(state='past',
                           dt_until=self.dt_execution)

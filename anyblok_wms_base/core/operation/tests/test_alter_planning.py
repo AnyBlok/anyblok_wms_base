@@ -28,7 +28,7 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
                                 dt_execution=self.dt_test2,
                                 state='planned',
                                 input=self.avatar)
-        dep_input = move.outcomes[0]
+        dep_input = move.outcome
         dep = self.Operation.Departure.create(
             dt_execution=self.dt_test3,
             state='planned',
@@ -51,7 +51,7 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         incoming = self.incoming_loc
         stock = self.stock
         arrival = self.arrival
-        unp_input = arrival.outcomes[0]
+        unp_input = arrival.outcome
 
         # checking hypothesises
         self.assertEqual(arrival.location, incoming)
@@ -67,11 +67,12 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
                                            state='planned')
         unp_outcomes = unp.outcomes
         self.assertEqual(len(unp_outcomes), 3)
+        first_unp_outcome = next(iter(unp_outcomes))
         # let's have at least one follower
-        self.Operation.Departure.create(input=unp_outcomes[0])
+        self.Operation.Departure.create(input=first_unp_outcome)
 
         # unpack is in-place:
-        self.assertEqual(unp_outcomes[0].location, incoming)
+        self.assertEqual(first_unp_outcome.location, incoming)
 
         # let's do it
         arrival.alter_destination(stock)
@@ -96,7 +97,7 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
             dt_execution=self.dt_test1,
             physobj_type=self.physobj_type)
 
-        ass_inputs = [arrival1.outcomes[0], arrival2.outcomes[0]]
+        ass_inputs = [arrival1.outcome, arrival2.outcome]
 
         # checking hypothesises
         self.assertEqual(arrival1.location, incoming)
@@ -158,7 +159,7 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
                                 dt_execution=self.dt_test2,
                                 state='planned',
                                 input=self.avatar)
-        dep_input = move.outcomes[0]
+        dep_input = move.outcome
         dep = self.Operation.Departure.create(
             dt_execution=self.dt_test3,
             state='planned',
@@ -224,7 +225,7 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
                                   location=self.incoming_loc,
                                   state='planned',
                                   dt_execution=self.dt_test1)
-        avatar2 = arrival2.outcomes[0]
+        avatar2 = arrival2.outcome
 
         # downstream Operations, to validate that they won't be affected
         move = self.Operation.Move.create(input=avatar,

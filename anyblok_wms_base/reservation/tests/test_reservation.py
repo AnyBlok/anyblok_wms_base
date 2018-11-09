@@ -28,7 +28,7 @@ class ReservationTestCase(WmsTestCase):
                                                 location=self.incoming_loc,
                                                 state='planned',
                                                 dt_execution=self.dt_test1)
-        self.avatar = arrival.outcomes[0]
+        self.avatar = arrival.outcome
         self.goods = self.avatar.obj
 
     def test_authorized(self):

@@ -53,7 +53,7 @@ class TestAssembly(WmsTestCase):
                                          location=location,
                                          state=arrival_state,
                                          dt_execution=self.dt_test1)
-                created.append(arrival.outcomes[0])
+                created.append(arrival.outcome)
         return created
 
     def test_create_done_fixed(self):

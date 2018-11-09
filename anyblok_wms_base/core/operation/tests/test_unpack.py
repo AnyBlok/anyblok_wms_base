@@ -508,7 +508,7 @@ class TestUnpack(WmsTestCase):
                                  input=self.packs)
         self.assertEqual(len(unp.outcomes), 2)  # just a reminder
         other_loc = self.insert_location('other')
-        first_outcome = unp.outcomes[0]
+        first_outcome = next(iter(unp.outcomes))
         self.Operation.Move.create(state='done',
                                    input=first_outcome,
                                    destination=other_loc)
@@ -666,27 +666,26 @@ class TestUnpack(WmsTestCase):
             properties=dict(foo=7, bar=12))
         # everything will happen in the same place
         location = self.packs.location
-        outcomes = []
-        for i in range(2):
-            outcomes.extend(
-                self.Operation.Arrival.create(
-                    state='planned',
-                    physobj_type=unpacked_type,
-                    physobj_properties=dict(foo=7+i),
-                    dt_execution=self.dt_test1,
-                    location=location).outcomes)
+        wished = [
+            self.Operation.Arrival.create(
+                state='planned',
+                physobj_type=unpacked_type,
+                physobj_properties=dict(foo=7+i),
+                dt_execution=self.dt_test1,
+                location=location).outcome
+            for i in range(2)]
 
         unp, attached = self.Unpack.plan_for_outcomes(
-            [self.packs], outcomes, dt_execution=self.dt_test2)
+            [self.packs], wished, dt_execution=self.dt_test2)
         # only the first of outcomes could be matched
-        self.assertEqual(self.assert_singleton(attached), outcomes[0])
+        self.assertEqual(self.assert_singleton(attached), wished[0])
         # we now have one unpacked_type with foo=8 and the wrapping
-        self.assertEqual(outcomes[1].outcome_of.type, 'wms_arrival')
+        self.assertEqual(wished[1].outcome_of.type, 'wms_arrival')
         wrapping = self.assert_singleton([out for out in unp.outcomes
                                           if out.obj.type == wrapping_type])
         self.assertEqual(wrapping.obj.get_property('bar'), 12)
         # the additional forwarded property has been set on the matched outcome
-        self.assertEqual(outcomes[0].obj.get_property('bar'), 12)
+        self.assertEqual(wished[0].obj.get_property('bar'), 12)
 
     def test_plan_for_outcomes_more(self):
         unpacked_type = self.PhysObj.Type.insert(code='Unpacked')
