@@ -131,26 +131,10 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         self.assertEqual(ass_out.location, stock)
 
     def test_refine_with_trailing_move_inapplicable(self):
-        dep = self.Operation.Departure.create(input=self.avatar)
+        op = self.Operation.Observation.create(input=self.avatar)
         with self.assertRaises(OperationError) as arc:
-            dep.refine_with_trailing_move(self.stock)
-        self.assertEqual(arc.exception.kwargs['op'], dep)
-
-        # same with Operations with several outcomes
-        # (very artificial setup)
-        av2 = self.Avatar.insert(obj=self.physobj,
-                                 state='future',
-                                 dt_from=self.dt_test1,
-                                 outcome_of=self.arrival,
-                                 location=self.incoming_loc)
-        self.assertEqual(len(self.arrival.outcomes), 2)
-
-        with self.assertRaises(OperationError) as arc:
-            self.arrival.refine_with_trailing_move(self.stock)
-        exc = arc.exception
-        self.assertEqual(exc.kwargs['op'], self.arrival)
-        self.assertEqual(exc.kwargs['outcomes_len'], 2)
-        self.assertEqual(set(exc.kwargs['outcomes']), {self.avatar, av2})
+            op.refine_with_trailing_move(self.stock)
+        self.assertEqual(arc.exception.kwargs['op'], op)
 
     def test_refine_with_trailing_move(self):
         outgoing = self.insert_location('OUTGOING')

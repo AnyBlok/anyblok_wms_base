@@ -129,9 +129,8 @@ class Operation:
     remain ``None``. On the other hand, Moves and Arrivals will have their
     destination fields here.
 
-    This is useful for :meth:`alter_destination` and
-    :meth:`refine_with_trailing_move`  methods, to know if they are relevant
-    to that Operation and how to update it.
+    This is useful for methods such as :meth:`alter_destination`
+    to know if they are relevant to that Operation and how to update it.
     """
 
     def query_history_input(self):
@@ -819,9 +818,9 @@ class Operation:
         """Change the destination of a planned Operation.
 
         This is for Operations that are responsible for the location of
-        their outcome (see the :attr:`destination_field` class attribute)
+        their outcomes (see the :attr:`destination_field` class attribute)
 
-        The followers' ``input_location_altered()`` will be
+        The followers' :meth:`input_location_altered` will be
         called (will potentially recurse)
         """
         self.check_alterable()
@@ -830,59 +829,8 @@ class Operation:
             raise OperationError(
                 self, "Operations of this type don't have responsibility "
                 "over their outcomes locations. Fields: {op}", op=self)
-        outcome = self.outcomes[0]
         setattr(self, dest_field, destination)
-        outcome.location = destination
+        for outcome in self.outcomes:
+            outcome.location = destination
         for follower in self.followers:
             follower.input_location_altered()
-
-    def refine_with_trailing_move(self, stopover):
-        """Split the current Operation in two, the last one being a Move
-
-        This is for Operations that are responsible for the location of
-        their outcome (see the :attr:`destination_field` class attribute)
-
-        :param stopover: this is the location of the intermediate Avatar
-                         that's been introduced (starting point of the Move).
-        :returns: the new Move instance
-
-        This doesn't change anything for the followers of the current
-        Operation, and in fact, it is guaranteed that their inputs are
-        untouched by this method.
-
-        Example use case: Rather than planning an Arrival followed by a Move to
-        stock location, One may wish to just plan an Arrival into some
-        the final stock destination, and later on, refine
-        this as an Arrival in a landing area, followed by a Move to the stock
-        destination. This is especially useful if the landing area can't be
-        determined at the time of the original planning, or simply to follow
-        the general principle of sober planning.
-        """
-        self.check_alterable()
-        field = self.destination_field
-        if field is None:
-            raise OperationError(
-                self,
-                "Can't refine {op} with a trailing move, because it's "
-                "not responsible for the location of its outcomes",
-                op=self)
-        setattr(self, field, stopover)
-
-        outcomes = self.outcomes
-        if len(outcomes) != 1:
-            raise OperationError(
-                self,
-                "Can't refine {op} with a trailing move, because it has "
-                "several ({outcomes_len)) outcomes: {outcomes}",
-                op=self, outcomes=outcomes, outcomes_len=len(outcomes))
-        outcome = next(iter(outcomes))
-        new_outcome = self.registry.Wms.PhysObj.Avatar.insert(
-            location=stopover,
-            outcome_of=self,
-            state='future',
-            dt_from=self.dt_execution,
-            # copied fields:
-            dt_until=outcome.dt_until,
-            obj=outcome.obj)
-        return self.registry.Wms.Operation.Move.plan_for_outcomes(
-            (new_outcome, ), outcomes, dt_execution=self.dt_execution)

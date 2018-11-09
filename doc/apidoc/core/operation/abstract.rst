@@ -37,7 +37,6 @@ Model.Wms.Operation
    .. automethod:: plan_revert
    .. automethod:: obliviate
    .. automethod:: alter_destination
-   .. automethod:: refine_with_trailing_move
 
    .. raw:: html
 
@@ -52,6 +51,7 @@ Model.Wms.Operation
    .. automethod:: after_insert
    .. automethod:: execute_planned
    .. automethod:: plan_revert_single
+   .. automethod:: input_location_altered
 
    .. raw:: html
 
@@ -124,3 +124,23 @@ Mixin.WmsSingleInputOperation: working on a single input
             Specific methods.</h4>
 
    .. automethod:: refine_with_leading_move
+
+Mixin.WmsSingleOutcomeOperation: producing only one outcome
+-----------------------------------------------------------
+
+.. autoclass:: anyblok_wms_base.core.operation.single_outcome.WmsSingleOutcomeOperation
+
+
+   .. raw:: html
+
+      <h4 class="section" style="font-size: 160%">
+            Fields and their semantics</h4>
+
+   .. autoattribute:: outcome
+
+   .. raw:: html
+
+      <h4 class="section" style="font-size: 160%">
+            Specific methods.</h4>
+
+   .. automethod:: refine_with_trailing_move
