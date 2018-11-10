@@ -15,5 +15,6 @@ package names for readability in page titles.
    utils
    core/index
    reservation/index
+   inventory/index
    quantity/index
    tests

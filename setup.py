@@ -34,6 +34,7 @@ requirements = [
 bloks = {
     'wms-core': 'core:WmsCore',
     'wms-reservation': 'reservation:WmsReservation',
+    'wms-inventory': 'inventory:WmsInventory',
     'wms-quantity': 'quantity:WmsQuantity',
     # Too simple for use outside of tests, yet we don't want to
     # use DBTestCase which means droping and creating all the time

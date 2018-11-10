@@ -34,6 +34,18 @@ typically gets fulfilled through a *chain* of operations.
              code documentation  <anyblok_wms_base.reservation>`.
 
 
+.. _blok_wms_inventory:
+
+wms-inventory
+-------------
+
+This Blok provides facilities for inventory management, namely to
+compare (parts of) the database with reality, and issue appropriate
+Operations to correct deviations.
+
+.. seealso:: :mod:`the code documentation  <anyblok_wms_base.inventory>`.
+
+
 .. _blok_wms_quantity:
 
 wms-quantity

@@ -76,9 +76,12 @@ def run(cr, db_name, nose_additional_opts):
                os.path.join(bloks_dir, 'core')),
               nose_additional_opts)
     install_bloks('wms-reservation')
-    nosetests((os.path.join(bloks_dir, 'reservation'),
-               ),
+    nosetests((os.path.join(bloks_dir, 'reservation'), ),
               nose_additional_opts)
+    install_bloks('wms-inventory')
+    nosetests((os.path.join(bloks_dir, 'inventory'), ),
+              nose_additional_opts)
+
     dropdb(cr, db_name)
     createdb('wms-quantity')
     nosetests((os.path.join(bloks_dir, 'quantity'),
