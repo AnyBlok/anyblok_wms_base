@@ -216,6 +216,14 @@ class Type:
     def is_container(self):
         return self.get_behaviour('container') is not None
 
+    def query_container(self):
+        """Return a query for container Types.
+
+        For the time being, this is just a wrapper around
+        :meth:`query_behaviour`, but container identification might change
+        in the future.
+        """
+
     def merged_properties(self):
         """Return this Type properties, merged with its parent."""
         parent = self.parent

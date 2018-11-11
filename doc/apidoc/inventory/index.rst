@@ -37,6 +37,7 @@ Model.Wms.Inventory.Node
    .. autoattribute:: order
    .. autoattribute:: parent
    .. autoattribute:: location
+   .. autoattribute:: is_leaf
 
 Model.Wms.Inventory.Line
 ------------------------

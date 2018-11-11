@@ -6,6 +6,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from sqlalchemy import orm
+
 from anyblok import Declarations
 from anyblok.column import Integer
 from anyblok.column import Text
@@ -89,6 +91,29 @@ class Node:
     parent = Many2One(model='Model.Wms.Inventory.Node',
                       index=True)
     location = Many2One(model=Wms.PhysObj, nullable=False)
+
+    @property
+    def is_leaf(self):
+        """(:class:`bool`): ``True`` if and only if the Node has no children.
+        """
+        return self.query().filter_by(parent=self).count() == 0
+
+    def split(self):
+        """Create a child Node for each container in :attr:`location`."""
+        PhysObj = self.registry.Wms.PhysObj
+        Avatar = PhysObj.Avatar
+        ContainerType = orm.aliased(
+            PhysObj.Type.query_behaviour('container', as_cte=True),
+            name='container_type')
+        subloc_query = (PhysObj.query()
+                        .join(Avatar.obj)
+                        .join(ContainerType,
+                              ContainerType.c.id == PhysObj.type_id)
+                        .filter(Avatar.state == 'present'))
+        return [self.insert(order=self.order,
+                            parent=self,
+                            location=container)
+                for container in subloc_query.all()]
 
 
 @register(Wms.Inventory)
