@@ -12,8 +12,12 @@ from anyblok_wms_base import version
 
 def import_declarations(reload=None):
     from . import ns
+    from . import order
+    from . import node
     if reload is not None:
         reload(ns)
+        reload(order)
+        reload(node)
 
 
 class WmsInventory(Blok):
