@@ -96,8 +96,9 @@ class TestAggregate(WmsTestCase):
 
     def assertBackToBeginning(self, state='present', props=None):
         PhysObj = self.PhysObj
-        new_goods = PhysObj.query().filter(
-            PhysObj.type != self.location_type).all()
+        new_goods = (PhysObj.query()
+                     .filter(PhysObj.type != self.location_type)
+                     .all())
         self.assertEqual(len(new_goods), 2)
         if props is not None:
             old_props = props.to_dict()
@@ -297,12 +298,15 @@ class TestAggregate(WmsTestCase):
         agg.cancel()
         self.assertEqual(self.Agg.query().count(), 0)
         Avatar = self.PhysObj.Avatar
-        all_avatars = Avatar.query().join(Avatar.obj).filter(
-            self.PhysObj.type == self.avatars[0].obj.type).all()
+        all_avatars = (Avatar.query()
+                       .join(Avatar.obj)
+                       .filter(self.PhysObj.type == self.avatars[0].obj.type)
+                       .all())
         self.assertEqual(set(all_avatars), set(self.avatars))
 
-        all_goods = self.PhysObj.query().filter(
-            self.PhysObj.type == self.avatars[0].obj.type).all()
+        all_goods = (self.PhysObj.query()
+                     .filter(self.PhysObj.type == self.avatars[0].obj.type)
+                     .all())
         self.assertEqual(set(all_goods), set(av.obj for av in self.avatars))
 
     def test_reversibility(self):

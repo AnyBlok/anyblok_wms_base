@@ -95,15 +95,15 @@ class TestUnpack(WmsTestCase):
         self.assert_singleton(unp.follows, value=self.arrival)
 
         unpacked_physobj_cloned_props = self.single_result(
-            self.PhysObj.query().filter(
-                self.PhysObj.type == unpacked_clone_type))
+            self.PhysObj.query()
+            .filter(self.PhysObj.type == unpacked_clone_type))
         self.assertEqual(unpacked_physobj_cloned_props.quantity, 10)
         self.assertEqual(unpacked_physobj_cloned_props.properties,
                          self.packs.obj.properties)
 
         unpacked_physobj_fwd_props = self.single_result(
-            self.PhysObj.query().filter(
-                self.PhysObj.type == unpacked_fwd_type))
+            self.PhysObj.query()
+            .filter(self.PhysObj.type == unpacked_fwd_type))
         self.assertEqual(unpacked_physobj_fwd_props.quantity, 15)
         self.assertNotEqual(unpacked_physobj_fwd_props.properties,
                             self.packs.obj.properties)
@@ -130,8 +130,8 @@ class TestUnpack(WmsTestCase):
                                  input=self.packs)
         self.assert_singleton(unp.follows, value=self.arrival)
 
-        unpacked_goods = self.single_result(self.PhysObj.query().filter(
-            self.PhysObj.type == unpacked_type))
+        unpacked_goods = self.single_result(
+            self.PhysObj.query().filter(self.PhysObj.type == unpacked_type))
 
         self.assertEqual(unpacked_goods.quantity, 15)
         self.assertEqual(unpacked_goods.type, unpacked_type)
@@ -165,8 +165,9 @@ class TestUnpack(WmsTestCase):
                                  input=self.packs)
         self.assert_singleton(unp.follows, value=self.arrival)
 
-        unpacked_goods = self.PhysObj.query().filter(
-            self.PhysObj.type == unpacked_type).all()
+        unpacked_goods = (self.PhysObj.query()
+                          .filter(self.PhysObj.type == unpacked_type)
+                          .all())
 
         self.assertEqual(len(unpacked_goods), 1)
         unpacked_goods = unpacked_goods[0]
@@ -318,8 +319,9 @@ class TestUnpack(WmsTestCase):
                                  input=self.packs)
         self.assert_singleton(unp.follows, value=self.arrival)
 
-        unpacked_goods = self.PhysObj.query().filter(
-            self.PhysObj.type == unpacked_type).all()
+        unpacked_goods = (self.PhysObj.query()
+                          .filter(self.PhysObj.type == unpacked_type)
+                          .all())
 
         self.assertEqual(len(unpacked_goods), 1)
         unpacked_goods = unpacked_goods[0]
@@ -350,16 +352,16 @@ class TestUnpack(WmsTestCase):
                                  input=self.packs)
         self.assert_singleton(unp.follows, value=self.arrival)
 
-        unpacked_goods = self.single_result(self.PhysObj.query().filter(
-            self.PhysObj.type == unpacked_type))
+        unpacked_goods = self.single_result(
+            self.PhysObj.query().filter(self.PhysObj.type == unpacked_type))
 
         self.assertEqual(unpacked_goods.quantity, 10)
         self.assertEqual(unpacked_goods.type, unpacked_type)
         self.assertEqual(unpacked_goods.get_property('foo'), 3)
         self.assertEqual(unpacked_goods.get_property('baz'), 'second hand')
 
-        avatar = self.single_result(self.Avatar.query().filter(
-            self.Avatar.obj == unpacked_goods))
+        avatar = self.single_result(
+            self.Avatar.query().filter(self.Avatar.obj == unpacked_goods))
         self.assertEqual(avatar.state, 'future')
         self.assertEqual(avatar.outcome_of, unp)
 
@@ -379,9 +381,11 @@ class TestUnpack(WmsTestCase):
                              at_datetime=self.dt_test2,
                              additional_states=['future'])
         self.assertEqual(
-            self.Avatar.query().join(self.Avatar.obj).filter(
-                self.PhysObj.type == self.packed_physobj_type,
-                self.Avatar.state == 'future').count(),
+            self.Avatar.query()
+            .join(self.Avatar.obj)
+            .filter(self.PhysObj.type == self.packed_physobj_type,
+                    self.Avatar.state == 'future')
+            .count(),
             0)
 
     def test_partial_plan_execute(self):
@@ -429,11 +433,11 @@ class TestUnpack(WmsTestCase):
         PhysObj, Avatar = self.PhysObj, self.Avatar
 
         # not unpacked
-        packs_physobj_query = PhysObj.query().filter(
-            PhysObj.type == self.packed_physobj_type)
+        packs_physobj_query = (PhysObj.query()
+                               .filter_by(type=self.packed_physobj_type))
         still_packed = self.single_result(
-            packs_physobj_query.join(Avatar.obj).filter(
-                Avatar.state == 'present'))
+            packs_physobj_query.join(Avatar.obj)
+            .filter(Avatar.state == 'present'))
         self.assertEqual(still_packed.quantity, 1)
 
         # check intermediate objects no leftover intermediate packs

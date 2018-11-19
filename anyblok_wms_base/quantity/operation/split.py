@@ -126,9 +126,10 @@ class Split(SingleInput, Operation):
         Avatar = PhysObj.Avatar
         # in case the split is exactly in half, there's no difference
         # between the two records we created, let's pick any.
-        outcome = Avatar.query().join(Avatar.obj).filter(
-            Avatar.outcome_of == self,
-            PhysObj.quantity == self.quantity).first()
+        outcome = (Avatar.query().join(Avatar.obj)
+                   .filter(Avatar.outcome_of == self,
+                           PhysObj.quantity == self.quantity)
+                   .first())
         if outcome is None:
             raise OperationError(self, "The split outcomes have disappeared")
         return outcome
@@ -167,8 +168,9 @@ class Split(SingleInput, Operation):
         # here in that case, that's for multiple operations
         # in_ is not implemented for Many2Ones
         reason_ids = set(f.id for f in follows)
-        to_aggregate = Avatars.query().filter(
-            Avatars.outcome_of_id.in_(reason_ids)).all()
+        to_aggregate = (Avatars.query()
+                        .filter(Avatars.outcome_of_id.in_(reason_ids))
+                        .all())
         to_aggregate.extend(self.leaf_outcomes())
         return Wms.Operation.Aggregate.create(inputs=to_aggregate,
                                               dt_execution=dt_execution,
