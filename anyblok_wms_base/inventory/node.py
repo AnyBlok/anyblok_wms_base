@@ -7,6 +7,9 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from sqlalchemy import orm
+from sqlalchemy import or_
+from sqlalchemy import and_
+from sqlalchemy import func
 
 from anyblok import Declarations
 from anyblok.column import Integer
@@ -115,6 +118,116 @@ class Node:
                             location=container)
                 for container in subloc_query.all()]
 
+    def compute_actions(self, recompute=False):
+        """Create :class:`Action` to reconcile database with assessment.
+
+        :param bool recompute: if ``True``, can be applied even if
+                               :attr:`state` is already 'computed' or later.
+
+        Implementation and performance details:
+
+        Internally, this uses an SQL query that's quite heavy:
+
+        - recursive CTE for the sublocations
+        - that's joined with Avatar and PhysObj to extract quantities
+          and information (type, code, properties)
+        - on top of that, full outer join with Inventory.Line
+
+        but it has advantages:
+
+        - works uniformely in the three cases:
+
+          + no Inventory.Line matching a given Avatar
+          + no Avatar matching a given Inventory.Line
+          + a given Inventory.Line has matching Avatars, but the counts
+            don't match
+        - minimizes round-trip to the database
+        - minimizes Python side processing
+        """
+        state = self.state
+        if state in ('draft', 'assessment'):
+            # TODO precise exc
+            raise ValueError("Can't compute actions on Node id=%d (state=%r) "
+                             "that hasn't reached the 'full' state'" % (
+                                 self.id, state))
+        if state in ('computed', 'reconciled'):
+            if recompute:
+                self.clear_actions()
+            else:
+                # TODO precise exc
+                raise ValueError("Can't compute actions on "
+                                 "Node id=%d (state=%r) "
+                                 "that's already past the 'full' state'" % (
+                                     self.id, state))
+
+        PhysObj = self.registry.Wms.PhysObj
+        POType = PhysObj.Type
+        Avatar = PhysObj.Avatar
+        Inventory = self.registry.Wms.Inventory
+        Line = Inventory.Line
+        Action = Inventory.Action
+
+        cols = (Avatar.location_id, PhysObj.code, PhysObj.type_id)
+        quantity_query = self.registry.Wms.quantity_query
+        existing_phobjs = (quantity_query(location=self.location,
+                                          location_recurse=True)
+                           .add_columns(*cols).group_by(*cols)
+                           .subquery())
+
+        comp_query = (
+            Line.query()
+            .join(existing_phobjs,
+                  # multiple criteria to join on the subquery would fail,
+                  # complaining of lack of foreign key (SQLA bug maybe)?
+                  # but it works with and_()
+                  and_(Line.type_id == existing_phobjs.c.type_id,
+                       Line.location_id == existing_phobjs.c.location_id,
+                       or_(Line.code == existing_phobjs.c.code,
+                           and_(existing_phobjs.c.code.is_(None),
+                                Line.code.is_(None)))),
+                  full=True)
+            .filter(func.coalesce(existing_phobjs.c.qty, 0) !=
+                    func.coalesce(Line.quantity, 0))
+            .add_columns(func.coalesce(existing_phobjs.c.qty, 0)
+                         .label('phobj_qty'),
+                         # these columns are useful only if Line is None:
+                         existing_phobjs.c.location_id.label('phobj_loc'),
+                         existing_phobjs.c.type_id.label('phobj_type'),
+                         existing_phobjs.c.code.label('phobj_code'),
+                         ))
+
+        for row in comp_query.all():
+            line, phobj_count = row[:2]
+            if line is None:
+                Action.insert(node=self,
+                              type='disp',
+                              quantity=phobj_count,
+                              location=PhysObj.query().get(row[2]),
+                              physobj_type=POType.query().get(row[3]),
+                              physobj_code=row[4],
+                              )
+                continue
+
+            diff_qty = phobj_count - line.quantity
+            fields = dict(node=self,
+                          location=line.location,
+                          physobj_type=line.type,
+                          physobj_code=line.code,
+                          physobj_properties=line.properties)
+
+            # the query is tailored so that diff_qty is never 0
+            if diff_qty > 0:
+                Action.insert(type='disp', quantity=diff_qty, **fields)
+            else:
+                Action.insert(type='app', quantity=-diff_qty, **fields)
+
+        # TODO Teleportations
+        self.state = 'computed'
+
+    def clear_actions(self):
+        self.Action.query().filter_by(node=self).delete(
+            synchronize_session='fetch')
+
 
 @register(Wms.Inventory)
 class Line:
@@ -124,11 +237,11 @@ class Line:
     node = Many2One(model=Wms.Inventory.Node,
                     one2many='lines',
                     nullable=False)
-    location = Many2One(model=Wms.PhysObj)
-    type = Many2One(model=Wms.PhysObj.Type)
+    location = Many2One(model=Wms.PhysObj, nullable=False)
+    type = Many2One(model=Wms.PhysObj.Type, nullable=False)
     code = Text()
     properties = Jsonb()
-    quantity = Integer()
+    quantity = Integer(nullable=False)
 
 
 @register(Wms.Inventory)
@@ -142,3 +255,22 @@ class Action:
     node = Many2One(model=Wms.Inventory.Node,
                     one2many='actions',
                     nullable=False)
+
+    OPERATIONS = (
+        ('app', 'wms_inventory_action_app'),
+        ('disp', 'wms_inventory_action_disp'),
+        ('telep', 'wms_inventory_action_telep'),
+    )
+
+    type = Selection(selections=OPERATIONS, nullable=False)
+
+    location = Many2One(model=Wms.PhysObj, nullable=False)
+    destination = Many2One(model=Wms.PhysObj)
+    """Optional destination container.
+
+    This is useful if :attr:`type` is ``telep`` only.
+    """
+    physobj_type = Many2One(model=Wms.PhysObj.Type, nullable=False)
+    physobj_code = Text()
+    physobj_properties = Jsonb()
+    quantity = Integer(nullable=False)

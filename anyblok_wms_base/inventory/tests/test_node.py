@@ -15,6 +15,8 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
         super().setUp()
         self.Inventory = self.registry.Wms.Inventory
         self.Node = self.Inventory.Node
+        self.Line = self.Inventory.Line
+        self.Action = self.Inventory.Action
         self.avatar.update(location=self.stock, state='present')
 
     def test_split(self):
@@ -43,6 +45,139 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
         self.assertEqual(set(c.location for c in children),
                          {loc_a, loc_b})
         self.assertTrue(all(c.inventory == inventory for c in children))
+
+    def test_compute_actions_not_enough_phobjs(self):
+        inventory = self.Inventory.create(location=self.stock)
+        node = inventory.root
+        node.state = 'full'
+        self.Line.insert(node=node,
+                         location=self.stock,
+                         type=self.physobj.type,
+                         quantity=2)
+
+        node.compute_actions()
+        action = self.single_result(self.Action.query().filter_by(node=node))
+        self.assertEqual(action.type, 'app')
+
+        self.assertEqual(action.location, self.stock)
+        self.assertEqual(action.physobj_type, self.physobj.type)
+        self.assertEqual(action.quantity, 1)
+
+        self.assertIsNone(action.physobj_code)
+        self.assertIsNone(action.physobj_properties)
+
+    def test_compute_actions_too_many_phobjs(self):
+        inventory = self.Inventory.create(location=self.stock)
+        node = inventory.root
+        node.state = 'full'
+        # of course, in real life it's more probable we wouldn't have
+        # a line at all, but there's no real value to bother creating
+        # a new physobj to compare 1 and 2 instead of 0 and 1
+        self.Line.insert(node=node,
+                         location=self.stock,
+                         type=self.physobj.type,
+                         quantity=0)
+
+        node.compute_actions()
+        action = self.single_result(self.Action.query().filter_by(node=node))
+        self.assertEqual(action.type, 'disp')
+
+        self.assertEqual(action.location, self.stock)
+        self.assertEqual(action.physobj_type, self.physobj.type)
+        self.assertEqual(action.quantity, 1)
+
+        self.assertIsNone(action.physobj_code)
+        self.assertIsNone(action.physobj_properties)
+
+    def test_compute_actions_all_matching(self):
+        inventory = self.Inventory.create(location=self.stock)
+        node = inventory.root
+        node.state = 'full'
+        self.Line.insert(node=node,
+                         location=self.stock,
+                         type=self.physobj.type,
+                         quantity=1)
+        node.compute_actions()
+        self.assertEqual(self.Action.query().filter_by(node=node).count(),
+                         0)
+
+    def test_compute_actions_wrong_phobj_code(self):
+        inventory = self.Inventory.create(location=self.stock)
+        node = inventory.root
+        node.state = 'full'
+        line = self.Line.insert(node=node,
+                                location=self.stock,
+                                type=self.physobj.type,
+                                quantity=1,
+                                code='Not on self.physobj!')
+
+        node.compute_actions()
+        actions = (self.Action.query()
+                   .filter_by(node=node)
+                   .order_by(self.Action.type)
+                   .all())
+
+        # it boils down to an Apparition and a Disparition at the same place
+
+        for action in actions:
+            self.assertEqual(action.location, self.stock)
+            self.assertEqual(action.physobj_type, self.physobj.type)
+            self.assertEqual(action.quantity, 1)
+            self.assertIsNone(action.physobj_properties)
+
+        app, disp = actions
+        self.assertEqual(app.type, 'app')
+        self.assertEqual(app.physobj_code, line.code)
+        self.assertEqual(disp.type, 'disp')
+        self.assertIsNone(disp.physobj_code)
+
+    def test_compute_actions_avatar_elsewhere(self):
+        inventory = self.Inventory.create(location=self.stock)
+        node = inventory.root
+        node.state = 'full'
+        self.avatar.location = self.incoming_loc
+        self.Line.insert(node=node,
+                         location=self.stock,
+                         type=self.physobj.type,
+                         quantity=1)
+
+        node.compute_actions()
+
+        action = self.single_result(self.Action.query().filter_by(node=node))
+        self.assertEqual(action.type, 'app')
+
+        self.assertEqual(action.location, self.stock)
+        self.assertEqual(action.physobj_type, self.physobj.type)
+        self.assertEqual(action.quantity, 1)
+
+        self.assertIsNone(action.physobj_code)
+        self.assertIsNone(action.physobj_properties)
+
+    def test_compute_actions_missing_line(self):
+        inventory = self.Inventory.create(location=self.stock)
+        node = inventory.root
+        node.state = 'full'
+        node.compute_actions()
+
+        action = self.single_result(self.Action.query().filter_by(node=node))
+        self.assertEqual(action.type, 'disp')
+
+        self.assertEqual(action.location, self.stock)
+        self.assertEqual(action.physobj_type, self.physobj.type)
+        self.assertEqual(action.quantity, 1)
+
+        self.assertIsNone(action.physobj_code)
+        self.assertIsNone(action.physobj_properties)
+
+    def test_compute_actions_wrong_states(self):
+        inventory = self.Inventory.create(location=self.stock)
+        node = inventory.root
+        with self.assertRaises(ValueError):
+            node.compute_actions()
+
+        node.state = 'reconciled'
+        with self.assertRaises(ValueError):
+            node.compute_actions()
 
 
 del WmsTestCaseWithPhysObj
