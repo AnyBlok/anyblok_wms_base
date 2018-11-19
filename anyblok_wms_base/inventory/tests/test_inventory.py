@@ -13,12 +13,11 @@ class InventoryOrderTestCase(WmsTestCase):
 
     def setUp(self):
         self.Inventory = self.registry.Wms.Inventory
-        self.Order = self.Inventory.Order
         self.create_location_type()
         self.stock = self.insert_location("STOCK")
 
     def test_create(self):
-        order = self.Order.create(location=self.stock)
-        root = order.root
+        inv = self.Inventory.create(location=self.stock)
+        root = inv.root
         self.assertIsInstance(root, self.Inventory.Node)
         self.assertEqual(root.location, self.stock)

@@ -23,7 +23,7 @@ Wms = Declarations.Model.Wms
 class Node:
     """Representation of the inventory of a subtree of containment hierarchy.
 
-    For each Inventory Order, there's a tree of Inventory Nodes, each Node
+    For each Inventory, there's a tree of Inventory Nodes, each Node
     having one-to-many relationships to:
 
     - :class:`Inventory Lines <Line>` that together with its descendants',
@@ -35,7 +35,7 @@ class Node:
     Each Node has a :attr:`location` under which the `locations <location>` of
     its children should be directly placed, but that doesn't mean each
     container visited by the inventory process has to be represented by a
-    Node: instead, for each Order, the
+    Node: instead, for each Inventory, the
     :attr:`locations <location>` of its leaf Nodes would ideally balance
     the amount of assessment work that can be done by one person in a
     continuous manner while keeping the size of the tree reasonible.
@@ -83,10 +83,10 @@ class Node:
         all relevant Operations have been issued.
     """
 
-    order = Many2One(model=Wms.Inventory.Order,
-                     index=True,
-                     nullable=False)
-    """The Inventory Order for which this Node has been created"""
+    inventory = Many2One(model=Wms.Inventory,
+                         index=True,
+                         nullable=False)
+    """The Inventory for which this Node has been created"""
 
     parent = Many2One(model='Model.Wms.Inventory.Node',
                       index=True)
@@ -110,7 +110,7 @@ class Node:
                         .join(ContainerType,
                               ContainerType.c.id == PhysObj.type_id)
                         .filter(Avatar.state == 'present'))
-        return [self.insert(order=self.order,
+        return [self.insert(inventory=self.inventory,
                             parent=self,
                             location=container)
                 for container in subloc_query.all()]

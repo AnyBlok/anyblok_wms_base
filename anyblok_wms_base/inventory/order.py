@@ -10,11 +10,11 @@ from anyblok import Declarations
 from anyblok.column import Integer
 
 register = Declarations.register
-Wms = Declarations.Model.Wms
+Model = Declarations.Model
 
 
-@register(Wms.Inventory)
-class Order:
+@register(Model.Wms)
+class Inventory:
     """This model represents the decision of making an Inventory.
 
     It expresses a global specification for the inventory process to be made
@@ -22,6 +22,10 @@ class Order:
 
     Applicative code is welcomed and actually supposed to override this to
     add more columns as needed (dates, creator, reason, comments...)
+
+    Instances of :class:`Wms.Inventory <Inventory>` are linked to a tree
+    of processing :class:`Nodes <anyblok_wms_base.inventory.node.Node>`,
+    which is reachable with the convenience :attr:`root` attribute.
 
     # TODO structural Properties to use throughout the whole hierarchy
     # for  Physical Object identification
@@ -34,16 +38,17 @@ class Order:
     @property
     def root(self):
         """Root Node of the Inventory."""
-        return self.registry.Wms.Inventory.Node.query().filter_by(
-            order=self, parent=None).one()
+        return (self.registry.Wms.Inventory.Node.query()
+                .filter_by(inventory=self, parent=None)
+                .one())
 
     @classmethod
     def create(cls, location, **fields):
-        """Insert a new Order with its root Node.
+        """Insert a new Inventory together with its root Node.
 
-        :return: the new Order
+        :return: the new Inventory
         """
         Node = cls.registry.Wms.Inventory.Node
-        order = cls.insert(**fields)
-        Node.insert(order=order, location=location)
-        return order
+        inventory = cls.insert(**fields)
+        Node.insert(inventory=inventory, location=location)
+        return inventory

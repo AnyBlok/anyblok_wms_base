@@ -14,14 +14,13 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
     def setUp(self):
         super().setUp()
         self.Inventory = self.registry.Wms.Inventory
-        self.Order = self.Inventory.Order
         self.Node = self.Inventory.Node
         self.avatar.update(location=self.stock, state='present')
 
     def test_split(self):
         stock = self.stock
-        order = self.Order.create(location=stock)
-        node = order.root
+        inventory = self.Inventory.create(location=stock)
+        node = inventory.root
         self.assertTrue(node.is_leaf)
         loc_a = self.insert_location("A", parent=stock)
         # to make things more interesting, let's use a sub container Type
@@ -43,7 +42,7 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
                          set(self.Node.query().filter_by(parent=node).all()))
         self.assertEqual(set(c.location for c in children),
                          {loc_a, loc_b})
-        self.assertTrue(all(c.order == order for c in children))
+        self.assertTrue(all(c.inventory == inventory for c in children))
 
 
 del WmsTestCaseWithPhysObj
