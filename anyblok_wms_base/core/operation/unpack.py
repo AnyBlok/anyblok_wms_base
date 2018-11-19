@@ -114,8 +114,10 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
         dt_execution = self.dt_execution
         spec = self.get_outcome_specs()
         type_codes = set(outcome['type'] for outcome in spec)
-        outcome_types = {gt.code: gt for gt in PhysObjType.query().filter(
-            PhysObjType.code.in_(type_codes)).all()}
+        outcome_types = {gt.code: gt
+                         for gt in (PhysObjType.query()
+                                    .filter(PhysObjType.code.in_(type_codes))
+                                    .all())}
 
         outcome_state = 'present' if self.state == 'done' else 'future'
         if self.state == 'done':

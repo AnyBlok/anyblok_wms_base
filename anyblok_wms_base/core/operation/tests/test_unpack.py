@@ -41,8 +41,9 @@ class TestUnpack(WmsTestCase):
 
         This is primarily meant for PhysObj produced by the Unpack
         """
-        records = self.PhysObj.query().filter(
-            self.PhysObj.type == physobj_type).all()
+        records = (self.PhysObj.query()
+                   .filter(self.PhysObj.type == physobj_type)
+                   .all())
         self.assertEqual(len(records), count)
         return records
 
@@ -376,9 +377,10 @@ class TestUnpack(WmsTestCase):
                              at_datetime=self.dt_test2,
                              additional_states=['future']),
         self.assertEqual(
-            self.Avatar.query().join(self.Avatar.obj).filter(
-                self.PhysObj.type == self.packed_physobj_type,
-                self.Avatar.state == 'future').count(),
+            self.Avatar.query().join(self.Avatar.obj)
+            .filter(self.PhysObj.type == self.packed_physobj_type,
+                    self.Avatar.state == 'future')
+            .count(),
             0)
 
     def test_no_outcomes(self):

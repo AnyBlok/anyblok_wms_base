@@ -170,9 +170,9 @@ class PhysObj:
         """
         cls = self.__class__
         existing = self.properties
-        if cls.query(cls.id).filter(
-                cls.properties == existing,
-                cls.id != self.id).limit(1).count():
+        if (cls.query(cls.id)
+                .filter(cls.properties == existing, cls.id != self.id)
+                .limit(1).count()):
             self.properties = existing.duplicate()
 
     def set_property(self, k, v):
@@ -313,17 +313,17 @@ class PhysObj:
         query = cls.registry.session.query
         cte = cls.query(cls.id)
         if top is None:
-            cte = cte.outerjoin(Avatar, Avatar.obj_id == cls.id).filter(
-                Avatar.location_id.is_(None))
+            cte = (cte.outerjoin(Avatar, Avatar.obj_id == cls.id)
+                   .filter(Avatar.location_id.is_(None)))
         else:
             cte = cte.filter_by(id=top.id)
 
         cte = cte.cte(name="container", recursive=True)
         parent = orm.aliased(cte, name='parent')
         child = orm.aliased(cls, name='child')
-        tail = query(child.id).join(
-                         Avatar, Avatar.obj_id == child.id).filter(
-                             Avatar.location_id == parent.c.id)
+        tail = (query(child.id)
+                .join(Avatar, Avatar.obj_id == child.id)
+                .filter(Avatar.location_id == parent.c.id))
 
         # taking additional states and datetime query into account
         # TODO, this location part is very redundant with what's done in
@@ -332,8 +332,8 @@ class PhysObj:
         if additional_states is None:
             tail = tail.filter(Avatar.state == 'present')
         else:
-            tail = tail.filter(Avatar.state.in_(
-                ('present', ) + tuple(additional_states)))
+            tail = tail.filter(
+                Avatar.state.in_(('present', ) + tuple(additional_states)))
 
         if at_datetime is DATE_TIME_INFINITY:
             tail = tail.filter(Avatar.dt_until.is_(None))
@@ -357,8 +357,7 @@ class PhysObj:
         :return: the Avatar, or ``None``, in case ``self`` is not yet or
                  no more physically present.
         """
-        return self.Avatar.query().filter_by(
-            obj=self, state='present').first()
+        return self.Avatar.query().filter_by(obj=self, state='present').first()
 
     def eventual_avatar(self):
         """The Avatar giving the latest foreseeable position of ``self``.
@@ -376,9 +375,10 @@ class PhysObj:
         ``planned`` state should explain the bounded time range).
         """
         Avatar = self.Avatar
-        return Avatar.query().filter_by(
-            obj=self, dt_until=None).filter(
-                Avatar.state.in_(('present', 'future'))).first()
+        return (Avatar.query()
+                .filter(Avatar.state.in_(('present', 'future')))
+                .filter_by(obj=self, dt_until=None)
+                .first())
 
 
 _empty_dict = {}

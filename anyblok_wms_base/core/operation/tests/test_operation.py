@@ -186,8 +186,10 @@ class TestOperation(WmsTestCase):
         self.registry.flush()
         arrival.cancel()
         Avatar = self.PhysObj.Avatar
-        self.assertEqual(Avatar.query().filter(
-            Avatar.state == 'future').count(), 0)
+        self.assertEqual(Avatar.query()
+                         .filter(Avatar.state == 'future')
+                         .count(),
+                         0)
         self.assertEqual(self.Operation.query().count(), 0)
 
     def test_plan_revert_recurse_linear(self):

@@ -44,9 +44,11 @@ class TestMove(WmsTestCaseWithPhysObj):
         moved = self.assert_singleton(move.outcomes)
         self.assertEqual(moved.state, 'present')
         self.assertEqual(moved.location, self.stock)
-        self.assertEqual(self.Avatar.query().filter(
-            self.Avatar.location == self.incoming_loc,
-            self.Avatar.state != 'past').count(), 0)
+        self.assertEqual(self.Avatar.query()
+                         .filter(self.Avatar.location == self.incoming_loc,
+                                 self.Avatar.state != 'past')
+                         .count(),
+                         0)
 
     def test_whole_done(self):
         self.avatar.update(state='present')

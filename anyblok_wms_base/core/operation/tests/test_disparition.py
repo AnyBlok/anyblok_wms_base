@@ -28,8 +28,9 @@ class TestDisparition(WmsTestCaseWithPhysObj):
         self.assertEqual(len(disp.outcomes), 0)
         self.assertEqual(avatar.state, 'past')
         self.assertEqual(avatar.dt_until, self.dt_test2)
-        self.assertIsNone(self.Avatar.query().filter(
-            self.Avatar.state != 'past').first())
+        self.assertIsNone(self.Avatar.query()
+                          .filter(self.Avatar.state != 'past')
+                          .first())
 
         repr(disp)
         str(disp)

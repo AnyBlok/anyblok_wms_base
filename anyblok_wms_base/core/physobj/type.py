@@ -207,9 +207,10 @@ class Type:
         # this is simply those that have the behaviour plus their descendents
         # i.e., only the non-recursive part differs
         return cls.query_add_subtypes(
-            cls.query(cls.id).filter(
+            cls.query(cls.id)
+            .filter(
                 cls.behaviours.has_key(  # noqa: pep8 thinks it's dict API
-                    behaviour)),
+                behaviour)),
             as_cte=as_cte)
 
     def is_container(self):

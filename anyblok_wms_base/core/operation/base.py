@@ -176,9 +176,9 @@ class Operation:
         Wms = self.registry.Wms
         HI = Wms.Operation.HistoryInput
         Avatar = Wms.PhysObj.Avatar
-        return set(av.outcome_of
-                   for av in Avatar.query().join(HI).filter_by(
-                           operation=self).all())
+        return set(av.outcome_of for av in (Avatar.query().join(HI)
+                                            .filter_by(operation=self)
+                                            .all()))
 
     @property
     def followers(self):
@@ -198,8 +198,9 @@ class Operation:
         HI = Wms.Operation.HistoryInput
         Avatar = Wms.PhysObj.Avatar
         return set(hi.operation
-                   for hi in HI.query().join(Avatar).filter(
-                           Avatar.outcome_of == self).all())
+                   for hi in (HI.query().join(Avatar)
+                              .filter(Avatar.outcome_of == self)
+                              .all()))
 
     dt_execution = DateTime(label="date and time of execution",
                             nullable=False)
@@ -297,11 +298,11 @@ class Operation:
         Wms = self.registry.Wms
         HI = Wms.Operation.HistoryInput
         Avatar = Wms.PhysObj.Avatar
-        query = Avatar.query().outerjoin(
-            HI, HI.avatar_id == Avatar.id).filter(
-                Avatar.outcome_of == self,
-                HI.avatar_id.is_(None))
-        return query.all()
+        return (Avatar.query()
+                .outerjoin(HI, HI.avatar_id == Avatar.id)
+                .filter(Avatar.outcome_of == self,
+                        HI.avatar_id.is_(None))
+                .all())
 
     @classmethod
     def create(cls, state='planned', inputs=None,

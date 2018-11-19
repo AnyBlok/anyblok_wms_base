@@ -379,13 +379,13 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         query = query.join(HI, HI.operation_id == Operation.id)
         query = query.group_by(Operation.type)
         downstream_op_types = {
-            op_type: c
-            for op_type, c in Operation.query(
-                    Operation.type, func.count(Operation.id)).join(
-                        HI, Operation.id == HI.operation_id).filter(
-                            HI.avatar_id.in_(
-                                out.id for out in all_unpacks_outcomes)
-                        ).group_by(Operation.type).all()
+            op_type: c for op_type, c in (
+                Operation.query(Operation.type, func.count(Operation.id))
+                .join(HI, Operation.id == HI.operation_id)
+                .filter(HI.avatar_id.in_(
+                    out.id for out in all_unpacks_outcomes))
+                .group_by(Operation.type)
+                .all())
         }
         self.assertEqual(downstream_op_types,
                          dict(wms_move=2, wms_departure=3))

@@ -235,8 +235,8 @@ class Wms:
         loc_goods = orm.aliased(PhysObj, name='location_goods')
 
         def add_filter(query):
-            return query.join(loc_goods, Avatar.location).filter(
-                loc_goods.type_id.in_(set(t.id for t in types)))
+            return (query.join(loc_goods, Avatar.location)
+                    .filter(loc_goods.type_id.in_(set(t.id for t in types))))
 
         return add_filter
 

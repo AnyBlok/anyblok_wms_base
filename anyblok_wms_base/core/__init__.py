@@ -112,10 +112,11 @@ class WmsCore(Blok):
         I don't believe anyone tried that yet.
         """
         Properties = self.registry.Wms.PhysObj.Properties
-        for props in Properties.query().filter(
-                Properties.flexible
-                .has_key(CONTENTS_PROPERTY)  # noqa pep8 thinks it's dict API
-                ).all():
+        for props in (
+                Properties.query()
+                .filter(Properties.flexible
+                        .has_key(CONTENTS_PROPERTY))  # noqa pep8 & has_key
+                .all()):
 
             contents = props[CONTENTS_PROPERTY]
             changed = False

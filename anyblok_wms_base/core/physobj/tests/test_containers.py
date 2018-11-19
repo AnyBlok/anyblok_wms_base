@@ -81,8 +81,8 @@ class TestContainers(WmsTestCase):
         # the containers, there is nothing that actually restricts the
         # subquery to actually containers.
         self.insert_goods(1, 'present', self.dt_test1)
-        self.assertIsNotNone(joined.filter(
-            PhysObj.type == self.physobj_type).first())
+        self.assertIsNotNone(joined.filter(PhysObj.type == self.physobj_type)
+                             .first())
 
     def test_flatten_subquery_moved(self):
         """Test the flatten subquery with planned Move of containers."""
