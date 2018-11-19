@@ -30,9 +30,10 @@ class Operation:
         Avatar = cls.registry.Wms.PhysObj.Avatar
         # TODO report that we can't join() on m2o directly, have to
         # use (guess) their primary keys
-        for resa in Reservation.query().join(
-                Avatar, Avatar.obj_id == Reservation.physobj_id).filter(
-                    Avatar.id.in_(av.id for av in inputs)).all():
+        for resa in (Reservation.query()
+                     .join(Avatar, Avatar.obj_id == Reservation.physobj_id)
+                     .filter(Avatar.id.in_(av.id for av in inputs))
+                     .all()):
             if not resa.is_transaction_allowed(
                     cls, state, dt_execution,
                     inputs=inputs, **kwargs):

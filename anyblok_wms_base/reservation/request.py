@@ -305,11 +305,12 @@ class RequestItem:
         # tracing the test_reserve_avatars_once() under pdb)
         # SELECT DISTINCT ON would be better
         # TODO provide ordering by Avatar state and/or dt_from
-        query = PhysObj.query().join(Avatar.obj).outerjoin(
-            Reservation, Reservation.physobj_id == PhysObj.id).filter(
-                Reservation.physobj_id.is_(None),
-                PhysObj.type == self.goods_type,
-                Avatar.state.in_(('present', 'future')))
+        query = (PhysObj.query()
+                 .join(Avatar.obj)
+                 .outerjoin(Reservation, Reservation.physobj_id == PhysObj.id)
+                 .filter(Reservation.physobj_id.is_(None),
+                         PhysObj.type == self.goods_type,
+                         Avatar.state.in_(('present', 'future'))))
         if self.properties:
             props = self.properties.copy()
             query = query.join(PhysObj.properties)
@@ -327,8 +328,9 @@ class RequestItem:
                       TODO: shall we store it directly in DB ?
         """
         Reservation = self.registry.Wms.Reservation
-        already = Reservation.query(func.sum(Reservation.quantity)).filter(
-            Reservation.request_item_id == self.id).one()[0]
+        already = (Reservation.query(func.sum(Reservation.quantity))
+                   .filter(Reservation.request_item_id == self.id)
+                   .one())[0]
         if already is None:
             already = 0
         if already >= self.quantity:

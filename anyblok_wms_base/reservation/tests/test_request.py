@@ -226,13 +226,13 @@ class RequestClaimTestCase(ConcurrencyBlokTestCase):
             self.assertIsNone(req_id)
 
         # now with a provided base query
-        query = Request.query(Request.id).filter(
-            Request.purpose.contains(dict(why='not?')))
+        query = (Request.query(Request.id)
+                 .filter(Request.purpose.contains(dict(why='not?'))))
         with Request.claim_reservations(query=query) as req_id:
             self.assertEqual(req_id, request.id)
 
-        query = Request.query(Request.id).filter(
-            Request.purpose.contains(dict(why='because')))
+        query = (Request.query(Request.id)
+                 .filter(Request.purpose.contains(dict(why='because'))))
         with Request.claim_reservations(query=query) as req_id:
             self.assertIsNone(req_id)
 
@@ -305,8 +305,9 @@ class RequestLockUnreservedTestCase(ConcurrencyBlokTestCase):
 
         # the only selected Request is considered reserved: since it has
         # actually no item, all of them have been fulfilled
-        req = self.Request2.query().filter(
-            self.Request2.purpose.contains(dict(bar=3))).one()
+        req = (self.Request2.query()
+               .filter(self.Request2.purpose.contains(dict(bar=3)))
+               .one())
         self.assertTrue(req.reserved)
 
     def test_reserve_all(self):
