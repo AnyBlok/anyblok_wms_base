@@ -17,6 +17,7 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
         self.Node = self.Inventory.Node
         self.Line = self.Inventory.Line
         self.Action = self.Inventory.Action
+        self.Arrival = self.Operation.Arrival
         self.avatar.update(location=self.stock, state='present')
 
     def test_forbid_partial_splitting(self):
@@ -311,6 +312,88 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
         node.state = 'reconciled'
         with self.assertRaises(ValueError):
             node.compute_actions()
+
+    def fixture_compute_push_actions(self):
+        inventory = self.Inventory.create(
+            location=self.stock,
+            excluded_types=[self.location_type.code])
+        root = inventory.root
+
+        pot = self.physobj_type
+        loc_a = self.insert_location("A", parent=self.stock)
+
+        loc_aa = self.insert_location("AA", parent=loc_a)
+        loc_ab = self.insert_location("AB", parent=loc_a)
+
+        root.split()
+        node = self.Node.query().filter_by(location=loc_a).one()
+
+        self.Arrival.create(state='done', location=loc_aa, physobj_type=pot)
+        self.Line.insert(node=node, location=loc_ab, type=pot, quantity=2)
+        return inventory, root, node
+
+    def test_compute_push_actions(self):
+        pot = self.physobj_type
+        inventory, root, node = self.fixture_compute_push_actions()
+
+        node.state = 'full'
+        node.compute_push_actions()
+
+        self.assertEqual(node.state, 'pushed')
+
+        Action = self.Action
+
+        telep = self.single_result(Action.query().filter_by(node=node))
+        self.assertEqual(telep.type, 'telep')
+        self.assertEqual(telep.physobj_type, pot)
+        self.assertEqual(telep.location.code, 'AA')
+        self.assertEqual(telep.destination.code, 'AB')
+        self.assertEqual(telep.quantity, 1)
+
+        app = self.single_result(Action.query().filter_by(node=root))
+        self.assertEqual(app.type, 'app')
+        self.assertEqual(app.physobj_type, pot)
+        self.assertEqual(app.location.code, 'AB')
+        self.assertEqual(app.quantity, 1)
+
+    def test_recurse_compute_push_actions(self):
+        pot = self.physobj_type
+        inventory, root, node = self.fixture_compute_push_actions()
+
+        # There's an object in self.stock, yet no Line for root Node,
+        # so that's a disparition in self.stock
+
+        root.state = 'full'
+        node.state = 'full'
+        root.recurse_compute_push_actions()
+
+        self.assertEqual(node.state, 'pushed')
+        self.assertEqual(root.state, 'pushed')
+
+        Action = self.Action
+
+        telep = self.single_result(Action.query().filter_by(node=node))
+        self.assertEqual(telep.type, 'telep')
+        self.assertEqual(telep.physobj_type, pot)
+        self.assertEqual(telep.location.code, 'AA')
+        self.assertEqual(telep.destination.code, 'AB')
+        self.assertEqual(telep.quantity, 1)
+
+        # the apparition at loc_ab has been resolved with the disparition
+        # at self.stock into a teleportation
+
+        app = self.single_result(Action.query().filter_by(node=root))
+        self.assertEqual(app.type, 'telep')
+        self.assertEqual(app.physobj_type, pot)
+        self.assertEqual(app.location, self.stock)
+        self.assertEqual(app.destination.code, 'AB')
+        self.assertEqual(app.quantity, 1)
+
+    def test_recurse_compute_push_actions_non_ready_child(self):
+        inventory, root, node = self.fixture_compute_push_actions()
+        root.state = 'full'
+        with self.assertRaises(ValueError):
+            root.recurse_compute_push_actions()
 
 
 del WmsTestCaseWithPhysObj

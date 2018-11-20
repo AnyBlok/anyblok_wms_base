@@ -56,6 +56,7 @@ class Node:
         ('draft', 'wms_inventory_state_draft'),
         ('full', 'wms_inventory_state_full'),
         ('computed', 'wms_inventory_state_computed'),
+        ('pushed', 'wms_inventory_state_pushed'),
         ('reconciled', 'wms_inventory_state_reconciled'),
     )
 
@@ -82,7 +83,9 @@ class Node:
     - computed:
         all :class:`Actions <Action>` to reconcile the database with the
         assessment have been issued. It is still possible to simplify them
-        (that would typically be the :attr:`parent`'s responsibility)
+    - pushed:
+        attached :class:`Actions` have been simplified, and the remaining
+        ones have been pushed to the parent for further simplification
     - reconciled:
         all relevant Operations have been issued.
     """
@@ -165,7 +168,7 @@ class Node:
             raise ValueError("Can't compute actions on Node id=%d (state=%r) "
                              "that hasn't reached the 'full' state'" % (
                                  self.id, state))
-        if state in ('computed', 'reconciled'):
+        if state in ('computed', 'pushed', 'reconciled'):
             if recompute:
                 self.clear_actions()
             else:
@@ -254,6 +257,57 @@ class Node:
         (self.registry.Wms.Inventory.Action.query()
          .filter_by(node=self)
          .delete(synchronize_session='fetch'))
+
+    def compute_push_actions(self):
+        """Compute actions, push unsimplifable ones to the parent
+
+        The actions needed for reconcilation are first issued, then
+        simplified by matching apparitions with disparitions
+        to issue teleportations.
+        The remaining apparitions and disparitions are pushed to the parent
+        node for further simplification until we reach the top.
+
+        Pushing up to the parent may seem heavy, but it allows to split
+        the whole reconciliation (with simplification) work into separate
+        steps.
+
+        For big inventories, the caller of this method would typically
+        commit for each Node.
+        For really big inventories, the work could be split up between
+        different processes.
+        """
+        Action = self.registry.Wms.Inventory.Action
+        self.compute_actions()
+        Action.simplify(self)
+        self.state = 'pushed'
+
+        if self.parent is None:
+            return
+        Action = self.registry.Wms.Inventory.Action
+        (Action.query()
+         .filter(Action.type.in_(('app', 'disp')),
+                 Action.node == self)
+         .update(dict(node_id=self.parent.id),
+                 synchronize_session='fetch'))
+
+    def recurse_compute_push_actions(self):
+        """Recursion along the whole tree in one shot.
+
+        This is not recommended for big inventories, as it will lead to
+        one huge transaction.
+        """
+        cls = self.__class__
+        non_ready_children = (cls.query()
+                              .filter(cls.parent == self,
+                                      cls.state.in_(('draft', 'assessment')))
+                              .all())
+        if non_ready_children:
+            # TODO precise exc
+            raise ValueError("This inventory node %r has some non ready "
+                             "children: %r" % (self, non_ready_children))
+        for child in self.query().filter_by(parent=self, state='full').all():
+            child.recurse_compute_push_actions()
+        self.compute_push_actions()
 
 
 @register(Wms.Inventory)
