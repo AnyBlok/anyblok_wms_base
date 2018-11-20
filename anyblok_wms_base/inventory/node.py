@@ -9,6 +9,7 @@
 from sqlalchemy import orm
 from sqlalchemy import or_
 from sqlalchemy import and_
+from sqlalchemy import not_
 from sqlalchemy import func
 
 from anyblok import Declarations
@@ -180,10 +181,20 @@ class Node:
         Line = Inventory.Line
         Action = Inventory.Action
 
+        excluded_types = self.inventory.excluded_types
+        if not excluded_types:
+            phobj_filter = None
+        else:
+            def phobj_filter(query):
+                excluded_types_q = (POType.query(POType.id)
+                                    .filter(POType.code.in_(excluded_types)))
+                return query.filter(not_(PhysObj.type_id.in_(excluded_types_q)))
+
         cols = (Avatar.location_id, PhysObj.code, PhysObj.type_id)
         quantity_query = self.registry.Wms.quantity_query
         existing_phobjs = (quantity_query(location=self.location,
-                                          location_recurse=self.is_leaf)
+                                          location_recurse=self.is_leaf,
+                                          additional_filter=phobj_filter)
                            .add_columns(*cols).group_by(*cols)
                            .subquery())
 

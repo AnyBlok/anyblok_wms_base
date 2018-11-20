@@ -8,6 +8,7 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok import Declarations
 from anyblok.column import Integer
+from anyblok_postgres.column import Jsonb
 
 register = Declarations.register
 Model = Declarations.Model
@@ -29,11 +30,21 @@ class Inventory:
 
     # TODO structural Properties to use throughout the whole hierarchy
     # for  Physical Object identification
-    # TODO PhysObj.Type to exclude (typically containers)
     """
 
     id = Integer(label="Identifier", primary_key=True)
     """Primary key."""
+
+    excluded_types = Jsonb()
+    """List of Physobj.Type codes to be excluded.
+
+    This is not the smartest way of excluding stuff, but it's good enough
+    for time being.
+    The primary use-case is to exclude some/most of the container types
+    from inventories, which could also be done by excluding all container types
+    with a recursive query involving behaviours, but that's a performance hit
+    for something that can be done by simply excluding a few types.
+    """
 
     @property
     def root(self):

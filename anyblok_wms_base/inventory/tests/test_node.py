@@ -196,6 +196,70 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
         self.assertIsNone(action.physobj_code)
         self.assertIsNone(action.physobj_properties)
 
+    def test_compute_actions_leaf_sublocs(self):
+        stock = self.stock
+        pot = self.physobj_type
+        loc_a = self.insert_location("A", parent=stock)
+        loc_b = self.insert_location("B", parent=stock)
+        # this also tests the Type exclusion (for the location type)
+        inventory = self.Inventory.create(
+            location=stock,
+            excluded_types=[self.location_type.code])
+        node = inventory.root
+        node.state = 'full'
+
+        self.Line.insert(node=node, location=stock, type=pot, quantity=2)
+
+        Arrival = self.Operation.Arrival
+        Arrival.create(state='done', location=loc_a, physobj_type=pot)
+        Arrival.create(state='done', location=loc_b, physobj_type=pot,
+                       physobj_code='in_b')
+        self.Line.insert(node=node, location=loc_b, type=pot, quantity=2)
+
+        node.compute_actions()
+        Action = self.Action
+        actions = {
+            (a.type, a.location, a.physobj_type, a.physobj_code, a.quantity)
+            for a in Action.query().filter_by(node=node).all()}
+        self.assertEqual(actions, {('app', stock, pot, None, 1),
+                                   ('disp', loc_a, pot, None, 1),
+                                   ('app', loc_b, pot, None, 2),
+                                   ('disp', loc_b, pot, 'in_b', 1),
+                                   })
+
+    def test_compute_actions_split_sublocs(self):
+        stock = self.stock
+        pot = self.physobj_type
+        loc_a = self.insert_location("A", parent=stock)
+        loc_b = self.insert_location("B", parent=stock)
+        # this also tests the Type exclusion (for the location type)
+        inventory = self.Inventory.create(
+            location=stock,
+            excluded_types=[self.location_type.code])
+        node = inventory.root
+        node.split()
+        node.state = 'full'
+
+        self.Line.insert(node=node, location=stock, type=pot, quantity=2)
+
+        # The split Node doesn't care about Physical Objects that are
+        # in the sublocations since they are the responsibility of the subnodes
+        # these will be ignored
+        # (compare with test_compute_actions_leaf_sublocs):
+        Arrival = self.Operation.Arrival
+        Arrival.create(state='done', location=loc_a, physobj_type=pot)
+        Arrival.create(state='done', location=loc_b, physobj_type=pot,
+                       physobj_code='in_b')
+
+        node.compute_actions()
+
+        action = self.single_result(self.Action.query().filter_by(node=node))
+
+        self.assertEqual(action.type, 'app')
+        self.assertEqual(action.location, stock)
+        self.assertEqual(action.physobj_type, pot)
+        self.assertEqual(action.quantity, 1)
+
     def test_compute_actions_wrong_states(self):
         inventory = self.Inventory.create(location=self.stock)
         node = inventory.root
