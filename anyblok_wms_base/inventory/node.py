@@ -225,8 +225,9 @@ class Node:
         self.state = 'computed'
 
     def clear_actions(self):
-        self.Action.query().filter_by(node=self).delete(
-            synchronize_session='fetch')
+        (self.registry.Wms.Inventory.Action.query()
+         .filter_by(node=self)
+         .delete(synchronize_session='fetch'))
 
 
 @register(Wms.Inventory)

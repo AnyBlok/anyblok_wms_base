@@ -93,13 +93,24 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
         inventory = self.Inventory.create(location=self.stock)
         node = inventory.root
         node.state = 'full'
+        node_actions_q = self.Action.query().filter_by(node=node)
+
         self.Line.insert(node=node,
                          location=self.stock,
                          type=self.physobj.type,
                          quantity=1)
         node.compute_actions()
-        self.assertEqual(self.Action.query().filter_by(node=node).count(),
-                         0)
+        self.assertEqual(node_actions_q.count(), 0)
+        self.assertEqual(node.state, 'computed')
+
+        self.Action.insert(type='app',
+                           node=node,
+                           location=self.stock,
+                           physobj_type=self.physobj.type,
+                           quantity=3)
+        node.compute_actions(recompute=True)
+        self.assertEqual(node_actions_q.count(), 0)
+        self.assertEqual(node.state, 'computed')
 
     def test_compute_actions_wrong_phobj_code(self):
         inventory = self.Inventory.create(location=self.stock)
