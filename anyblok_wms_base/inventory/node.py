@@ -202,48 +202,52 @@ class Node:
                            .add_columns(*cols).group_by(*cols)
                            .subquery())
 
+        node_lines = (Line.query(Line.quantity,
+                                 Line.location_id,
+                                 Line.type_id, Line.code, Line.properties)
+                      .filter_by(node=self).subquery())
         comp_query = (
-            Line.query()
+            self.registry.query(node_lines)
             .join(existing_phobjs,
                   # multiple criteria to join on the subquery would fail,
                   # complaining of lack of foreign key (SQLA bug maybe)?
                   # but it works with and_()
-                  and_(Line.type_id == existing_phobjs.c.type_id,
-                       Line.location_id == existing_phobjs.c.location_id,
-                       or_(Line.code == existing_phobjs.c.code,
+                  and_(node_lines.c.type_id == existing_phobjs.c.type_id,
+                       node_lines.c.location_id == (existing_phobjs.c
+                                                    .location_id),
+                       or_(node_lines.c.code == existing_phobjs.c.code,
                            and_(existing_phobjs.c.code.is_(None),
-                                Line.code.is_(None)))),
+                                node_lines.c.code.is_(None)))),
                   full=True)
             .filter(func.coalesce(existing_phobjs.c.qty, 0) !=
-                    func.coalesce(Line.quantity, 0))
-            .filter(or_(Line.node == self,
-                        Line.node_id.is_(None)))
+                    func.coalesce(node_lines.c.quantity, 0))
             .add_columns(func.coalesce(existing_phobjs.c.qty, 0)
                          .label('phobj_qty'),
-                         # these columns are useful only if Line is None:
+                         # these columns are useful only if lines is None:
                          existing_phobjs.c.location_id.label('phobj_loc'),
                          existing_phobjs.c.type_id.label('phobj_type'),
                          existing_phobjs.c.code.label('phobj_code'),
                          ))
 
         for row in comp_query.all():
-            line, phobj_count = row[:2]
-            if line is None:
+            line_qty = row[0]
+            phobj_count = row[5]
+            if line_qty is None:
                 Action.insert(node=self,
                               type='disp',
                               quantity=phobj_count,
-                              location=PhysObj.query().get(row[2]),
-                              physobj_type=POType.query().get(row[3]),
-                              physobj_code=row[4],
+                              location=PhysObj.query().get(row[6]),
+                              physobj_type=POType.query().get(row[7]),
+                              physobj_code=row[8],
                               )
                 continue
 
-            diff_qty = phobj_count - line.quantity
+            diff_qty = phobj_count - line_qty
             fields = dict(node=self,
-                          location=line.location,
-                          physobj_type=line.type,
-                          physobj_code=line.code,
-                          physobj_properties=line.properties)
+                          location_id=row[1],
+                          physobj_type_id=row[2],
+                          physobj_code=row[3],
+                          physobj_properties=row[4])
 
             # the query is tailored so that diff_qty is never 0
             if diff_qty > 0:
