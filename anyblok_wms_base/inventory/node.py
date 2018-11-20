@@ -95,6 +95,18 @@ class Node:
                       index=True)
     location = Many2One(model=Wms.PhysObj, nullable=False)
 
+    def __init__(self, parent=None, from_split=False, **fields):
+        """Forbid creating subnodes if not from :meth:`split`
+
+        Partially split Inventory Nodes are currently not consistent
+        in their computation of reconciliation Actions.
+        """
+        if parent is not None and not from_split:
+            raise NotImplementedError("Partially split Inventory Nodes are "
+                                      "currently not supported. Please use "
+                                      "Node.split() to create subnodes")
+        super().__init__(parent=parent, **fields)
+
     @property
     def is_leaf(self):
         """(:class:`bool`): ``True`` if and only if the Node has no children.
@@ -114,6 +126,7 @@ class Node:
                               ContainerType.c.id == PhysObj.type_id)
                         .filter(Avatar.state == 'present'))
         return [self.insert(inventory=self.inventory,
+                            from_split=True,
                             parent=self,
                             location=container)
                 for container in subloc_query.all()]
@@ -170,7 +183,7 @@ class Node:
         cols = (Avatar.location_id, PhysObj.code, PhysObj.type_id)
         quantity_query = self.registry.Wms.quantity_query
         existing_phobjs = (quantity_query(location=self.location,
-                                          location_recurse=True)
+                                          location_recurse=self.is_leaf)
                            .add_columns(*cols).group_by(*cols)
                            .subquery())
 

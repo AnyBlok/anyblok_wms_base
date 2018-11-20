@@ -19,6 +19,22 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
         self.Action = self.Inventory.Action
         self.avatar.update(location=self.stock, state='present')
 
+    def test_forbid_partial_splitting(self):
+        stock = self.stock
+        inventory = self.Inventory.create(location=stock)
+        node = inventory.root
+
+        # we could use stock again, but it's better to use an appropriate
+        # location to stress that the problem is the wild creation of a subnode
+        sub = self.insert_location('SUB', parent=stock)
+        self.insert_location('SUB2', parent=stock)
+
+        with self.assertRaises(NotImplementedError):
+            self.Node.insert(parent=node, location=sub)
+
+        with self.assertRaises(NotImplementedError):
+            self.Node(parent=node, location=sub)
+
     def test_split(self):
         stock = self.stock
         inventory = self.Inventory.create(location=stock)
