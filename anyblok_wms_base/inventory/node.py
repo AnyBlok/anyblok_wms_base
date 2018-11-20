@@ -125,7 +125,8 @@ class Node:
                         .join(Avatar.obj)
                         .join(ContainerType,
                               ContainerType.c.id == PhysObj.type_id)
-                        .filter(Avatar.state == 'present'))
+                        .filter(Avatar.state == 'present',
+                                Avatar.location == self.location))
         return [self.insert(inventory=self.inventory,
                             from_split=True,
                             parent=self,

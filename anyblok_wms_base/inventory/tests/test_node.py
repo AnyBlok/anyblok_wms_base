@@ -47,6 +47,9 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
                                      parent=stock,
                                      location_type=self.PhysObj.Type.insert(
                                          code='SUBLOC', parent=stock.type))
+        # to check that only direct sublocations are taken into account
+        self.insert_location("AA", parent=loc_a)
+
         # check assumption: self.physobj is currently in stock as well
         self.assertEqual(self.avatar.location, stock)
         self.assertEqual(self.avatar.state, 'present')
