@@ -218,14 +218,27 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
 
         node.compute_actions()
         Action = self.Action
-        actions = {
-            (a.type, a.location, a.physobj_type, a.physobj_code, a.quantity)
-            for a in Action.query().filter_by(node=node).all()}
-        self.assertEqual(actions, {('app', stock, pot, None, 1),
-                                   ('disp', loc_a, pot, None, 1),
-                                   ('app', loc_b, pot, None, 2),
-                                   ('disp', loc_b, pot, 'in_b', 1),
-                                   })
+
+        def node_actions():
+            return {
+                (a.type, a.location, a.destination,
+                 a.physobj_type, a.physobj_code, a.quantity)
+                for a in Action.query().filter_by(node=node).all()}
+
+        self.assertEqual(node_actions(),
+                         {('app', stock, None, pot, None, 1),
+                          ('disp', loc_a, None, pot, None, 1),
+                          ('app', loc_b, None, pot, None, 2),
+                          ('disp', loc_b, None, pot, 'in_b', 1),
+                          })
+        Action.simplify(node)
+        # TODO this is non deterministic: one can also take one of the
+        # two appearing at loc_b to match the disparition at loc_a
+        self.assertEqual(node_actions(),
+                         {('telep', loc_a, stock, pot, None, 1),
+                          ('app', loc_b, None, pot, None, 2),
+                          ('disp', loc_b, None, pot, 'in_b', 1),
+                          })
 
     def test_compute_actions_split_sublocs(self):
         stock = self.stock

@@ -245,7 +245,6 @@ class Node:
             else:
                 Action.insert(type='app', quantity=-diff_qty, **fields)
 
-        # TODO Teleportations
         self.state = 'computed'
 
     def clear_actions(self):
@@ -299,3 +298,37 @@ class Action:
     physobj_code = Text()
     physobj_properties = Jsonb()
     quantity = Integer(nullable=False)
+
+    @classmethod
+    def simplify(cls, node):
+        App = orm.aliased(cls, name='app')
+        Disp = orm.aliased(cls, name='disp')
+        # TODO, compare properties
+        matching = (cls.registry.query(App, Disp)
+                    .filter(App.node == node,
+                            App.type == 'app',
+                            Disp.node == node,
+                            Disp.type == 'disp',
+                            Disp.physobj_type_id == App.physobj_type_id,
+                            or_(Disp.physobj_code == App.physobj_code,
+                                and_(Disp.physobj_code.is_(None),
+                                     App.physobj_code.is_(None))))
+                    .all())
+
+        for app, disp in matching:
+            if app.type == 'telep' or disp.type == 'telep':
+                # one is already rewritten
+                continue
+            diff_qty = app.quantity - disp.quantity
+            dest = app.location
+            if diff_qty >= 0:
+                disp.update(type='telep', destination=dest)
+                if diff_qty:
+                    app.quantity = diff_qty
+                else:
+                    app.delete()
+            else:
+                app.update(type='telep',
+                           location=disp.location,
+                           destination=dest)
+                disp.quantity = -diff_qty
