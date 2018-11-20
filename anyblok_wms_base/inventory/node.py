@@ -213,6 +213,8 @@ class Node:
                   full=True)
             .filter(func.coalesce(existing_phobjs.c.qty, 0) !=
                     func.coalesce(Line.quantity, 0))
+            .filter(or_(Line.node == self,
+                        Line.node_id.is_(None)))
             .add_columns(func.coalesce(existing_phobjs.c.qty, 0)
                          .label('phobj_qty'),
                          # these columns are useful only if Line is None:

@@ -85,6 +85,32 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
         self.assertIsNone(action.physobj_code)
         self.assertIsNone(action.physobj_properties)
 
+    def test_compute_actions_apparition_below(self):
+        sub = self.insert_location("SUB", parent=self.stock)
+        inventory = self.Inventory.create(
+            location=self.stock,
+            excluded_types=[self.location_type.code])
+
+        root = inventory.root
+        root.split()
+        node = self.Node.query().filter_by(location=sub).one()
+        self.Line.insert(node=node,
+                         location=sub,
+                         type=self.physobj.type,
+                         quantity=2)
+
+        root.state = 'full'
+        root.compute_actions()
+
+        # the line of node doesn't affect root node results, only
+        # our usual phobj leads a disparition (since root has no Lines)
+        action = self.single_result(self.Action.query().filter_by(node=root))
+        self.assertEqual(action.type, 'disp')
+
+        self.assertEqual(action.location, self.stock)
+        self.assertEqual(action.physobj_type, self.physobj.type)
+        self.assertEqual(action.quantity, 1)
+
     def test_compute_actions_too_many_phobjs(self):
         inventory = self.Inventory.create(location=self.stock)
         node = inventory.root
