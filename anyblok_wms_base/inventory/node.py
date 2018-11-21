@@ -36,7 +36,8 @@ class Node:
     - :class:`Inventory Actions <Action>` that encode the primary Operations
       that have to be executed to reconcile the database with the assessment.
 
-    Each Node has a :attr:`location` under which the `locations <location>` of
+    Each Node has a :attr:`location` under which the
+    :attr:`locations <location>` of
     its children should be directly placed, but that doesn't mean each
     container visited by the inventory process has to be represented by a
     Node: instead, for each Inventory, the
@@ -46,8 +47,8 @@ class Node:
 
     Applications may want to override this Model to add user fields,
     representing who's in charge of a given node. The user would then either
-    optionally take care of splitting (issuing children) the Node and perform
-    assesments that are not covered by children Nodes.
+    optionally take care of :meth:`splitting <split>` (issuing children)
+    the Node and perform assesments that are not covered by children Nodes.
 
     This whole structure is designed so that assessment work can be
     distributed and reconciliation can be performed in parallel.
@@ -144,12 +145,30 @@ class Node:
                 for container in subloc_query.all()]
 
     def compute_actions(self, recompute=False):
-        """Create :class:`Action` to reconcile database with assessment.
+        """Create actions to reconcile database with assessment.
 
         :param bool recompute: if ``True``, can be applied even if
-                               :attr:`state` is already 'computed' or later.
+                               :attr:`state` is already ``computed``
+                               but no later
 
-        Implementation and performance details:
+        This Node's :class:`Lines <Line>` are compared with the Avatars in the
+        ``present`` state that are under :attr:`location`.
+        Unmatched quantities in Lines give rise to
+        :class:`Actions <.action.Action>` with ``type='app'``,
+        whereas unmatched quantities in Avatars give rise
+        to :class:`Actions <.action.Action>` with ``type='disp'``.
+
+        Nodes are assumed to be either leafs or fully split:
+        if the Node is not a leaf, then only Avatars directly pointing
+        to its :attr:`location` will be considered. By contrast, the whole
+        subhierarchy of container objects under :attr:`location` will be
+        considered for leaf Nodes.
+
+        Finally, this method doesn't issue :class:`Actions <.action.Action>`
+        with ``type='telep'``: this is done in subsequent simplification steps,
+        see for instance :meth:`compute_push_actions`.
+
+        *Implementation and performance details*:
 
         Internally, this uses an SQL query that's quite heavy:
 
@@ -280,9 +299,10 @@ class Node:
          .delete(synchronize_session='fetch'))
 
     def compute_push_actions(self):
-        """Compute actions, push unsimplifable ones to the parent
+        """Compute and simplify actions, push unsimplifable ones to the parent
 
-        The actions needed for reconcilation are first issued, then
+        The actions needed for reconcilation are first
+        :meth:`computed <compute_actions>`, then
         simplified by matching apparitions with disparitions
         to issue teleportations.
         The remaining apparitions and disparitions are pushed to the parent
@@ -333,7 +353,18 @@ class Node:
 
 @register(Wms.Inventory)
 class Line:
-    """Represent an assessment for a :class:`Node <Node>` instance."""
+    """Represent an assessment for a :class:`Node <Node>` instance.
+
+    This is an inert model, meant to be filled through some user interface.
+
+    If the corresponding :class:`Node` is a leaf, then :attr:`location` could
+    be any container under the Node's :attr:`location <Node.location>`.
+
+    But if the :class:`Node` is split, then the :attr:`location` must be
+    identical to the Node's :attr:`location <Node.location>`, otherwise
+    the simplification of reconciliation :class:`Actions <.action.Action>` can't
+    work properly.
+    """
     id = Integer(label="Identifier", primary_key=True)
     """Primary key."""
     node = Many2One(model=Wms.Inventory.Node,

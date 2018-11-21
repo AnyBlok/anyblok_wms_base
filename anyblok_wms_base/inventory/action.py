@@ -98,9 +98,11 @@ class Action:
                 disp.quantity = -diff_qty
 
     def apply(self):
-        """Issue Inventory Operations for the current Action.
+        """Perform Inventory Operations for the current Action.
 
         :return: tuple of the newly created Operations
+
+        The new Operations will all point to the related Inventory.
         """
         Operation = self.registry.Wms.Operation
         op_fields = dict(state='done', inventory=self.node.inventory)

@@ -28,8 +28,16 @@ class Inventory:
     of processing :class:`Nodes <anyblok_wms_base.inventory.node.Node>`,
     which is reachable with the convenience :attr:`root` attribute.
 
-    # TODO structural Properties to use throughout the whole hierarchy
-    # for  Physical Object identification
+    TODO structural Properties to use throughout the whole hierarchy
+    for  Physical Object identification
+
+    This tree is designed for distribution of the assessment and reconciliation
+    work, but it's possible to compute all reconciliations and apply them on
+    an Inventory for testing purposes as follows (assuming that all related
+    :class:`Nodes <.node.Node>` are in the ``full`` state)::
+
+        inventory.root.recurse_compute_push_actions()
+        inventory.reconcile_all()
     """
 
     id = Integer(label="Identifier", primary_key=True)
