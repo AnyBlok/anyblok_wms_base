@@ -164,3 +164,15 @@ Mixin.WmsInPlaceOperation: staying in the same location or container
 
    .. automethod:: check_create_conditions
    .. automethod:: input_location_altered
+
+Mixin.WmsInventoryOperation: common logic of inventory Operations
+-----------------------------------------------------------------
+
+.. autoclass:: anyblok_wms_base.core.operation.inventory.WmsInventoryOperation
+
+
+   .. raw:: html
+
+      <h4>Optional API of subclasses</h4>
+
+   .. automethod:: check_create_conditions
