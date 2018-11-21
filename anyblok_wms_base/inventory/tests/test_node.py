@@ -93,7 +93,8 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
             excluded_types=[self.location_type.code])
 
         root = inventory.root
-        root.split()
+        for subnode in root.split():
+            subnode.state = 'pushed'
         node = self.Node.query().filter_by(location=sub).one()
         self.Line.insert(node=node,
                          location=sub,
@@ -280,7 +281,8 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
             location=stock,
             excluded_types=[self.location_type.code])
         node = inventory.root
-        node.split()
+        for sub in node.split():
+            sub.state = 'pushed'
         node.state = 'full'
 
         self.Line.insert(node=node, location=stock, type=pot, quantity=2)
@@ -394,6 +396,13 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
         root.state = 'full'
         with self.assertRaises(ValueError):
             root.recurse_compute_push_actions()
+
+    def test_compute_actions_non_ready_child(self):
+        inventory, root, node = self.fixture_compute_push_actions()
+        root.state = 'full'
+        node.state = 'computed'  # that's not enough
+        with self.assertRaises(ValueError):
+            root.compute_actions()
 
 
 del WmsTestCaseWithPhysObj

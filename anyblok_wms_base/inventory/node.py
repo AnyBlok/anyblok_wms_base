@@ -177,6 +177,16 @@ class Node:
                                  "Node id=%d (state=%r) "
                                  "that's already past the 'full' state'" % (
                                      self.id, state))
+        cls = self.__class__
+        non_ready_children = (cls.query()
+                              .filter(cls.parent == self,
+                                      cls.state != 'pushed')
+                              .all())
+        if non_ready_children:
+            # TODO precise exc
+            raise ValueError("This inventory node %r has some non children "
+                             "who didn't push their Actions to it yet: %r" % (
+                                 self, non_ready_children))
 
         PhysObj = self.registry.Wms.PhysObj
         POType = PhysObj.Type
