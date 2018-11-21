@@ -421,3 +421,34 @@ class Action:
             op_fields['new_location'] = self.destination
 
         return tuple(Op.create(input=av, **op_fields) for av in avatars)
+
+    def choose_affected(self):
+        """Choose Physical Objects to be taken for Disparition/Teleportation.
+
+        if :attr:`physobj_code` is ``None``, we match only Physical Objects
+        whose ``code`` is also ``None``. That's because the code should
+        come directly from existing PhysObj records (that weren't reflected
+        in Inventory Lines).
+
+        Same remark would go for Properties, but:
+        TODO implement Properties
+        TODO take Reservation into account
+        TODO adapt to wms-quantity
+        """
+        PhysObj = self.registry.Wms.PhysObj
+        Avatar = PhysObj.Avatar
+        avatars = (Avatar.query()
+                   .filter_by(location=self.location,
+                              state='present')
+                   .join(PhysObj, Avatar.obj_id == PhysObj.id)
+                   .filter(PhysObj.type == self.physobj_type,
+                           PhysObj.code == self.physobj_code)
+                   .limit(self.quantity)
+                   .all()
+                   )
+        # TODO precise exc
+        if len(avatars) != self.quantity:
+            raise ValueError("Couldn't find enough Avatars (only %d over %d) "
+                             "to choose from in application of %r" % (
+                                 len(avatars), self.quantity, self))
+        return avatars

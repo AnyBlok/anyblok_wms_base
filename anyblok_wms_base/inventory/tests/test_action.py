@@ -137,7 +137,6 @@ class InventoryActionTestCase(SharedDataTestCase, WmsTestCase):
         avatars = set(Arrival.create(state='done', location=loc_a,
                                      **po_fields).outcome
                       for i in range(2))
-        action.choose_affected = lambda: avatars
 
         ops = action.apply()
 
@@ -162,8 +161,7 @@ class InventoryActionTestCase(SharedDataTestCase, WmsTestCase):
 
         avatars = set(Arrival.create(state='done', location=loc_a,
                                      **po_fields).outcome
-                      for i in range(2))
-        action.choose_affected = lambda: avatars
+                      for i in range(3))
 
         ops = action.apply()
 
@@ -172,6 +170,22 @@ class InventoryActionTestCase(SharedDataTestCase, WmsTestCase):
             self.assertIsInstance(op, self.Operation.Disparition)
             self.assertEqual(op.state, 'done')
         # I don't see much value in checking that Disparition does its job
+
+    def test_choose_affected_not_enough(self):
+        pot = self.pot
+        loc_a = self.loc_a
+
+        Arrival = self.Operation.Arrival
+        po_fields = dict(physobj_type=pot, physobj_code='from_action',
+                         physobj_properties=dict(qa='nok'))
+        action = self.Action.insert(node=self.node, type='disp',
+                                    location=loc_a, quantity=2, **po_fields)
+
+        Arrival.create(state='done', location=loc_a, **po_fields)
+
+        # TODO precise exc and test its attributes
+        with self.assertRaises(ValueError):
+            action.apply()
 
 
 del SharedDataTestCase
