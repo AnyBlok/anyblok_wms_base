@@ -63,3 +63,43 @@ class Inventory:
         inventory = cls.insert(**fields)
         Node.insert(inventory=inventory, location=location)
         return inventory
+
+    def reconcile_all(self):
+        """Convenience method to apply all Actions linked to this Inventory.
+
+        This is a straightforward yet non scalable implementation of
+        the final reconciliation (see below). Don't use it on large
+        installations.
+
+        To run it, it is required that the :attr:`root` Node has reached
+        the ``pushed`` state.
+
+        :raises: ValueError if :attr:`root` Node is not ready.
+
+        This method does everything in one shot, therefore leading to huge
+        database transactions on full inventories of large installations.
+
+        For large inventories, a more progressive way of doing is required,
+        perhaps Node per Node plus batching for each Node.
+        Nodes wouldn't have to be taken
+        in order, but care must be taken while updating their state
+        to 'reconciled' in out of order executions with several batches per
+        Node.
+        """
+        root = self.root
+        if root.state != 'pushed':
+            # TODO precise exc
+            raise ValueError("The root node of this Inventory %r has not "
+                             "reached the 'pushed' state (currently at %r) "
+                             % (self, root.state))
+        Node = self.Node
+        Action = self.Action
+        for action in (Action.query()
+                       .join(Node, Node.id == Action.node_id)
+                       .filter(Node.inventory == self)
+                       .all()):
+            action.apply()
+
+        (Node.query()
+         .filter_by(inventory=self)
+         .update(dict(state='reconciled'), synchronize_session='fetch'))
