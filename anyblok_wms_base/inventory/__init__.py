@@ -12,9 +12,11 @@ from anyblok_wms_base import version
 
 def import_declarations(reload=None):
     from . import order
+    from . import operation
     from . import node
     if reload is not None:
         reload(order)
+        reload(operation)
         reload(node)
 
 

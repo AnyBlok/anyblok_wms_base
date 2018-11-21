@@ -102,5 +102,76 @@ class InventoryActionTestCase(SharedDataTestCase, WmsTestCase):
     def test_simplify_non_matching_codes3(self):
         self.check_simplify_non_matching_codes(None, 'bar')
 
+    def test_apply_app(self):
+        pot = self.pot
+        loc_a = self.loc_a
+        action = self.Action.insert(
+            node=self.node, type='app', location=loc_a,
+            physobj_type=pot, physobj_code='from_action',
+            physobj_properties=dict(qa='nok'),
+            quantity=3)
+
+        app = self.assert_singleton(action.apply())
+        self.assertIsInstance(app, self.Operation.Apparition)
+        self.assertEqual(app.inventory, self.inventory)
+        self.assertEqual(app.quantity, 3)
+        self.assertEqual(app.location, loc_a)
+        self.assertEqual(app.physobj_type, pot)
+        self.assertEqual(app.physobj_code, 'from_action')
+        self.assertEqual(app.physobj_properties, dict(qa='nok'))
+        self.assertEqual(app.state, 'done')
+        # I don't see much value in checking that Apparition does its job
+
+    def test_apply_telep(self):
+        pot = self.pot
+        loc_a, loc_b = self.loc_a, self.loc_b
+
+        Arrival = self.Operation.Arrival
+        po_fields = dict(physobj_type=pot, physobj_code='from_action',
+                         physobj_properties=dict(qa='nok'))
+
+        action = self.Action.insert(node=self.node, type='telep',
+                                    location=loc_a, destination=loc_b,
+                                    quantity=2, **po_fields)
+
+        avatars = set(Arrival.create(state='done', location=loc_a,
+                                     **po_fields).outcome
+                      for i in range(2))
+        action.choose_affected = lambda: avatars
+
+        ops = action.apply()
+
+        self.assertEqual(set(op.input for op in ops), avatars)
+        for op in ops:
+            self.assertIsInstance(op, self.Operation.Teleportation)
+            self.assertEqual(op.new_location, loc_b)
+            self.assertEqual(op.state, 'done')
+        # I don't see much value in checking that Teleportation does its job
+
+    def test_apply_disp(self):
+        pot = self.pot
+        loc_a = self.loc_a
+
+        Arrival = self.Operation.Arrival
+        po_fields = dict(physobj_type=pot, physobj_code='from_action',
+                         physobj_properties=dict(qa='nok'))
+
+        action = self.Action.insert(node=self.node, type='disp',
+                                    location=loc_a, quantity=3,
+                                    **po_fields)
+
+        avatars = set(Arrival.create(state='done', location=loc_a,
+                                     **po_fields).outcome
+                      for i in range(2))
+        action.choose_affected = lambda: avatars
+
+        ops = action.apply()
+
+        self.assertEqual(set(op.input for op in ops), avatars)
+        for op in ops:
+            self.assertIsInstance(op, self.Operation.Disparition)
+            self.assertEqual(op.state, 'done')
+        # I don't see much value in checking that Disparition does its job
+
 
 del SharedDataTestCase
