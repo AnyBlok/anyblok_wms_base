@@ -14,10 +14,12 @@ def import_declarations(reload=None):
     from . import order
     from . import operation
     from . import node
+    from . import action
     if reload is not None:
         reload(order)
         reload(operation)
         reload(node)
+        reload(action)
 
 
 class WmsInventory(Blok):
