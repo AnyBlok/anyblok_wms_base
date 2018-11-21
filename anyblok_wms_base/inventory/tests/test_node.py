@@ -20,6 +20,14 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
         self.Arrival = self.Operation.Arrival
         self.avatar.update(location=self.stock, state='present')
 
+    def test_repr(self):
+        inventory = self.Inventory.create(location=self.stock)
+        node = inventory.root
+        self.assertEqual(
+            repr(node),
+            "Wms.Inventory.Node(id=%d, "
+            "inventory_id=%d, location_code='STOCK')" % (node.id, inventory.id))
+
     def test_forbid_partial_splitting(self):
         stock = self.stock
         inventory = self.Inventory.create(location=stock)

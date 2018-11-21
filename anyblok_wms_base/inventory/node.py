@@ -99,6 +99,13 @@ class Node:
                       index=True)
     location = Many2One(model=Wms.PhysObj, nullable=False)
 
+    def __repr__(self):
+        return ("Wms.Inventory.Node(id={self.id}, "
+                "inventory_id={self.inventory_id}, "
+                "location_code={self.location.code!r})").format(self=self)
+
+    __str__ = __repr__
+
     def __init__(self, parent=None, from_split=False, **fields):
         """Forbid creating subnodes if not from :meth:`split`
 
@@ -342,8 +349,6 @@ class Line:
 @register(Wms.Inventory)
 class Action:
     """Represent a reconciliation Action for a :class:`Node <Node>` instance.
-
-    TODO data design
     """
     id = Integer(label="Identifier", primary_key=True)
     """Primary key."""
@@ -369,6 +374,19 @@ class Action:
     physobj_code = Text()
     physobj_properties = Jsonb()
     quantity = Integer(nullable=False)
+
+    def __repr__(self):
+        fmt = ("Wms.Inventory.Action(type={self.type!r}, "
+               "node={self.node!r}, location_code={self.location.code!r}, ")
+        if self.type == 'telep':
+            fmt += "destination_code={self.destination.code!r}, "
+        fmt += ("quantity={self.quantity}, "
+                "physobj_type_code={self.physobj_type.code!r}, "
+                "physobj_code={self.physobj_code!r}, "
+                "physobj_properties={self.physobj_properties!r})")
+        return fmt.format(self=self)
+
+    __str__ = __repr__
 
     @classmethod
     def simplify(cls, node):

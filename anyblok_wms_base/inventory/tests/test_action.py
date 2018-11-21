@@ -36,6 +36,37 @@ class InventoryActionTestCase(SharedDataTestCase, WmsTestCase):
                  a.physobj_type, a.physobj_code, a.quantity)
                 for a in self.Action.query().filter_by(node=self.node).all()}
 
+    def test_repr(self):
+        node = self.node
+        pot = self.pot
+        loc_a, loc_b = self.loc_a, self.loc_b
+        Action = self.Action
+        self.maxDiff = None
+        self.assertEqual(
+            repr(Action(node=node, type='app', location=loc_a,
+                        physobj_type=pot, quantity=2)),
+            "Wms.Inventory.Action(type='app', node=%r, "
+            "location_code='A', quantity=2, "
+            "physobj_type_code='TYPE1', "
+            "physobj_code=None, physobj_properties=None)" % node)
+
+        self.assertEqual(
+            repr(Action(node=node, type='disp', location=loc_b,
+                        physobj_type=pot, physobj_code='CS300', quantity=3)),
+            "Wms.Inventory.Action(type='disp', node=%r, "
+            "location_code='B', quantity=3, "
+            "physobj_type_code='TYPE1', "
+            "physobj_code='CS300', physobj_properties=None)" % node)
+
+        self.assertEqual(
+            repr(Action(node=node, type='telep', location=loc_b,
+                        destination=loc_a,
+                        physobj_type=pot, quantity=1)),
+            "Wms.Inventory.Action(type='telep', node=%r, "
+            "location_code='B', destination_code='A', quantity=1, "
+            "physobj_type_code='TYPE1', "
+            "physobj_code=None, physobj_properties=None)" % node)
+
     def test_simplify_1(self):
         node = self.node
         pot = self.pot
