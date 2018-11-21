@@ -14,6 +14,7 @@ def import_declarations(reload=None):
     from . import single_input
     from . import single_outcome
     from . import in_place
+    from . import inventory
     from . import arrival
     from . import departure
     from . import move
@@ -29,6 +30,8 @@ def import_declarations(reload=None):
         reload(base)
         reload(single_input)
         reload(single_outcome)
+        reload(in_place)
+        reload(inventory)
         reload(arrival)
         reload(departure)
         reload(move)
