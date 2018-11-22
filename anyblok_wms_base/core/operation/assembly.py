@@ -1016,7 +1016,10 @@ class Assembly(Mixin.WmsSingleOutcomeOperation, Operation):
 
         Also it should recheck that all inputs are in the same place.
         """
-        self.check_inputs_locations(self.inputs)
+        self.check_inputs_locations(self.inputs,
+                                    name=self.name,
+                                    outcome_type=self.outcome_type,
+                                    parameters=self.parameters)
         outcome = self.outcome
         outcome.location = self.inputs[0].location
 
