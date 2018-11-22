@@ -6,9 +6,11 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+import random
 from datetime import datetime
 from anyblok.tests.testcase import SharedDataTestCase
 from anyblok_wms_base.testing import WmsTestCase, FixedOffsetTimezone
+from anyblok_wms_base.testing import skip_unless_bloks_installed
 
 
 class InventoryActionTestCase(SharedDataTestCase, WmsTestCase):
@@ -217,6 +219,45 @@ class InventoryActionTestCase(SharedDataTestCase, WmsTestCase):
         # TODO precise exc and test its attributes
         with self.assertRaises(ValueError):
             action.apply()
+
+    @skip_unless_bloks_installed('wms-reservation')
+    def test_choose_affected_with_reserved(self):
+        pot, loc_a = self.pot, self.loc_a
+        Reservation = self.registry.Wms.Reservation
+        po_loc = dict(physobj_type=pot, location=loc_a)
+        Apparition = self.Operation.Apparition
+        app = Apparition.create(quantity=3, state='done', **po_loc)
+
+        outcomes = app.outcomes
+        avatars = list(outcomes)
+        # if avatars are in creation order, as long with phobjs and Reservation
+        # Requests, then the test risks passing by coincidence, so we shuffle
+        # them.
+        # This means that reproduction of tests failure can need several runs
+        # but that's acceptable.
+        while avatars == outcomes:
+            random.shuffle(avatars)
+
+        requests = []
+        for i in range(2):
+            avatars[i].mark = 'resa%d' % i  # to ease debugging
+            request = Reservation.Request.insert()
+            requests.append(request)
+            Reservation.insert(physobj=avatars[i].obj,
+                               request_item=Reservation.RequestItem.insert(
+                                   request=request,
+                                   goods_type=pot,
+                                   quantity=2))
+
+        action = self.Action.insert(node=self.node, type='disp',
+                                    quantity=1, **po_loc)
+        # the first chosen obj is the unreserved one
+        self.assert_singleton(action.choose_affected(), value=avatars[2])
+
+        # if we have to break a reservation, it'd be the most recent one
+        action.quantity = 2
+        self.assertEqual(set(action.choose_affected()),
+                         {avatars[1], avatars[2]})
 
 
 del SharedDataTestCase

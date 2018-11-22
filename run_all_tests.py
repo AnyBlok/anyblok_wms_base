@@ -75,11 +75,16 @@ def run(cr, db_name, nose_additional_opts):
     nosetests((os.path.join(awb_dir, 'utils.py'),
                os.path.join(bloks_dir, 'core')),
               nose_additional_opts)
+    install_bloks('wms-inventory')
+    nosetests((os.path.join(bloks_dir, 'inventory'), ),
+              nose_additional_opts)
     install_bloks('wms-reservation')
     nosetests((os.path.join(bloks_dir, 'reservation'), ),
               nose_additional_opts)
-    install_bloks('wms-inventory')
-    nosetests((os.path.join(bloks_dir, 'inventory'), ),
+    # some Inventory.Action tests are run only if wms-reservation is installed
+    # and it's a good idea to check the others with wms-reservation, too.
+    nosetests((os.path.join(bloks_dir, 'inventory',
+                            'tests', 'test_action.py'), ),
               nose_additional_opts)
 
     dropdb(cr, db_name)
