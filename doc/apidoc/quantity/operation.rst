@@ -1,3 +1,5 @@
+.. _pkg_quantity_operation:
+
 quantity.operation
 ==================
 

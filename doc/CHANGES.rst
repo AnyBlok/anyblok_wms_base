@@ -9,6 +9,11 @@
 Release history
 ===============
 
+0.9.0 (unreleased)
+~~~~~~~~~~~~~~~~~~
+
+* doc: contributor's guide
+
 0.8.0
 ~~~~~
 

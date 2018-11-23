@@ -1,3 +1,5 @@
+.. _pkg_physobj:
+
 core.physobj
 ============
 .. py:module:: anyblok_wms_base.core.physobj.main

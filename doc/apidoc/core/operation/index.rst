@@ -1,3 +1,5 @@
+.. _pkg_operation:
+
 core.operation
 ==============
 
@@ -10,10 +12,3 @@ Model, with a few helper Mixins.
    creating
    removing
    transforming
-
-
-
-
-
-
-

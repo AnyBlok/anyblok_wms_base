@@ -39,6 +39,7 @@ get a grasp of what it intends to do.
    roadmap
    CHANGES
    improvements
+   contributing
    apidoc/index
    credits
 
