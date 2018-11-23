@@ -358,3 +358,41 @@ class TestOperation(WmsTestCase):
         str(exc)
         repr(exc)
         self.assertEqual(exc.kwargs.get('op'), dep)
+
+    def test_transitive_followers(self):
+
+        # we'll monkey-patch the Operation base class heavily to
+        # focus on the algorithm.
+        followers_orig_prop = self.Operation.followers
+        self.Operation.followers = None  # allows to set attr on instances
+
+        def op(oid, followers=()):
+            # not inserted, none of the db constraints applies.
+            o = self.Operation.Arrival(id=oid)
+            o.followers = followers
+            return o
+
+        try:
+            # test case inspired by
+            # https://algorithms.tutorialhorizon.com/topological-sort/
+            # the graph contains two nice diamond shapes included in each other.
+            a0 = op(0)
+            a1 = op(1, followers=[a0])
+            a2 = op(2, followers=[a1])
+            a3 = op(3, followers=[a1])
+            a4 = op(4)
+            a5 = op(5, followers=[a4, a2])
+            a6 = op(6, followers=[a4, a3])
+            a7 = op(7, followers=[a5, a6])
+
+            # for now the algorithm is deterministic, because the followers
+            # that we injected directly are lists and it iterates simply on it.
+            res = a7.transitive_followers()
+            self.assertEqual(res, [a6, a3, a5, a2, a1, a0, a4])
+            # just to be sure...
+            for a in res:
+                for f in a.followers:
+                    self.assertLess(res.index(a), res.index(f))
+
+        finally:
+            self.Operation.followers = followers_orig_prop
