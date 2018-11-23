@@ -16,6 +16,8 @@ from anyblok.column import Text
 from anyblok.column import Selection
 from anyblok.relationship import Many2One
 from anyblok_postgres.column import Jsonb
+from .exceptions import (ActionInputsMissing,
+                         )
 
 register = Declarations.register
 Wms = Declarations.Model.Wms
@@ -158,9 +160,10 @@ class Action:
 
         avatars = avatars_q.limit(self.quantity).all()
 
-        # TODO precise exc
         if len(avatars) != self.quantity:
-            raise ValueError("Couldn't find enough Avatars (only %d over %d) "
-                             "to choose from in application of %r" % (
-                                 len(avatars), self.quantity, self))
+            raise ActionInputsMissing(
+                self, len(avatars),
+                "Couldn't find enough Avatars "
+                "(only {nb_found} over {nb_expected}) "
+                "to choose from in application of {action}")
         return avatars

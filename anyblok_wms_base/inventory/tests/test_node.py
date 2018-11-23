@@ -7,6 +7,9 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
+from ..exceptions import (NodeStateError,
+                          NodeChildrenStateError,
+                          )
 
 
 class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
@@ -316,12 +319,24 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
     def test_compute_actions_wrong_states(self):
         inventory = self.Inventory.create(location=self.stock)
         node = inventory.root
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NodeStateError) as arc:
             node.compute_actions()
 
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.node_id, node.id)
+        self.assertEqual(exc.node_state, 'draft')
+
         node.state = 'reconciled'
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NodeStateError) as arc:
             node.compute_actions()
+
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.node_id, node.id)
+        self.assertEqual(exc.node_state, 'reconciled')
 
     def fixture_compute_push_actions(self):
         inventory = self.Inventory.create(
@@ -402,15 +417,27 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
     def test_recurse_compute_push_actions_non_ready_child(self):
         inventory, root, node = self.fixture_compute_push_actions()
         root.state = 'full'
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NodeChildrenStateError) as arc:
             root.recurse_compute_push_actions()
+
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.node, root)
+        self.assert_singleton(exc.children, value=node)
 
     def test_compute_actions_non_ready_child(self):
         inventory, root, node = self.fixture_compute_push_actions()
         root.state = 'full'
         node.state = 'computed'  # that's not enough
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NodeChildrenStateError) as arc:
             root.compute_actions()
+
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.node, root)
+        self.assert_singleton(exc.children, value=node)
 
 
 del WmsTestCaseWithPhysObj

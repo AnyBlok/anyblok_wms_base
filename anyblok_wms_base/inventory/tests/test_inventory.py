@@ -7,6 +7,8 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
+from ..exceptions import (NodeStateError,
+                          )
 
 
 class InventoryOrderTestCase(WmsTestCaseWithPhysObj):
@@ -78,8 +80,12 @@ class InventoryOrderTestCase(WmsTestCaseWithPhysObj):
 
     def test_reconcile_all_not_ready(self):
         inv = self.Inventory.create(location=self.stock)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NodeStateError) as arc:
             inv.reconcile_all()
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.node, inv.root)
 
 
 del WmsTestCaseWithPhysObj

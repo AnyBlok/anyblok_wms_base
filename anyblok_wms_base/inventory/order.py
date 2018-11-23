@@ -9,6 +9,8 @@
 from anyblok import Declarations
 from anyblok.column import Integer
 from anyblok_postgres.column import Jsonb
+from .exceptions import (NodeStateError,
+                         )
 
 register = Declarations.register
 Model = Declarations.Model
@@ -82,7 +84,7 @@ class Inventory:
         To run it, it is required that the :attr:`root` Node has reached
         the ``pushed`` state.
 
-        :raises: ValueError if :attr:`root` Node is not ready.
+        :raises: NodeStateError if :attr:`root` Node is not ready.
 
         This method does everything in one shot, therefore leading to huge
         database transactions on full inventories of large installations.
@@ -96,10 +98,9 @@ class Inventory:
         """
         root = self.root
         if root.state != 'pushed':
-            # TODO precise exc
-            raise ValueError("The root node of this Inventory %r has not "
-                             "reached the 'pushed' state (currently at %r) "
-                             % (self, root.state))
+            raise NodeStateError(root, "This root {node} has not "
+                                 "reached the 'pushed' state "
+                                 "(currently at {state!r})")
         Node = self.Node
         Action = self.Action
         for action in (Action.query()

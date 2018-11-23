@@ -11,6 +11,8 @@ from datetime import datetime
 from anyblok.tests.testcase import SharedDataTestCase
 from anyblok_wms_base.testing import WmsTestCase, FixedOffsetTimezone
 from anyblok_wms_base.testing import skip_unless_bloks_installed
+from ..exceptions import (ActionInputsMissing,
+                          )
 
 
 class InventoryActionTestCase(SharedDataTestCase, WmsTestCase):
@@ -216,9 +218,14 @@ class InventoryActionTestCase(SharedDataTestCase, WmsTestCase):
 
         Arrival.create(state='done', location=loc_a, **po_fields)
 
-        # TODO precise exc and test its attributes
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ActionInputsMissing) as arc:
             action.apply()
+
+        exc = arc.exception
+        str(exc)
+        str(arc)
+        self.assertEqual(exc.action, action)
+        self.assertEqual(exc.nb_found, 1)
 
     @skip_unless_bloks_installed('wms-reservation')
     def test_choose_affected_with_reserved(self):

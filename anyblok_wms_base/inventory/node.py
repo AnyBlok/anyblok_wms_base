@@ -18,6 +18,9 @@ from anyblok.column import Text
 from anyblok.column import Selection
 from anyblok.relationship import Many2One
 from anyblok_postgres.column import Jsonb
+from .exceptions import (NodeStateError,
+                         NodeChildrenStateError,
+                         )
 
 register = Declarations.register
 Wms = Declarations.Model.Wms
@@ -190,29 +193,28 @@ class Node:
         """
         state = self.state
         if state in ('draft', 'assessment'):
-            # TODO precise exc
-            raise ValueError("Can't compute actions on Node id=%d (state=%r) "
-                             "that hasn't reached the 'full' state'" % (
-                                 self.id, state))
+            raise NodeStateError(
+                self, "Can't compute actions on Node id={id} "
+                "whose state {state!r} is less than 'full'")
+
         if state in ('computed', 'pushed', 'reconciled'):
             if recompute:
                 self.clear_actions()
             else:
-                # TODO precise exc
-                raise ValueError("Can't compute actions on "
-                                 "Node id=%d (state=%r) "
-                                 "that's already past the 'full' state'" % (
-                                     self.id, state))
+                raise NodeStateError(self, "Can't compute actions on "
+                                     "Node id={id} (state={state!r}) "
+                                     "that's already past the 'full' state'")
         cls = self.__class__
         non_ready_children = (cls.query()
                               .filter(cls.parent == self,
                                       cls.state != 'pushed')
                               .all())
         if non_ready_children:
-            # TODO precise exc
-            raise ValueError("This inventory node %r has some non children "
-                             "who didn't push their Actions to it yet: %r" % (
-                                 self, non_ready_children))
+            raise NodeChildrenStateError(
+                self, non_ready_children,
+                "This {node} has some non children "
+                "who didn't push their Actions to it yet: "
+                "{children_states!r}")
 
         PhysObj = self.registry.Wms.PhysObj
         POType = PhysObj.Type
@@ -343,9 +345,10 @@ class Node:
                                       cls.state.in_(('draft', 'assessment')))
                               .all())
         if non_ready_children:
-            # TODO precise exc
-            raise ValueError("This inventory node %r has some non ready "
-                             "children: %r" % (self, non_ready_children))
+            raise NodeChildrenStateError(
+                self, non_ready_children,
+                "This {node} has some children "
+                "which didn't compute their Actions yet: {children_states!r}")
         for child in self.query().filter_by(parent=self, state='full').all():
             child.recurse_compute_push_actions()
         self.compute_push_actions()
