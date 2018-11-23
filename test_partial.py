@@ -13,8 +13,9 @@ import argparse
 import subprocess
 
 os.chdir(os.path.dirname(__file__))
-if os.path.exists('.noseids'):
-    os.unlink('.noseids')
+for path in ('.noseids', '.coverage'):
+    if os.path.exists(path):
+        os.unlink(path)
 
 BASEPKG = 'anyblok_wms_base'
 BLOKS = {'wms-core': 'core',
