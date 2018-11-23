@@ -1,6 +1,7 @@
 syntax: glob
 
 .coverage
+.noseids
 dist
 build
 doc/_build
