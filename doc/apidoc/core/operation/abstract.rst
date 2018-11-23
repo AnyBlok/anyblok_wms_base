@@ -144,3 +144,25 @@ Mixin.WmsSingleOutcomeOperation: producing only one outcome
             Specific methods.</h4>
 
    .. automethod:: refine_with_trailing_move
+
+Mixin.WmsInPlaceOperation: staying in the same location or container
+--------------------------------------------------------------------
+
+.. autoclass:: anyblok_wms_base.core.operation.in_place.WmsInPlaceOperation
+
+   .. raw:: html
+
+      <h4 class="section" style="font-size: 160%">
+            Specific methods.</h4>
+
+   .. automethod:: unique_inputs_location
+
+   .. raw:: html
+
+      <h4 class="section" style="font-size: 160%">
+            Overrides of the base class.</h4>
+
+   .. automethod:: check_create_conditions
+   .. automethod:: input_location_altered
+
+   .. raw:: html

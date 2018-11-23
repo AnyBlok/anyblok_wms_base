@@ -19,7 +19,9 @@ Operation = Declarations.Model.Wms.Operation
 
 
 @register(Operation)
-class Unpack(Mixin.WmsSingleInputOperation, Operation):
+class Unpack(Mixin.WmsSingleInputOperation,
+             Mixin.WmsInPlaceOperation,
+             Operation):
     """Unpacking some goods, creating new PhysObj and Avatar records.
 
     This is a destructive Operation, in the usual mild sense: once it's done,
@@ -466,11 +468,3 @@ class Unpack(Mixin.WmsSingleInputOperation, Operation):
             dt_execution=dt_execution,
             name=self.reverse_assembly_name(),
             inputs=pack_inputs)
-
-    def input_location_altered(self):
-        """An Unpack being in place, must propagate change of locations."""
-        outcomes = self.outcomes
-        for av in outcomes:
-            av.location = self.input.location
-        for follower in self.followers:
-            follower.input_location_altered()
