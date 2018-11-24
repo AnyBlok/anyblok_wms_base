@@ -8,7 +8,7 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from anyblok import Declarations
 from anyblok.column import String
@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 register = Declarations.register
 Wms = Declarations.Model.Wms
 
-
 NONZERO = NonZero()
+UTC = timezone.utc
 
 
 @Declarations.register(Wms.Operation)
@@ -393,7 +393,7 @@ class Operation:
         """
 
         if state == 'done' or not inputs:
-            return datetime.now()
+            return datetime.now(tz=UTC)
         return max(av.dt_from for av in inputs)
 
     @classmethod
@@ -415,7 +415,7 @@ class Operation:
         if self.state == 'done':
             return
         if dt_execution is None:
-            dt_execution = datetime.now()
+            dt_execution = datetime.now(tz=UTC)
         self.dt_execution = dt_execution
         if self.dt_start is None:
             self.dt_start = dt_execution
@@ -489,7 +489,7 @@ class Operation:
                  start reversing the whole.
         """
         if dt_execution is None:
-            dt_execution = datetime.now()
+            dt_execution = datetime.now(tz=UTC)
         if self.state != 'done':
             # TODO actually it'd be nice to cancel or update
             # planned operations (think of reverting a Move meant for

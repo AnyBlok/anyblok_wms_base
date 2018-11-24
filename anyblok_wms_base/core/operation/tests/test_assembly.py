@@ -7,7 +7,7 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 import itertools
-from datetime import datetime
+from datetime import datetime, timezone
 
 from anyblok_wms_base.testing import BlokTestCase
 from anyblok_wms_base.testing import WmsTestCase
@@ -1395,7 +1395,7 @@ class TestTypedExpression(BlokTestCase):
         Wms = self.registry.Wms
         self.operation = Wms.Operation.Assembly.insert(
             outcome_type=Wms.PhysObj.Type.insert(code='whatever'),
-            dt_execution=datetime.now(),
+            dt_execution=datetime.now(tz=timezone.utc),
             state='planned')
         self.eval_typed_expr = self.operation.eval_typed_expr
 
