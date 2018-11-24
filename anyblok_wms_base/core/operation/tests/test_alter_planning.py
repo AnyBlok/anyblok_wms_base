@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from datetime import timedelta
 from sqlalchemy import func
 from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 from anyblok_wms_base.exceptions import (
@@ -20,6 +21,20 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
     def setUp(self):
         super(TestAlterPlanning, self).setUp()
         self.Move = self.Operation.Move
+
+    def test_alter_dt_execution_too_early(self):
+        stock = self.stock
+        move = self.Move.create(destination=stock,
+                                dt_execution=self.dt_test2,
+                                state='planned',
+                                input=self.avatar)
+        # TODO more precise exc and testing of attributes
+        with self.assertRaises(OperationError) as arc:
+            move.alter_dt_execution(self.dt_test1 - timedelta(1))
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.operation, move)
 
     def test_alter_destination(self):
         outgoing = self.insert_location('OUTGOING')
@@ -46,6 +61,31 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
 
         # the hook has been called
         self.assert_singleton(record_callbacks, value=dep)
+
+    def test_alter_dt_execution_before_departure(self):
+        stock = self.stock
+        move = self.Move.create(destination=stock,
+                                dt_execution=self.dt_test2,
+                                state='planned',
+                                input=self.avatar)
+        dep_input = move.outcome
+        dep = self.Operation.Departure.create(
+            dt_execution=self.dt_test3,
+            state='planned',
+            input=dep_input)
+
+        new_dt = self.dt_test3 + timedelta(hours=1)
+
+        move.alter_dt_execution(new_dt)
+
+        self.assertEqual(move.dt_execution, new_dt)
+        move_input = move.input
+        self.assertEqual(move_input.dt_until, new_dt)
+        self.assertEqual(move_input.dt_from, self.dt_test1)
+
+        self.assertEqual(dep_input.dt_from, new_dt)
+        self.assertEqual(dep_input.dt_until, new_dt)
+        self.assertEqual(dep.dt_execution, new_dt)
 
     def test_alter_destination_before_unpack(self):
         incoming = self.incoming_loc

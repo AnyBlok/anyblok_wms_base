@@ -416,7 +416,7 @@ class Operation:
             return
         if dt_execution is None:
             dt_execution = datetime.now(tz=UTC)
-        self.dt_execution = dt_execution
+        self.alter_dt_execution(dt_execution)
         if self.dt_start is None:
             self.dt_start = dt_execution
         self.check_execute_conditions()
@@ -835,6 +835,57 @@ class Operation:
             outcome.location = destination
         for follower in self.followers:
             follower.input_location_altered()
+
+    def alter_dt_execution(self, new_dt):
+        """Change the date/time execution of a planned Operation.
+
+        :param datetime new_dt: new value for the :attr:`dt_execution` field.
+
+        This method takes care to maintain consistency by changing the
+        outcomes date/time fields and recurse to the followers if
+        needed.
+
+        This basic implementation is minimal in that all it cares about
+        is the data consistency: Avatars can't overlap, and all followers of
+        an Operation should happen after it. Therefore, instead of propagating
+        the time deltas, it will stop once these conditions are restored, and
+        won't hesitate to produce Avatars with a zero time span (which will be
+        rewritten later anyway). This has the advantage of not being too slow.
+
+        This is typically called by :meth:`execute` and :meth:`start`
+        but applications really caring about planned execution times can also
+        make use of this (they may also want a true propagation to occur,
+        which is not supported yet, but that's a different story)
+        """
+        self.check_alterable()
+        self.dt_execution = new_dt
+        for av in self.inputs:
+            if av.dt_from > new_dt:
+                # TODO more precise exc
+                raise OperationError(self,
+                                     "Can't alter dt_execution to "
+                                     "before input presence time")
+            av.dt_until = new_dt
+        Wms = self.registry.Wms
+        Operation = Wms.Operation
+        HI = Operation.HistoryInput
+        Avatar = Wms.PhysObj.Avatar
+        res = (self.registry.query(Avatar)
+               .filter_by(outcome_of=self)
+               .outerjoin(HI, HI.avatar_id == Avatar.id)
+               .outerjoin(Operation, HI.operation_id == Operation.id)
+               .add_entity(Operation)
+               .all()
+               )
+        followers = {}  # op -> input avatars
+        for av, op in res:  # TODO better use an array_agg or something
+            followers.setdefault(op, []).append(av)
+
+        for follower, avs in followers.items():
+            for av in avs:
+                av.dt_from = new_dt
+            if follower is not None and new_dt > follower.dt_execution:
+                follower.alter_dt_execution(new_dt)
 
     def transitive_followers(self, seen=None):
         """Return a list of transitive followers, in execution order
