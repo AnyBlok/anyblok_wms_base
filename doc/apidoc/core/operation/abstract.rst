@@ -164,5 +164,3 @@ Mixin.WmsInPlaceOperation: staying in the same location or container
 
    .. automethod:: check_create_conditions
    .. automethod:: input_location_altered
-
-   .. raw:: html
