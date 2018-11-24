@@ -12,6 +12,10 @@ Release history
 0.9.0 (unreleased)
 ~~~~~~~~~~~~~~~~~~
 
+* consistency of date/time ranges of Avatars is now strongly
+  guaranteed (database constraint). In particular, they are
+  now maintained when an Operation's date of execution changes
+  (see also https://github.com/AnyBlok/anyblok_wms_base/issues/8)
 * doc: contributor's guide
 
 0.8.0
