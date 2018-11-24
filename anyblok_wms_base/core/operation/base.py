@@ -8,7 +8,7 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from anyblok import Declarations
 from anyblok.column import String
@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 register = Declarations.register
 Wms = Declarations.Model.Wms
 
-
 NONZERO = NonZero()
+UTC = timezone.utc
 
 
 @Declarations.register(Wms.Operation)
@@ -393,7 +393,7 @@ class Operation:
         """
 
         if state == 'done' or not inputs:
-            return datetime.now()
+            return datetime.now(tz=UTC)
         return max(av.dt_from for av in inputs)
 
     @classmethod
@@ -415,8 +415,8 @@ class Operation:
         if self.state == 'done':
             return
         if dt_execution is None:
-            dt_execution = datetime.now()
-        self.dt_execution = dt_execution
+            dt_execution = datetime.now(tz=UTC)
+        self.alter_dt_execution(dt_execution)
         if self.dt_start is None:
             self.dt_start = dt_execution
         self.check_execute_conditions()
@@ -489,7 +489,7 @@ class Operation:
                  start reversing the whole.
         """
         if dt_execution is None:
-            dt_execution = datetime.now()
+            dt_execution = datetime.now(tz=UTC)
         if self.state != 'done':
             # TODO actually it'd be nice to cancel or update
             # planned operations (think of reverting a Move meant for
@@ -507,7 +507,8 @@ class Operation:
         exec_leafs = []
         followers_reverts = []
         for follower in self.followers:
-            follower_revert, follower_exec_leafs = follower.plan_revert()
+            follower_revert, follower_exec_leafs = follower.plan_revert(
+                dt_execution=dt_execution)
             self.registry.flush()
             followers_reverts.append(follower_revert)
             exec_leafs.extend(follower_exec_leafs)
@@ -762,9 +763,9 @@ class Operation:
         not supposed to call this method: they should use :meth:`obliviate`,
         which takes care of the necessary recursivity and the final deletion.
         """
+        self.delete_outcomes()
         self.reset_inputs_original_values(state='present')
         self.registry.flush()
-        self.delete_outcomes()
 
     def plan_revert_single(self, dt_execution, follows=()):
         """Create a planned operation to revert the present one.
@@ -835,6 +836,62 @@ class Operation:
             outcome.location = destination
         for follower in self.followers:
             follower.input_location_altered()
+
+    def alter_dt_execution(self, new_dt):
+        """Change the date/time execution of a planned Operation.
+
+        :param datetime new_dt: new value for the :attr:`dt_execution` field.
+
+        This method takes care to maintain consistency by changing the
+        outcomes date/time fields and recurse to the followers if
+        needed.
+
+        This basic implementation is minimal in that all it cares about
+        is the data consistency: Avatars can't overlap, and all followers of
+        an Operation should happen after it. Therefore, instead of propagating
+        the time deltas, it will stop once these conditions are restored, and
+        won't hesitate to produce Avatars with a zero time span (which will be
+        rewritten later anyway). This has the advantage of not being too slow.
+
+        This is typically called by :meth:`execute` and :meth:`start`
+        but applications really caring about planned execution times can also
+        make use of this (they may also want a true propagation to occur,
+        which is not supported yet, but that's a different story)
+        """
+        self.check_alterable()
+        self.dt_execution = new_dt
+        for av in self.inputs:
+            if av.dt_from > new_dt:
+                # TODO more precise exc
+                raise OperationError(self,
+                                     "Can't alter dt_execution to "
+                                     "before input presence time")
+            av.dt_until = new_dt
+        Wms = self.registry.Wms
+        Operation = Wms.Operation
+        HI = Operation.HistoryInput
+        Avatar = Wms.PhysObj.Avatar
+        res = (self.registry.query(Avatar)
+               .filter_by(outcome_of=self)
+               .outerjoin(HI, HI.avatar_id == Avatar.id)
+               .outerjoin(Operation, HI.operation_id == Operation.id)
+               .add_entity(Operation)
+               .all()
+               )
+        followers = {}  # op -> input avatars
+        for av, op in res:  # TODO better use an array_agg or something
+            followers.setdefault(op, []).append(av)
+
+        for follower, avs in followers.items():
+            for av in avs:
+                av.dt_from = new_dt
+                dt_until = av.dt_until
+                if dt_until is not None:
+                    # minimal consistent change (follower's alteration
+                    # could change it further)
+                    av.dt_until = max(dt_until, new_dt)
+            if follower is not None and new_dt > follower.dt_execution:
+                follower.alter_dt_execution(new_dt)
 
     def transitive_followers(self, seen=None):
         """Return a list of transitive followers, in execution order

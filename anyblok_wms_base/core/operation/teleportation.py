@@ -76,13 +76,13 @@ class Teleportation(Mixin.WmsSingleInputOperation,
         """
         to_move, dt_exec = self.input, self.dt_execution
 
+        orig_dt_until = to_move.dt_until
+        to_move.update(dt_until=dt_exec, state='past')
         self.registry.Wms.PhysObj.Avatar.insert(
             location=self.new_location,
             outcome_of=self,
             state='present',
             dt_from=dt_exec,
             # copied fields:
-            dt_until=to_move.dt_until,
+            dt_until=orig_dt_until,
             obj=to_move.obj)
-
-        to_move.update(dt_until=dt_exec, state='past')

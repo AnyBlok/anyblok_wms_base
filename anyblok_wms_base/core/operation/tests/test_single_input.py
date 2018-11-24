@@ -26,23 +26,29 @@ class TestSingleInputOperation(WmsTestCaseWithPhysObj):
         self.op_model_name = 'Model.Wms.Operation.Move'
         self.Move = self.registry.Wms.Operation.Move
 
-    def test_create_input_inputs(self):
-        """Test that in create(), the input and inputs kwargs work."""
+    def create(self, state='done', **kwargs):
+        self.avatar.state = 'present'
+        return self.Move.create(destination=self.stock,
+                                state='done', **kwargs)
+
+    def test_create_input(self):
+        """Test that in create(), the input kwarg works."""
         avatar = self.avatar
-
-        def create(**kwargs):
-            avatar.state = 'present'
-            return self.Move.create(destination=self.stock,
-                                    state='done', **kwargs)
-
-        move = create(input=avatar)
+        move = self.create(input=avatar)
         self.assertEqual(move.inputs, [avatar])
 
-        move = create(inputs=[avatar])
+    def test_create_inputs(self):
+        """Test that in create(), the inputs kwarg works."""
+        avatar = self.avatar
+        move = self.create(inputs=[avatar])
         self.assertEqual(move.inputs, [avatar])
 
+    def test_create_both_input_args(self):
+        """Test that in create(), using both input and inputs kwars is an error.
+        """
+        avatar = self.avatar
         with self.assertRaises(OperationError) as arc:
-            create(inputs=[avatar], input=avatar)
+            self.create(inputs=[avatar], input=avatar)
         self.assertEqual(arc.exception.kwargs,
                          dict(input=avatar, inputs=[avatar]))
 

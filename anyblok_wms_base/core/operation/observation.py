@@ -104,6 +104,8 @@ class Observation(Mixin.WmsSingleInputOperation,
                 "Observation together with its results (this "
                 "would mean one knows result in advance).")
         dt_exec = self.dt_execution
+
+        inp_av.update(dt_until=dt_exec, state='past')
         physobj.Avatar.insert(
             obj=physobj,
             state='future' if state == 'planned' else 'present',
@@ -111,8 +113,6 @@ class Observation(Mixin.WmsSingleInputOperation,
             location=self.input.location,
             dt_from=dt_exec,
             dt_until=None)
-
-        inp_av.update(dt_until=dt_exec, state='past')
 
         if self.state == 'done':
             self.apply_properties()

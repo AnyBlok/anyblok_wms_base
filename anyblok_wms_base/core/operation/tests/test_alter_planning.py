@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from datetime import timedelta
 from sqlalchemy import func
 from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 from anyblok_wms_base.exceptions import (
@@ -20,6 +21,20 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
     def setUp(self):
         super(TestAlterPlanning, self).setUp()
         self.Move = self.Operation.Move
+
+    def test_alter_dt_execution_too_early(self):
+        stock = self.stock
+        move = self.Move.create(destination=stock,
+                                dt_execution=self.dt_test2,
+                                state='planned',
+                                input=self.avatar)
+        # TODO more precise exc and testing of attributes
+        with self.assertRaises(OperationError) as arc:
+            move.alter_dt_execution(self.dt_test1 - timedelta(1))
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.operation, move)
 
     def test_alter_destination(self):
         outgoing = self.insert_location('OUTGOING')
@@ -46,6 +61,31 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
 
         # the hook has been called
         self.assert_singleton(record_callbacks, value=dep)
+
+    def test_alter_dt_execution_before_departure(self):
+        stock = self.stock
+        move = self.Move.create(destination=stock,
+                                dt_execution=self.dt_test2,
+                                state='planned',
+                                input=self.avatar)
+        dep_input = move.outcome
+        dep = self.Operation.Departure.create(
+            dt_execution=self.dt_test3,
+            state='planned',
+            input=dep_input)
+
+        new_dt = self.dt_test3 + timedelta(hours=1)
+
+        move.alter_dt_execution(new_dt)
+
+        self.assertEqual(move.dt_execution, new_dt)
+        move_input = move.input
+        self.assertEqual(move_input.dt_until, new_dt)
+        self.assertEqual(move_input.dt_from, self.dt_test1)
+
+        self.assertEqual(dep_input.dt_from, new_dt)
+        self.assertEqual(dep_input.dt_until, new_dt)
+        self.assertEqual(dep.dt_execution, new_dt)
 
     def test_alter_destination_before_unpack(self):
         incoming = self.incoming_loc
@@ -87,6 +127,57 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         # which haven't changed btw
         self.MAXDIFF = None
         self.assertEqual(unp.outcomes, unp_outcomes)
+
+    def test_alter_dt_execution_before_unpack(self):
+        incoming = self.incoming_loc
+        arrival = self.arrival
+        unp_input = arrival.outcome
+        new_arrival_dt = self.dt_test2 + timedelta(hours=1)
+        new_unp_dt = new_arrival_dt + timedelta(hours=2)
+
+        # checking hypothesises
+        self.assertEqual(arrival.location, incoming)
+        self.assertEqual(unp_input.location, incoming)
+        self.assertTrue(new_arrival_dt < self.dt_test3)
+        self.assertTrue(new_unp_dt < self.dt_test3)
+
+        contents_type = self.PhysObj.Type.insert(label="Unpack outcomes",
+                                                 code="UNP-OUTS")
+
+        self.physobj_type.behaviours = dict(unpack=dict(outcomes=[
+            dict(type=contents_type.code, quantity=3)]))
+
+        unp = self.Operation.Unpack.create(input=unp_input,
+                                           dt_execution=self.dt_test2,
+                                           state='planned')
+        unp_outcomes = list(unp.outcomes)  # could become a set in the future
+        self.assertEqual(len(unp_outcomes), 3)
+
+        # let's have one unaffected follower, and one that will
+        dep1 = self.Operation.Departure.create(input=unp_outcomes[0],
+                                               dt_execution=self.dt_test2)
+
+        dep2 = self.Operation.Departure.create(input=unp_outcomes[1],
+                                               dt_execution=self.dt_test3)
+
+        arrival.alter_dt_execution(new_arrival_dt)
+
+        self.assertEqual(unp_input.dt_from, new_arrival_dt)
+        self.assertEqual(unp_input.dt_until, new_arrival_dt)
+        self.assertEqual(unp_outcomes[0].dt_from, new_arrival_dt)
+        self.assertEqual(unp_outcomes[1].dt_from, new_arrival_dt)
+        self.assertEqual(dep1.dt_execution, new_arrival_dt)
+        self.assertEqual(unp_outcomes[0].dt_until, new_arrival_dt)
+        self.assertEqual(dep2.dt_execution, self.dt_test3)
+        self.assertEqual(unp_outcomes[1].dt_until, self.dt_test3)
+
+        unp.alter_dt_execution(new_unp_dt)
+        self.assertEqual(unp_outcomes[0].dt_from, new_unp_dt)
+        self.assertEqual(unp_outcomes[1].dt_from, new_unp_dt)
+        self.assertEqual(dep1.dt_execution, new_unp_dt)
+        self.assertEqual(unp_outcomes[0].dt_until, new_unp_dt)
+        self.assertEqual(dep2.dt_execution, self.dt_test3)
+        self.assertEqual(unp_outcomes[1].dt_until, self.dt_test3)
 
     def test_inconsistent_alter_destination_before_assembly(self):
         incoming = self.incoming_loc
