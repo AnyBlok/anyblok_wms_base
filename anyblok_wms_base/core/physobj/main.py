@@ -10,6 +10,7 @@ from copy import deepcopy
 import warnings
 
 from sqlalchemy import CheckConstraint
+from sqlalchemy import Index
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import orm
 from sqlalchemy import or_
@@ -711,6 +712,9 @@ class Avatar:
         return super().define_table_args() + (
                 CheckConstraint('dt_until IS NULL OR dt_until >= dt_from',
                                 name='dt_range_valid'),
+                Index("idx_avatar_present_unique",
+                      cls.obj_id, unique=True,
+                      postgresql_where=(cls.state == 'present'))
             )
 
     def _goods_get(self):

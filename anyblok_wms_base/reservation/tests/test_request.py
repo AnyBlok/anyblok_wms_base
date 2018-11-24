@@ -163,7 +163,8 @@ class RequestItemTestCase(WmsTestCase):
         """We don't reserve several times PhysObj that have several Avatars."""
         goods = self.goods[self.props1][0]
         for av in self.avatars.values():
-            av.obj = goods
+            # can't have several 'present' Avatars for one physicial object
+            av.update(state='future', obj=goods)
         self.registry.flush()  # to be sure
 
         item = self.RequestItem(goods_type=self.goods_type1,

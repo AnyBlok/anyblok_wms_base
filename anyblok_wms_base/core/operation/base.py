@@ -763,9 +763,9 @@ class Operation:
         not supposed to call this method: they should use :meth:`obliviate`,
         which takes care of the necessary recursivity and the final deletion.
         """
+        self.delete_outcomes()
         self.reset_inputs_original_values(state='present')
         self.registry.flush()
-        self.delete_outcomes()
 
     def plan_revert_single(self, dt_execution, follows=()):
         """Create a planned operation to revert the present one.
