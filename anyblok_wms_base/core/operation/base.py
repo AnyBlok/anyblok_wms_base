@@ -507,7 +507,8 @@ class Operation:
         exec_leafs = []
         followers_reverts = []
         for follower in self.followers:
-            follower_revert, follower_exec_leafs = follower.plan_revert()
+            follower_revert, follower_exec_leafs = follower.plan_revert(
+                dt_execution=dt_execution)
             self.registry.flush()
             followers_reverts.append(follower_revert)
             exec_leafs.extend(follower_exec_leafs)
@@ -884,6 +885,11 @@ class Operation:
         for follower, avs in followers.items():
             for av in avs:
                 av.dt_from = new_dt
+                dt_until = av.dt_until
+                if dt_until is not None:
+                    # minimal consistent change (follower's alteration
+                    # could change it further)
+                    av.dt_until = max(dt_until, new_dt)
             if follower is not None and new_dt > follower.dt_execution:
                 follower.alter_dt_execution(new_dt)
 

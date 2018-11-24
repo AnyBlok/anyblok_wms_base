@@ -200,16 +200,15 @@ class TestOperation(WmsTestCase):
                                                 dt_execution=self.dt_test1,
                                                 state='done')
 
-        goods = self.assert_singleton(arrival.outcomes)  # an Avatar, really
         Move = self.Operation.Move
 
         # full moves don't generate splits, that's why the history is linear
         # (Splits are in wms-quantity only, now, anyway)
-        move1 = Move.create(input=goods,
+        move1 = Move.create(input=arrival.outcome,
                             dt_execution=self.dt_test2,
                             destination=self.stock,
                             state='done')
-        move2 = Move.create(input=self.assert_singleton(move1.outcomes),
+        move2 = Move.create(input=move1.outcome,
                             dt_execution=self.dt_test3,
                             destination=workshop,
                             state='done')

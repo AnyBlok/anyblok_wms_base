@@ -43,14 +43,20 @@ class Move(Mixin.WmsSingleInputOperation,
 
     def after_insert(self):
         state, to_move, dt_exec = self.state, self.input, self.dt_execution
+        orig_dt_until = to_move.dt_until
+        if orig_dt_until is None:
+            dt_until = None
+        else:
+            # it's not clear what it means for to_move.dt_until not to be None
+            # in any case, dt_until should be at least dt_from
+            dt_until = max(orig_dt_until, dt_exec)
 
         self.registry.Wms.PhysObj.Avatar.insert(
             location=self.destination,
             outcome_of=self,
             state='present' if state == 'done' else 'future',
             dt_from=dt_exec,
-            # copied fields:
-            dt_until=to_move.dt_until,
+            dt_until=dt_until,
             obj=to_move.obj)
 
         to_move.dt_until = dt_exec

@@ -9,6 +9,7 @@
 from copy import deepcopy
 import warnings
 
+from sqlalchemy import CheckConstraint
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import orm
 from sqlalchemy import or_
@@ -704,6 +705,13 @@ class Avatar:
     This does not extend to compatibility of the former low level ``goods_id``
     column.
     """
+
+    @classmethod
+    def define_table_args(cls):
+        return super().define_table_args() + (
+                CheckConstraint('dt_until IS NULL OR dt_until >= dt_from',
+                                name='dt_range_valid'),
+            )
 
     def _goods_get(self):
         deprecation_warn_goods()

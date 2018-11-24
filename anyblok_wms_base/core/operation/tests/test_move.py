@@ -29,7 +29,7 @@ class TestMove(WmsTestCaseWithPhysObj):
         self.assertEqual(new_goods.dt_until, self.dt_test3)
         # TODO also check that id did not change once we can make it True
 
-    def test_whole_planned_execute(self):
+    def test_planned_execute(self):
         move = self.Move.create(destination=self.stock,
                                 state='planned',
                                 dt_execution=self.dt_test2,
@@ -50,7 +50,7 @@ class TestMove(WmsTestCaseWithPhysObj):
                          .count(),
                          0)
 
-    def test_whole_done(self):
+    def test_done(self):
         self.avatar.update(state='present')
         move = self.Move.create(destination=self.stock,
                                 state='done',
@@ -65,7 +65,7 @@ class TestMove(WmsTestCaseWithPhysObj):
         not_moved = move.input
         self.assertEqual(not_moved.state, 'past')
 
-    def test_whole_done_obliviate(self):
+    def test_done_obliviate(self):
         self.avatar.state = 'present'
         move = self.Move.create(destination=self.stock,
                                 state='done',
@@ -73,7 +73,7 @@ class TestMove(WmsTestCaseWithPhysObj):
         move.obliviate()
         self.assertBackToBeginning()
 
-    def test_whole_planned_execute_obliviate(self):
+    def test_planned_execute_obliviate(self):
         move = self.Move.create(destination=self.stock,
                                 dt_execution=self.dt_test2,
                                 state='planned',
