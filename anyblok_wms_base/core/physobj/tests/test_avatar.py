@@ -39,6 +39,48 @@ class TestAvatar(WmsTestCaseWithPhysObj):
             "dt_range=[%s, None])" % (
                 avatar.id, goods, self.incoming_loc, avatar.dt_from))
 
+    def test_compat_dt_from(self):
+        avatar = self.avatar
+
+        self.assertEqual(avatar.dt_from, self.dt_test1)
+        avatar.dt_from = self.dt_test2
+        self.registry.flush()
+        avatar.expire()
+
+        self.assertEqual(avatar.dt_from, self.dt_test2)
+
+        avatar.timespan = None
+        self.registry.flush()
+        avatar.expire()
+
+        avatar.dt_from = self.dt_test3
+        self.assertEqual(avatar.dt_from, self.dt_test3)
+        self.registry.flush()
+        avatar.expire()
+
+        self.assertEqual(avatar.dt_from, self.dt_test3)
+
+    def test_compat_dt_until(self):
+        avatar = self.avatar
+
+        self.assertEqual(avatar.dt_until, None)
+        avatar.dt_until = self.dt_test2
+        self.registry.flush()
+        avatar.expire()
+
+        self.assertEqual(avatar.dt_until, self.dt_test2)
+
+        avatar.timespan = None
+        self.registry.flush()
+        avatar.expire()
+
+        avatar.dt_until = self.dt_test3
+        self.assertEqual(avatar.dt_until, self.dt_test3)
+        self.registry.flush()
+        avatar.expire()
+
+        self.assertEqual(avatar.dt_until, self.dt_test3)
+
     def test_get_property(self):
         avatar = self.avatar
         self.assertIsNone(avatar.get_property('foo'))
@@ -79,6 +121,13 @@ class TestAvatar(WmsTestCaseWithPhysObj):
             self.assertEqual(self.Avatar.query().filter_by(goods=phobj).count(),
                              2)
         assert_warnings_goods_deprecation(got)
+
+    def test_infinity(self):  # TODO NOCOMMIT shouldn't be here
+        from anyblok_wms_base.constants import DATE_TIME_INFINITY
+        self.avatar.dt_until = DATE_TIME_INFINITY
+        self.registry.flush()
+        self.avatar.expire()
+        self.assertEqual(self.avatar.dt_until, DATE_TIME_INFINITY)
 
     def test_pysobj_current_avatar(self):
         avatar = self.avatar

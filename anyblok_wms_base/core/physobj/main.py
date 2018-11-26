@@ -7,6 +7,7 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from copy import deepcopy
+from datetime import datetime, timezone
 import warnings
 
 from sqlalchemy import CheckConstraint
@@ -22,8 +23,9 @@ from anyblok.column import Integer
 from anyblok.column import DateTime
 from anyblok.relationship import Many2One
 from anyblok.field import Function
-from anyblok_postgres.column import Jsonb
+from anyblok_postgres.column import Jsonb, TsTzRange
 
+from anyblok_wms_base.dbapi import DateTimeTZRange
 from anyblok_wms_base.utils import dict_merge
 from anyblok_wms_base.constants import (
     AVATAR_STATES,
@@ -337,12 +339,8 @@ class PhysObj:
             tail = tail.filter(
                 Avatar.state.in_(('present', ) + tuple(additional_states)))
 
-        if at_datetime is DATE_TIME_INFINITY:
-            tail = tail.filter(Avatar.dt_until.is_(None))
-        elif at_datetime is not None:
-            tail = tail.filter(Avatar.dt_from <= at_datetime,
-                               or_(Avatar.dt_until.is_(None),
-                                   Avatar.dt_until > at_datetime))
+        if at_datetime is not None:
+            tail = tail.filter(Avatar.timespan.contains(at_datetime))
         cte = cte.union_all(tail)
         return cte
 
@@ -378,8 +376,10 @@ class PhysObj:
         """
         Avatar = self.Avatar
         return (Avatar.query()
-                .filter(Avatar.state.in_(('present', 'future')))
-                .filter_by(obj=self, dt_until=None)
+                .filter(Avatar.state.in_(('present', 'future')),
+                        Avatar.obj == self,
+                        Avatar.timespan.contains(DATE_TIME_INFINITY)
+                        )
                 .first())
 
 
@@ -643,8 +643,11 @@ class Avatar:
     for a discussion of what this should actually mean.
     """
 
-    dt_from = DateTime(label="Exist (or will) from this date & time",
-                       nullable=False)
+    timespan = TsTzRange()
+
+    dt_from = Function(fget='_dt_from_get',
+                       fset='_dt_from_set',
+                       fexpr='_dt_from_expr')
     """Date and time from which the Avatar is meaningful, inclusively.
 
     Functionally, even though the default in creating Operations will be
@@ -670,7 +673,9 @@ class Avatar:
     range would simply be another Avatar (use case: moving back and forth).
     """
 
-    dt_until = DateTime(label="Exist (or will) until this date & time")
+    dt_until = Function(fget='_dt_until_get',
+                        fset='_dt_until_set',
+                        fexpr='_dt_until_expr')
     """Date and time until which the Avatar record is meaningful, exclusively.
 
     Like :attr:`dt_from`, the meaning varies according to the value of
@@ -710,12 +715,42 @@ class Avatar:
     @classmethod
     def define_table_args(cls):
         return super().define_table_args() + (
-                CheckConstraint('dt_until IS NULL OR dt_until >= dt_from',
-                                name='dt_range_valid'),
                 Index("idx_avatar_present_unique",
                       cls.obj_id, unique=True,
-                      postgresql_where=(cls.state == 'present'))
+                      postgresql_where=(cls.state == 'present')),
             )
+
+    def _dt_from_get(self):
+        return self.timespan.lower
+
+    def _dt_from_set(self, v):
+        ts = self.timespan
+        if ts is None:
+            ts = self.timespan = DateTimeTZRange(lower=v, bounds='[)')
+        # TODO the underscore certainly means it's not recommended, look
+        # into that
+        ts._lower = v
+        flag_modified(self, '__anyblok_field_timespan')
+
+    @classmethod
+    def _dt_from_expr(cls):
+        return cls.timespan  # TODO NOCOMMIT
+
+    def _dt_until_get(self):
+        return self.timespan.upper
+
+    def _dt_until_set(self, v):
+        ts = self.timespan
+        if ts is None:
+            ts = self.timespan = DateTimeTZRange(upper=v, bounds='[)')
+        # TODO the underscore certainly means it's not recommended, look
+        # into that
+        ts._upper = v
+        flag_modified(self, '__anyblok_field_timespan')
+
+    @classmethod
+    def _dt_until_expr(cls):
+        return cls.timespan  # TODO NOCOMMIT
 
     def _goods_get(self):
         deprecation_warn_goods()
