@@ -2,10 +2,14 @@
 
 import sys
 import os
+import platform
 from sys import argv
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from subprocess import check_call
-import psycopg2
+
+py_impl = platform.python_implementation()
+
+VENV_BINDIR = os.path.dirname(sys.executable)
 
 
 def valid_db_name(s):
@@ -15,10 +19,12 @@ def valid_db_name(s):
     return s
 
 
-def dropdb(cr, db):
+def dropdb(db):
     """Drop database with no error if it exists."""
     print("Dropping tests database %r if already existing" % db)
-    cr.execute('''DROP DATABASE IF EXISTS "%s"''' % db)
+    check_call(('psql', '-c',
+                'DROP DATABASE IF EXISTS "%s"' % db,
+                'postgres'))
 
 
 def createdb(*bloks):
@@ -32,13 +38,15 @@ def createdb(*bloks):
 
 def install_bloks(*bloks):
     print("Installing bloks: " + ', '.join(bloks))
-    check_call(('anyblok_updatedb', '--install-bloks') + tuple(bloks))
+    check_call((os.path.join(VENV_BINDIR, 'anyblok_updatedb'),
+                '--install-bloks') + tuple(bloks))
     print()
 
 
 def nosetests(paths, options, cover_erase=False):
     print("Launching tests from paths: " + ' '.join(paths))
-    cmd = ['nosetests', '--with-anyblok-bloks',
+    cmd = [os.path.join(VENV_BINDIR, 'nosetests'),
+           '--with-anyblok-bloks',
            '--with-coverage',
            '--cover-tests',
            '--cover-package', 'anyblok_wms_base',
@@ -52,7 +60,8 @@ def nosetests(paths, options, cover_erase=False):
 
 def doctests(paths, options, cover_erase=False):
     print("Lauching doctests from paths: " + ' '.join(paths))
-    cmd = ['nosetests', '--with-doctest',
+    cmd = [os.path.join(VENV_BINDIR, 'nosetests'),
+           '--with-doctest',
            '--with-coverage', '--cover-html', '--cover-package',
            'anyblok_wms_base', '--cover-html-dir', '/tmp/COVER-wms']
     if cover_erase:
@@ -62,15 +71,19 @@ def doctests(paths, options, cover_erase=False):
     check_call(cmd)
 
 
-def run(cr, db_name, nose_additional_opts):
+def run(db_name, nose_additional_opts):
+    if py_impl == 'PyPy':
+        driver = 'postgresql+psycopg2cffi'
+    else:
+        driver = 'postgresql'
     os.environ.update(ANYBLOK_DATABASE_NAME=db_name,
-                      ANYBLOK_DATABASE_DRIVER='postgresql')
+                      ANYBLOK_DATABASE_DRIVER=driver)
 
     awb_dir = os.path.join(os.path.dirname(sys.argv[0]), 'anyblok_wms_base')
     doctests([os.path.join(awb_dir, 'utils.py')],
              nose_additional_opts, cover_erase=True)
     bloks_dir = awb_dir
-    dropdb(cr, db_name)
+    dropdb(db_name)
     createdb('wms-core', 'test-wms-goods-batch-ref')
     nosetests((os.path.join(awb_dir, 'utils.py'),
                os.path.join(bloks_dir, 'core')),
@@ -79,7 +92,7 @@ def run(cr, db_name, nose_additional_opts):
     nosetests((os.path.join(bloks_dir, 'reservation'),
                ),
               nose_additional_opts)
-    dropdb(cr, db_name)
+    dropdb(db_name)
     createdb('wms-quantity')
     nosetests((os.path.join(bloks_dir, 'quantity'),
                ),
@@ -110,13 +123,8 @@ if arguments.cover_html:
     nose_additional_opts.extend((
         '--cover-html', '--cover-html-dir', arguments.cover_html_dir))
 
-try:
-    cnx = psycopg2.connect('postgresql:///postgres')
-    cnx.set_session(autocommit=True)
-    cr = cnx.cursor()
-    run(cr, arguments.db_name, nose_additional_opts)
-finally:
-    cnx.close()
+run(arguments.db_name, nose_additional_opts)
+
 if arguments.cover_html:
     print(
         "To see HTML cover report, point your browser at "

@@ -9,8 +9,15 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 import os
 import sys
+import platform
 import argparse
 import subprocess
+
+py_impl = platform.python_implementation()
+if py_impl == 'PyPy':
+    DEFAULT_DRIVER = 'postgresql+psycopg2cffi'
+else:
+    DEFAULT_DRIVER = 'postgresql'
 
 os.chdir(os.path.dirname(__file__))
 for path in ('.noseids', '.coverage'):
@@ -34,6 +41,10 @@ parser.add_argument('blok', choices=BLOKS.keys())
 parser.add_argument('--subpkg',
                     help="Subpackage of the given Blok to run for. "
                     "Example: 'models.preparation'. ")
+parser.add_argument('--db-driver-name', default=DEFAULT_DRIVER,
+                    help="SQLAlchemy PostgreSQL driver, see "
+                    "https://docs.sqlalchemy.org/en/latest"
+                    "/dialects/postgresql.html")
 parser.add_argument('-f', '--fresh-db', action='store_true',
                     help="Drop the database if it exists before run")
 
@@ -69,7 +80,7 @@ if db_name not in databases:
 else:
     cmd = 'anyblok_updatedb'
 subprocess.check_call((cmd,
-                       '--db-driver-name', 'postgresql',
+                       '--db-driver-name', arguments.db_driver_name,
                        '--db-name', db_name,
                        '--install-or-update-bloks',
                        'test-wms-goods-batch-ref',
@@ -77,7 +88,7 @@ subprocess.check_call((cmd,
 
 plugin_cmd = [os.path.join(venv_dir, 'nosetests'),
               '--with-anyblok-bloks',
-              '--anyblok-db-driver-name', 'postgresql',
+              '--anyblok-db-driver-name', arguments.db_driver_name,
               "--anyblok-db-name", db_name,
               test_pkg,
               "--with-id",
@@ -90,8 +101,8 @@ plugin_cmd = [os.path.join(venv_dir, 'nosetests'),
 
 result = subprocess.call(plugin_cmd)
 print("\nFor HTML coverage report, open file://%s/index.html" % cover_html_dir)
-anyblok_nose = "anyblok_nose --db-driver-name postgresql --db-name %s -- %s" % (
-    db_name, test_pkg)
+anyblok_nose = "anyblok_nose --db-driver-name %s --db-name %s -- %s" % (
+    arguments.db_driver_name, db_name, test_pkg)
 if result == 0:  # sucess
     print("\nTo run again with different options, maybe incompatible with the "
           "Nose plugin, or a precise test, do something based on: ")
