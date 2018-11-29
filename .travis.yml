@@ -4,11 +4,12 @@ sudo: false
 python:
   - "3.5"
   - "3.6"
-  - "3.6-dev" # 3.6 development branch
+  - "3.7"
+  - "3.8-dev"
 
 matrix:
   allow_failures:
-      - python: "3.6-dev"
+      - python: "3.8-dev"
 
 virtualenv:
   system_site_packages: false
