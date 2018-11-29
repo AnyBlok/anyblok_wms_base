@@ -28,11 +28,14 @@ def dropdb(db):
 
 
 def createdb(*bloks):
+    db = os.environ['ANYBLOK_DATABASE_NAME']
     print("Creating tests database %r, "
-          "installing bloks: %r" % (os.environ['ANYBLOK_DATABASE_NAME'],
-                                    bloks))
+          "installing bloks: %r" % (db, bloks))
+    check_call(('psql', '-c',
+                'CREATE DATABASE "%s"' % db,
+                'postgres'))
     check_call((
-        'anyblok_createdb', '--install-bloks') + tuple(bloks))
+        'anyblok_updatedb', '--install-bloks') + tuple(bloks))
     print()
 
 
