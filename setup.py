@@ -9,7 +9,9 @@
 from setuptools import setup, find_packages
 from anyblok_wms_base import version
 import os
+import platform
 
+py_impl = platform.python_implementation()
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -28,8 +30,16 @@ anyblok_init = [
 requirements = [
     'anyblok>=0.20.0',
     'anyblok_postgres',
-    'psycopg2'
 ]
+
+# it is a bit lame, because ideally we'd prefer to
+# have a default driver and still allow people to use another one,
+# but at least, this allows us to run on PyPy
+if py_impl == 'PyPy':
+    requirements.append('psycopg2cffi')
+else:
+    requirements.append('psycopg2')
+
 
 bloks = {
     'wms-core': 'core:WmsCore',
