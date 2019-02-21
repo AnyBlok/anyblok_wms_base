@@ -101,6 +101,13 @@ class Split(SingleInput, InPlace, Operation):
             dt_until=None,
         )
         avatar.dt_until = self.dt_execution
+        if avatar.state == 'present':
+            # splitting must occur immediately, otherwise we may
+            # have no present avatar with non empty timespan
+            # TODO and if we are following an Operation,
+            # actually the split must execute at once once that latter
+            # executes, for the same reason
+            self.state = 'done'
         if self.state == 'done':
             avatar.update(state='past')
             new_avatars['state'] = 'present'

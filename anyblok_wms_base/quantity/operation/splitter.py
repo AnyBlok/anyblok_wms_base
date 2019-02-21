@@ -106,8 +106,9 @@ class WmsSplitterOperation:
                 "(which have quantity={input.obj.quantity}). "
                 "If it's less, a Split should have occured first ",
                 input=input)
-        if self.partial:
-            self.input.outcome_of.check_execute_conditions()
+        split = self.input.outcome_of
+        if self.partial and split.state != 'done':
+            split.check_execute_conditions()
         else:
             super(WmsSplitterOperation,
                   self).check_execute_conditions()
@@ -130,15 +131,20 @@ class WmsSplitterOperation:
             return inputs, None
 
         Split = cls.registry.Wms.Operation.Split
+        # The split's dt_execution should be as early as consistently possible
+        # (making less empty timespans, in particular)
         split = Split.create(input=avatar, quantity=quantity, state=state,
-                             dt_execution=dt_execution)
+                             dt_execution=avatar.outcome_of.dt_execution)
         return [split.wished_outcome], dict(partial=partial)
 
     def execute_planned(self):
         """Execute the :class:`Split <.split.Split>` if any, then self."""
         if self.partial:
             split_op = next(iter(self.follows))
-            split_op.execute(dt_execution=self.dt_execution)
+            # it's better to consider that the split execution time is
+            # as soon as it's been consistently planned: this gives more
+            # chances for the resulting Avatar to have a non empy timespan
+            split_op.execute(dt_execution=split_op.dt_execution)
         super(WmsSplitterOperation, self).execute_planned()
         self.registry.flush()
 

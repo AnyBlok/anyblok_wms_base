@@ -882,11 +882,16 @@ class Operation:
         self.check_alterable()
         self.dt_execution = new_dt
         for av in self.inputs:
-            if av.dt_from > new_dt:
-                # TODO more precise exc
-                raise OperationError(self,
-                                     "Can't alter dt_execution to "
-                                     "before input presence time")
+            if av.dt_from is not None:
+                # av.dt_from can be None if av.timespan is empty,
+                # which makes this sanity check not that useful anymore
+                # TODO use av.outcome_of.dt_execution or introduce a new
+                # not_before timestamp
+                if av.dt_from > new_dt:
+                    # TODO more precise exc
+                    raise OperationError(self,
+                                         "Can't alter dt_execution to "
+                                         "before input presence time")
             av.dt_until = new_dt
         Wms = self.registry.Wms
         Operation = Wms.Operation
