@@ -97,6 +97,44 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
         self.assertIsNone(action.physobj_code)
         self.assertIsNone(action.physobj_properties)
 
+    def test_compute_actions_considered_types(self):
+        # let's create a physobj with another type, it should be entirely
+        # ignored by the process.
+        other_type = self.PhysObj.Type.insert(code='other')
+        self.Arrival.create(state='done',
+                            location=self.stock,
+                            physobj_type=other_type,
+                            )
+
+        pot = self.physobj.type
+        inventory = self.Inventory.create(location=self.stock,
+                                          considered_types=[pot.code])
+        node = inventory.root
+        node.state = 'full'
+        self.Line.insert(node=node,
+                         location=self.stock,
+                         type=pot,
+                         quantity=1)
+
+        node.compute_actions()
+        self.assertIsNone(self.Action.query().filter_by(node=node).first())
+
+        # now let's consider the new type, without a line for the phobj of
+        # that type, we get a disparition
+        inventory.considered_types = [pot.code, other_type.code]
+        node.state = 'full'
+        node.compute_actions()
+        action = self.single_result(self.Action.query().filter_by(node=node))
+
+        self.assertEqual(action.type, 'disp')
+
+        self.assertEqual(action.location, self.stock)
+        self.assertEqual(action.physobj_type, other_type)
+        self.assertEqual(action.quantity, 1)
+
+        self.assertIsNone(action.physobj_code)
+        self.assertIsNone(action.physobj_properties)
+
     def test_compute_actions_apparition_below(self):
         sub = self.insert_location("SUB", parent=self.stock)
         inventory = self.Inventory.create(

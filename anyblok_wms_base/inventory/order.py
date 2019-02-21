@@ -56,6 +56,13 @@ class Inventory:
     for something that can be done by simply excluding a few types.
     """
 
+    considered_types = Jsonb()
+    """List of ``Physobj.Type`` codes to be considered.
+
+    Similarly to :attr:`excluded_types`, this is good enough and can be
+    later be improved by adding a flag to make it recursive.
+    """
+
     @property
     def root(self):
         """Root Node of the Inventory."""
