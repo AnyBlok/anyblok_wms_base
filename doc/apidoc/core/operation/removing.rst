@@ -22,6 +22,13 @@ Model.Wms.Operation.Departure
 Model.Wms.Operation.Disparition
 -------------------------------
 
+This Operation Model inherits from the following Mixins:
+
+- :class:`WmsSingleInputOperation
+  <anyblok_wms_base.core.operation.single_input.WmsSingleInputOperation>`
+- :class:`WmsInventoryOperation
+  <anyblok_wms_base.core.operation.inventory.WmsInventoryOperation>`
+
 .. autoclass:: anyblok_wms_base.core.operation.disparition.Disparition
 
    .. raw:: html
@@ -34,6 +41,5 @@ Model.Wms.Operation.Disparition
 
       <h3>Mandatory methods of Operation subclasses</h3>
 
-   .. automethod:: check_create_conditions
    .. automethod:: after_insert
 

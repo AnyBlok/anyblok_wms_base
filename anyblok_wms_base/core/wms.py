@@ -220,7 +220,8 @@ class Wms:
                  cases to define and test in Python code)
         """
         Avatar = cls.PhysObj.Avatar
-        return Avatar.query(func.count(Avatar.id)).join(Avatar.obj)
+        return (Avatar.query(func.count(Avatar.id).label('qty'))
+                .join(Avatar.obj))
 
     @classmethod
     def filter_container_types(cls, types):

@@ -27,7 +27,8 @@ for path in ('.noseids', '.coverage'):
 BASEPKG = 'anyblok_wms_base'
 BLOKS = {'wms-core': 'core',
          'wms-reservation': 'reservation',
-         'wms-quantity': 'quantity'
+         'wms-quantity': 'quantity',
+         'wms-inventory': 'inventory',
          }
 
 parser = argparse.ArgumentParser(

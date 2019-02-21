@@ -14,16 +14,16 @@ from anyblok_postgres.column import Jsonb
 from anyblok.relationship import Many2One
 from .deprecation import deprecation_warn_goods_col
 from anyblok_wms_base.exceptions import (
-    OperationForbiddenState,
     OperationContainerExpected,
 )
 
 register = Declarations.register
+Mixin = Declarations.Mixin
 Operation = Declarations.Model.Wms.Operation
 
 
 @register(Operation)
-class Apparition(Operation):
+class Apparition(Mixin.WmsInventoryOperation, Operation):
     """Inventory Operation to record unexpected physical objects.
 
     This is similar to Arrival, but has a distinct functional meaning.
@@ -157,17 +157,12 @@ class Apparition(Operation):
                  <anyblok_wms_base.exceptions.OperationContainerExpected>`
                  if location is not a container.
         """
-        if state != 'done':
-            raise OperationForbiddenState(
-                cls, "Apparition can exist only in the 'done' state",
-                forbidden=state)
         if location is None or not location.is_container():
             raise OperationContainerExpected(
                 cls, "location field value {offender}",
                 offender=location)
 
-        super(Apparition, cls).check_create_conditions(
-            state, dt_execution, **kwargs)
+        super().check_create_conditions(state, dt_execution, **kwargs)
 
     def after_insert(self):
         """Create the PhysObj and their Avatars.

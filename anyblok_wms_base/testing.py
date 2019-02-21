@@ -13,8 +13,11 @@ from sqlalchemy.event import listens_for
 import anyblok.registry
 from anyblok.config import Configuration
 from anyblok.tests.testcase import BlokTestCase
-
 from anyblok.tests.testcase import SharedDataTestCase
+try:
+    from anyblok.tests.testcase import skip_unless_bloks_installed
+except ImportError:  # pragma: no cover
+    from .anyblok_forward_ports import skip_unless_bloks_installed  # noqa
 
 _missing = object()
 UTC = timezone.utc

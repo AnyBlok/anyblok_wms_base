@@ -9,15 +9,15 @@
 from anyblok import Declarations
 from anyblok.column import Integer
 
-from anyblok_wms_base.exceptions import OperationForbiddenState
-
 register = Declarations.register
 Mixin = Declarations.Mixin
 Operation = Declarations.Model.Wms.Operation
 
 
 @register(Operation)
-class Disparition(Mixin.WmsSingleInputOperation, Operation):
+class Disparition(Mixin.WmsSingleInputOperation,
+                  Mixin.WmsInventoryOperation,
+                  Operation):
     """Inventory Operation to record unexpected loss of PhysObj
 
     This is similar to Departure, but has a distinct functional meaning.
@@ -30,23 +30,6 @@ class Disparition(Mixin.WmsSingleInputOperation, Operation):
                  autoincrement=False,
                  foreign_key=Operation.use('id').options(ondelete='cascade'))
     """Primary key."""
-
-    @classmethod
-    def check_create_conditions(cls, state, dt_execution, **kwargs):
-        """Forbid creation with wrong states.
-
-        :raises: :class:`OperationForbiddenState
-                 <anyblok_wms_base.exceptions.OperationForbiddenState>`
-                 if state is not ``'done'``
-
-        TODO make a common Mixin for all inventory Operations.
-        """
-        if state != 'done':
-            raise OperationForbiddenState(
-                cls, "Apparition can exist only in the 'done' state",
-                forbidden=state)
-        super(Disparition, cls).check_create_conditions(
-            state, dt_execution, **kwargs)
 
     def after_insert(self):
         """Put the input Avatar in the 'past' state
