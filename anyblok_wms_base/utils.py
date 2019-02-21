@@ -214,24 +214,24 @@ def _wild_get(spec, k):
 
 
 def _dict_list_merge(first, second, list_merge=None):
-        if list_merge is None:
-            return first
-
-        lm, below = list_merge
-        if lm == 'zip':
-            return [dict_merge(x, y,
-                               list_merge=_wild_get(below, i))
-                    for i, (x, y) in enumerate(zip(first, second))]
-        elif lm == 'append':
-            return second + first
-        elif lm == 'prepend':
-            return first + second
-        elif lm == 'set':
-            s = set(first)
-            s.update(second)
-            return s
-
+    if list_merge is None:
         return first
+
+    lm, below = list_merge
+    if lm == 'zip':
+        return [dict_merge(x, y,
+                           list_merge=_wild_get(below, i))
+                for i, (x, y) in enumerate(zip(first, second))]
+    elif lm == 'append':
+        return second + first
+    elif lm == 'prepend':
+        return first + second
+    elif lm == 'set':
+        s = set(first)
+        s.update(second)
+        return s
+
+    return first
 
 
 class NonZero:

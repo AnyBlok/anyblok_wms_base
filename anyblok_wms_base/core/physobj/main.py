@@ -601,11 +601,11 @@ class Properties:
 
 
 def deprecation_warn_goods():
-        warnings.warn("The 'goods' attribute of Model.Wms.PhysObj.Avatar is "
-                      "deprecated, please rename to 'obj' before "
-                      "version 1.0 of Anyblok / WMS Base",
-                      DeprecationWarning,
-                      stacklevel=2)
+    warnings.warn("The 'goods' attribute of Model.Wms.PhysObj.Avatar is "
+                  "deprecated, please rename to 'obj' before "
+                  "version 1.0 of Anyblok / WMS Base",
+                  DeprecationWarning,
+                  stacklevel=2)
 
 
 @register(Model.Wms.PhysObj)
