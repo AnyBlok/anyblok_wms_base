@@ -205,6 +205,27 @@ class InventoryActionTestCase(SharedDataTestCase, WmsTestCase):
             self.assertEqual(op.state, 'done')
         # I don't see much value in checking that Disparition does its job
 
+    def test_customize_operation_fields(self):
+        action = self.Action.insert(node=self.node, type='app',
+                                    location=self.loc_a, quantity=1,
+                                    physobj_type=self.pot)
+
+        def customize(op_fields):
+            """For monkey patch of the Action
+
+            In a real application, it wouldn't be wise to change that field,
+            and customization would be done by subclassing.
+            """
+            op_fields['physobj_code'] = 'CUSTOMIZED'
+        action.customize_operation_fields = customize
+
+        op = self.assert_singleton(action.apply())
+
+        self.assertIsInstance(op, self.Operation.Apparition)
+        self.assertEqual(op.state, 'done')
+        self.assertEqual(op.physobj_code, 'CUSTOMIZED')
+        # I don't see much value in checking that Apparition does its job
+
     def test_choose_affected_not_enough(self):
         pot = self.pot
         loc_a = self.loc_a

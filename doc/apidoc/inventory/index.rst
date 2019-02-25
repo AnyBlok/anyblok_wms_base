@@ -92,3 +92,4 @@ Model.Wms.Inventory.Action
    .. automethod:: simplify
    .. automethod:: apply
    .. automethod:: choose_affected
+   .. automethod:: customize_operation_fields

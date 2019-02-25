@@ -99,6 +99,22 @@ class Action:
                            destination=dest)
                 disp.quantity = -diff_qty
 
+    def customize_operation_fields(self, operation_fields):
+        """Hook to modify fields of Operations spawned by :meth:`apply`
+
+        This is meant for easy override by applications.
+
+        :param dict operation_fields:
+            prefilled by :meth:`apply` with the minimal required values in
+            the generic case. This methods mutates it in place
+        :returns: None
+
+        The typical customization would consist of putting additional fields
+        that make sense for the local business logic, but this method isn't
+        limited to that.
+        """
+        return
+
     def apply(self):
         """Perform Inventory Operations for the current Action.
 
@@ -108,26 +124,27 @@ class Action:
         """
         Operation = self.registry.Wms.Operation
         op_fields = dict(state='done', inventory=self.node.inventory)
-        if self.type == 'app':
-            return (
-                Operation.Apparition.create(
-                    physobj_type=self.physobj_type,
-                    physobj_code=self.physobj_code,
-                    physobj_properties=self.physobj_properties,
-                    quantity=self.quantity,
-                    location=self.location,
-                    **op_fields),
-                )
 
-        # only Operations with (single) input remain
-        avatars = self.choose_affected()
-        if self.type == 'disp':
+        if self.type == 'app':
+            Op = Operation.Apparition
+            op_fields.update(physobj_type=self.physobj_type,
+                             physobj_code=self.physobj_code,
+                             physobj_properties=self.physobj_properties,
+                             quantity=self.quantity,
+                             location=self.location)
+        elif self.type == 'disp':
             Op = Operation.Disparition
         else:
             Op = Operation.Teleportation
             op_fields['new_location'] = self.destination
 
-        return tuple(Op.create(input=av, **op_fields) for av in avatars)
+        self.customize_operation_fields(op_fields)
+
+        if self.type == 'app':
+            return (Op.create(**op_fields), )
+
+        return tuple(Op.create(input=av, **op_fields)
+                     for av in self.choose_affected())
 
     def choose_affected(self):
         """Choose Physical Objects to be taken for Disparition/Teleportation.
