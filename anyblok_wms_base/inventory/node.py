@@ -260,7 +260,22 @@ class Node:
         node_lines = (Line.query(Line.quantity,
                                  Line.location_id,
                                  Line.type_id, Line.code, Line.properties)
-                      .filter_by(node=self).subquery())
+                      .filter_by(node=self))
+
+        considered_types = self.inventory.considered_types
+        if considered_types is not None:
+            node_lines = node_lines.filter(
+                Line.type_id.in_(
+                    POType.query(POType.id)
+                    .filter(POType.code.in_(considered_types))))
+        excluded_types = self.inventory.excluded_types
+        if excluded_types is not None:
+            node_lines = node_lines.filter(
+                not_(Line.type_id.in_(
+                    POType.query(POType.id)
+                    .filter(POType.code.in_(excluded_types)))))
+        node_lines = node_lines.subquery()
+
         comp_query = (
             self.registry.query(node_lines)
             .join(existing_phobjs,
