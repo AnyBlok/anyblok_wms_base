@@ -97,6 +97,94 @@ class InventoryNodeTestCase(WmsTestCaseWithPhysObj):
         self.assertIsNone(action.physobj_code)
         self.assertIsNone(action.physobj_properties)
 
+    def test_compute_actions_considered_types(self):
+        """considered_types field of Inventory has the expected consequences.
+
+        We create a new `PhysObj` with a new `Type`, and an `Inventory` with
+        `considered_types` restricting to the existing `self.physobj_type`.
+        The new `PhysObj` is dully ignored.
+
+        Conversely, switching back `considered_types` to the new Type
+        has the effect of generate the expected `Inventory.Action` for that
+        Type and ignoring the `Inventory.Line` about the old Type.
+        """
+        other_type = self.PhysObj.Type.insert(code='other')
+        self.Arrival.create(state='done',
+                            location=self.stock,
+                            physobj_type=other_type,
+                            )
+
+        pot = self.physobj.type
+        inventory = self.Inventory.create(location=self.stock,
+                                          considered_types=[pot.code])
+        node = inventory.root
+        node.state = 'full'
+        self.Line.insert(node=node,
+                         location=self.stock,
+                         type=pot,
+                         quantity=1)
+
+        node.compute_actions()
+        self.assertIsNone(self.Action.query().filter_by(node=node).first())
+
+        # now let's consider the new type, without a line for the phobj of
+        # that type, we get a disparition
+        inventory.considered_types = [other_type.code]
+        node.state = 'full'
+        node.compute_actions()
+        action = self.single_result(self.Action.query().filter_by(node=node))
+
+        self.assertEqual(action.type, 'disp')
+
+        self.assertEqual(action.location, self.stock)
+        self.assertEqual(action.physobj_type, other_type)
+        self.assertEqual(action.quantity, 1)
+
+        self.assertIsNone(action.physobj_code)
+        self.assertIsNone(action.physobj_properties)
+
+    def test_compute_actions_excluded_types(self):
+        """excluded_types field of Inventory has the expected consequences.
+
+        Same setup and assertions as
+        :meth:`test_compute_actions_considered_types`,
+        using the `exclude_types` field instead of `considered_types`
+        """
+        other_type = self.PhysObj.Type.insert(code='other')
+        self.Arrival.create(state='done',
+                            location=self.stock,
+                            physobj_type=other_type,
+                            )
+
+        pot = self.physobj.type
+        inventory = self.Inventory.create(location=self.stock,
+                                          excluded_types=[other_type.code])
+        node = inventory.root
+        node.state = 'full'
+        self.Line.insert(node=node,
+                         location=self.stock,
+                         type=pot,
+                         quantity=1)
+
+        node.compute_actions()
+        self.assertIsNone(self.Action.query().filter_by(node=node).first())
+
+        # now let's stop excluding `other_type`. Without a line for the phobj
+        # of that type, we get a disparition
+        inventory.excluded_types = [pot.code]
+        node.state = 'full'
+        node.compute_actions()
+        action = self.single_result(self.Action.query().filter_by(node=node))
+
+        self.assertEqual(action.type, 'disp')
+
+        self.assertEqual(action.location, self.stock)
+        self.assertEqual(action.physobj_type, other_type)
+        self.assertEqual(action.quantity, 1)
+
+        self.assertIsNone(action.physobj_code)
+        self.assertIsNone(action.physobj_properties)
+
     def test_compute_actions_apparition_below(self):
         sub = self.insert_location("SUB", parent=self.stock)
         inventory = self.Inventory.create(

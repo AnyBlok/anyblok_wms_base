@@ -147,6 +147,32 @@ class Node:
                             location=container)
                 for container in subloc_query.all()]
 
+    def phobj_filter(self, query):
+        """Filter for :meth:`anyblok_wms_base.quantity_query()`
+
+        This applies the rules of :attr:`considered_types`
+        and :attr:`excluded_types`. Currently, this is not ready to handle
+        big lists, the implementation does simple subqueries. Switching to
+        JOINs would require more effort, which is not yet justified.
+
+        Other selection rules could be added here.
+        """
+        PhysObj = self.registry.Wms.PhysObj
+        POType = PhysObj.Type
+        excluded_types = self.inventory.excluded_types
+        considered_types = self.inventory.considered_types
+        if excluded_types is not None:
+            query = query.filter(
+                not_(PhysObj.type_id.in_(
+                    POType.query(POType.id)
+                    .filter(POType.code.in_(excluded_types)))))
+        if considered_types is not None:
+            query = query.filter(
+                PhysObj.type_id.in_(
+                    POType.query(POType.id)
+                    .filter(POType.code.in_(considered_types))))
+        return query
+
     def compute_actions(self, recompute=False):
         """Create actions to reconcile database with assessment.
 
@@ -223,27 +249,33 @@ class Node:
         Line = Inventory.Line
         Action = Inventory.Action
 
-        excluded_types = self.inventory.excluded_types
-        if not excluded_types:
-            phobj_filter = None
-        else:
-            def phobj_filter(query):
-                excluded_types_q = (POType.query(POType.id)
-                                    .filter(POType.code.in_(excluded_types)))
-                return query.filter(not_(PhysObj.type_id.in_(excluded_types_q)))
-
         cols = (Avatar.location_id, PhysObj.code, PhysObj.type_id)
         quantity_query = self.registry.Wms.quantity_query
         existing_phobjs = (quantity_query(location=self.location,
                                           location_recurse=self.is_leaf,
-                                          additional_filter=phobj_filter)
+                                          additional_filter=self.phobj_filter)
                            .add_columns(*cols).group_by(*cols)
                            .subquery())
 
         node_lines = (Line.query(Line.quantity,
                                  Line.location_id,
                                  Line.type_id, Line.code, Line.properties)
-                      .filter_by(node=self).subquery())
+                      .filter_by(node=self))
+
+        considered_types = self.inventory.considered_types
+        if considered_types is not None:
+            node_lines = node_lines.filter(
+                Line.type_id.in_(
+                    POType.query(POType.id)
+                    .filter(POType.code.in_(considered_types))))
+        excluded_types = self.inventory.excluded_types
+        if excluded_types is not None:
+            node_lines = node_lines.filter(
+                not_(Line.type_id.in_(
+                    POType.query(POType.id)
+                    .filter(POType.code.in_(excluded_types)))))
+        node_lines = node_lines.subquery()
+
         comp_query = (
             self.registry.query(node_lines)
             .join(existing_phobjs,
