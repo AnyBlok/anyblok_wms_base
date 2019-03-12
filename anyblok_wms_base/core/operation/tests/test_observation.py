@@ -17,6 +17,7 @@ class TestObservation(WmsTestCaseWithPhysObj):
     def setUp(self):
         super(TestObservation, self).setUp()
         self.Observation = self.Operation.Observation
+        self.Move = self.Operation.Move
 
     def test_planned_execute(self):
         obs = self.Observation.create(state='planned',
@@ -56,6 +57,55 @@ class TestObservation(WmsTestCaseWithPhysObj):
         self.assertEqual(self.avatar.state, 'past')
 
         outcome = self.assert_singleton(obs.outcomes)
+        self.assertEqual(outcome.dt_from, self.dt_test2)
+        self.assertIsNone(outcome.dt_until)
+        self.assertEqual(outcome.state, 'present')
+
+    def test_insert_before(self):
+        Move = self.Operation.Move
+        HI = self.Operation.HistoryInput
+        move = Move.create(destination=self.stock,
+                           state='planned',
+                           dt_execution=self.dt_test2,
+                           input=self.avatar)
+        self.assert_singleton(move.follows, value=self.arrival)
+        self.assertEqual(move.input, self.avatar)
+
+        obs = self.Observation.insert(state='done',
+                                      observed_properties=dict(qa='ok'),
+                                      dt_execution=self.dt_test2)
+        HI.insert(avatar=self.avatar, operation=obs)
+
+        out_av = self.PhysObj.Avatar.insert(obj=self.physobj,
+                                            state='present',
+                                            outcome_of=obs,
+                                            location=obs.input.location,
+                                            dt_from=self.dt_test2,
+                                            dt_until=None)
+
+        self.assertEqual(obs.input, move.input)
+        obs.insert_before(obs.input)
+        self.assertEqual(obs.outcome, move.input)
+
+    def test_done_with_insert_before(self):
+        Move = self.Operation.Move
+        move = Move.create(destination=self.stock,
+                           state='planned',
+                           dt_execution=self.dt_test2,
+                           input=self.avatar)
+        self.assert_singleton(move.follows, value=self.arrival)
+        self.assertEqual(move.input, self.avatar)
+        self.avatar.state = 'present'
+        obs = self.Observation.create(state='done',
+                                      observed_properties=dict(qa='ok'),
+                                      dt_execution=self.dt_test2,
+                                      input=self.avatar)
+        self.assert_singleton(obs.follows, value=self.arrival)
+        self.assertEqual(obs.input, self.avatar)
+        self.assertEqual(obs.state, 'done')
+
+        outcome = self.assert_singleton(obs.outcomes)
+        self.assertEqual(outcome, move.input)
         self.assertEqual(outcome.dt_from, self.dt_test2)
         self.assertIsNone(outcome.dt_until)
         self.assertEqual(outcome.state, 'present')
