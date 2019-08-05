@@ -108,9 +108,10 @@ class TestAvatar(WmsTestCaseWithPhysObj):
 
         with warnings.catch_warnings(record=True) as got:
             # writing
+            avatar.dt_until = self.dt_test2  # avoid overlap
             self.Avatar.insert(goods=phobj,
                                state='present',
-                               dt_from=self.dt_test1,
+                               dt_from=self.dt_test2,
                                dt_until=None,
                                outcome_of=avatar.outcome_of,
                                location=avatar.location)

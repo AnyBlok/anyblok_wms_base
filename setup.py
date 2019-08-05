@@ -29,7 +29,7 @@ anyblok_init = [
 
 requirements = [
     'anyblok>=0.22.0',
-    'anyblok_postgres',
+    'anyblok_postgres>=0.2.0',
 ]
 
 # it is a bit lame, because ideally we'd prefer to

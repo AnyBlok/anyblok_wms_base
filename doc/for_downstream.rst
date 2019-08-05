@@ -1,6 +1,32 @@
 For downstream developers and deployers
 =======================================
 
+.. _install:
+
+Installation
+~~~~~~~~~~~~
+
+Database
+--------
+
+.. warning:: AnyBlok WMS / Base supports PostgreSQL only.
+
+It is strongly recommended to install the `btree_gist
+<https://www.postgresql.org/docs/11/btree-gist.html>`_ PostgreSQL
+extension::
+
+  CREATE EXTENSION btree_gist;
+
+This requires PostgreSQL administration privileges. If you want it to
+be automatically available in databases created automatically by
+unprivileged ``anyblok_createdb`` processes, you can install it in appropriate
+database template, for instance ``template1``, the default one meant
+to be customized by the local DBA.
+
+.. warning:: If ``btree_gist`` is not available, your database will not benefit
+             from the strongest integrity constraints, nor the fastest
+             indexing solutions.
+
 .. _arch:
 
 Architecture

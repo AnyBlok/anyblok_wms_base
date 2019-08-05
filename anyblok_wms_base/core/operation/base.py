@@ -884,9 +884,10 @@ class Operation:
         for av in self.inputs:
             if av.dt_from is not None:
                 # av.dt_from can be None if av.timespan is empty,
-                # which makes this sanity check not that useful anymore
-                # TODO use av.outcome_of.dt_execution or introduce a new
-                # not_before timestamp
+                # which makes this sanity check not comprehensive.
+                # On production databases, we expect to have
+                # the strong non-overlapping EXCLUDE constraint, but this check
+                # is still useful as an easier to debug condition.
                 if av.dt_from > new_dt:
                     # TODO more precise exc
                     raise OperationError(self,
