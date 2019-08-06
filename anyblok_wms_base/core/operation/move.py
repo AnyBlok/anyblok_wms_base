@@ -43,7 +43,6 @@ class Move(Mixin.WmsSingleInputOperation,
 
     def after_insert(self):
         state, to_move, dt_exec = self.state, self.input, self.dt_execution
-        to_move.dt_until = dt_exec
         if state == 'done':
             to_move.state = 'past'
         self.registry.Wms.PhysObj.Avatar.insert(
@@ -51,7 +50,6 @@ class Move(Mixin.WmsSingleInputOperation,
             outcome_of=self,
             state='present' if state == 'done' else 'future',
             dt_from=dt_exec,
-            dt_until=None,
             obj=to_move.obj)
 
     @classmethod
@@ -90,7 +88,7 @@ class Move(Mixin.WmsSingleInputOperation,
     def execute_planned(self):
         dt_execution = self.dt_execution
 
-        self.input.update(state='past', dt_until=dt_execution)
+        self.input.state = 'past'
         self.outcome.update(state='present', dt_from=dt_execution)
 
     def is_reversible(self):

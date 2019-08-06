@@ -223,7 +223,6 @@ class TestAggregate(WmsTestCase):
         for avatar in self.avatars:
             avatar.state = 'present'
             avatar.obj.properties = props
-
         agg = self.plan_aggregate()
         self.assertEqual(agg.inputs, self.avatars)
         self.assert_quantity(3)

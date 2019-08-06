@@ -98,7 +98,7 @@ class Split(SingleInput, InPlace, Operation):
             location=avatar.location,
             outcome_of=self,
             dt_from=self.dt_execution,
-            dt_until=avatar.dt_until,
+            dt_until=None,
         )
         avatar.dt_until = self.dt_execution
         if self.state == 'done':

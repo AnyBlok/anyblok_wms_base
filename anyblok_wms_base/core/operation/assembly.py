@@ -930,14 +930,11 @@ class Assembly(Mixin.WmsSingleOutcomeOperation, Operation):
 
     def after_insert(self):
         state = self.state
-        outcome_state = 'present' if state == 'done' else 'future'
-        dt_exec = self.dt_execution
-        input_upd = dict(dt_until=dt_exec)
-        if state == 'done':
-            input_upd.update(state='past')
         # TODO PERF bulk update ?
-        for inp in self.inputs:
-            inp.update(**input_upd)
+        # TODO move this also to the base class
+        if state == 'done':
+            for inp in self.inputs:
+                inp.state = 'past'
 
         self.check_match_inputs(state, for_creation=True)
         PhysObj = self.registry.Wms.PhysObj
@@ -948,9 +945,9 @@ class Assembly(Mixin.WmsSingleOutcomeOperation, Operation):
                     **self.outcome_properties(state, for_creation=True))),
             location=self.outcome_location(),
             outcome_of=self,
-            state=outcome_state,
-            dt_from=dt_exec,
-            dt_until=None)
+            state='present' if state == 'done' else 'future',
+            dt_from=self.dt_execution,
+            )
 
     def outcome_location(self):
         """Find where the new assembled physical object should appear.

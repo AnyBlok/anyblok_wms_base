@@ -290,6 +290,8 @@ class TestUnpack(WmsTestCase):
         # after actual instantiation, but we can't test it because
         # we don't have a create() returned value to compare
 
+        self.packs.dt_until = None  # cleanup for retry
+
         # Having properties, still missing the required one
         self.packs.obj.properties = self.PhysObj.Properties.insert(
             flexible=dict(bar=1))

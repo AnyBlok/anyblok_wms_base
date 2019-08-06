@@ -113,7 +113,6 @@ class Unpack(Mixin.WmsSingleInputOperation,
         PhysObj = self.registry.Wms.PhysObj
         PhysObjType = PhysObj.Type
         packs = self.input
-        dt_execution = self.dt_execution
         spec = self.get_outcome_specs()
         type_codes = set(outcome['type'] for outcome in spec)
         outcome_types = {gt.code: gt
@@ -127,7 +126,6 @@ class Unpack(Mixin.WmsSingleInputOperation,
         for outcome_spec in spec:
             self.create_outcomes_for_spec(
                 outcome_types, outcome_spec, outcome_state)
-        packs.dt_until = dt_execution
 
     def create_outcomes_for_spec(self, types_cache, spec, outcome_state):
         PhysObj = self.registry.Wms.PhysObj

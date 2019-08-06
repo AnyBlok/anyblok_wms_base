@@ -15,7 +15,6 @@ class TestMove(WmsTestCaseWithPhysObj):
 
     def setUp(self):
         super(TestMove, self).setUp()
-        self.avatar.dt_until = self.dt_test3
         self.Move = self.Operation.Move
 
     def test_partial_done(self):
@@ -40,7 +39,7 @@ class TestMove(WmsTestCaseWithPhysObj):
         after_move = self.assert_singleton(move.outcomes)
         self.assertEqual(after_move.obj.quantity, 1)
         self.assertEqual(after_move.dt_from, self.dt_test2)
-        self.assertEqual(after_move.dt_until, self.dt_test3)
+        self.assertIsNone(after_move.dt_until)
         self.assertEqual(after_move.location, self.stock)
 
     def test_partial_planned_execute(self):
@@ -69,7 +68,7 @@ class TestMove(WmsTestCaseWithPhysObj):
         self.assertEqual(after_move.obj.quantity, 1)
         self.assertEqual(after_move.location, self.stock)
         self.assertEqual(after_move.dt_from, self.dt_test2)
-        self.assertEqual(after_move.dt_until, self.dt_test3)
+        self.assertIsNone(after_move.dt_until)
         self.assertEqual(after_move.state, 'present')
 
 

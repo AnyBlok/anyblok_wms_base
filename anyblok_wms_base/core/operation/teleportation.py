@@ -64,11 +64,10 @@ class Teleportation(Mixin.WmsSingleInputOperation,
         """
         to_move, dt_exec = self.input, self.dt_execution
 
-        to_move.update(dt_until=dt_exec, state='past')
+        to_move.state = 'past'
         self.registry.Wms.PhysObj.Avatar.insert(
             location=self.new_location,
             outcome_of=self,
             state='present',
             dt_from=dt_exec,
-            dt_until=None,
             obj=to_move.obj)
