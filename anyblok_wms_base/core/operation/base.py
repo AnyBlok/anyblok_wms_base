@@ -57,12 +57,6 @@ class HistoryInput:
                       foreign_key_options={'ondelete': 'cascade'})
     """One of the inputs of the :attr:`operation`."""
 
-    orig_dt_until = DateTime(label="Original dt_until of avatars")
-    """Saving the original ``dt_until`` value of the :attr:`Avatar <avatar>`
-
-    This is needed for :ref:`cancel and oblivion <op_cancel_revert_obliviate>`
-    """
-
 
 @register(Wms)
 class Operation:
@@ -290,7 +284,27 @@ class Operation:
         for avatar in inputs:
             HI.insert(avatar=avatar,
                       operation=self,
-                      orig_dt_until=avatar.dt_until)
+                      )
+
+    def set_inputs_upper_timespan_bounds(self, inputs, terminal=True):
+        """Ensure that all inputs time spans end at `self.dt_execution`
+
+        A terminal Avatar not in the ``past`` state should always be future
+        unbound. If that's not true, we take the opportunity to raise
+        :class:`AvatarError`
+
+        :param inputs: should be same as `self.inputs`, but the current callers
+                       know them already.
+        :param terminal: same meaning as in :meth:`create`
+        """
+        for inp in inputs:
+            if terminal and inp.dt_until is not None:
+                raise OperationInputsError(
+                    self,
+                    "Input {avatar!r} is not terminal: it already has "
+                    "a finite timespan upper bound",
+                    avatar=inp)
+            inp.dt_until = self.dt_execution
 
     def leaf_outcomes(self):
         """Return those of :attr:`outcomes` that aren't inputs of Operations.
@@ -305,7 +319,7 @@ class Operation:
                 .all())
 
     @classmethod
-    def create(cls, state='planned', inputs=None,
+    def create(cls, state='planned', terminal=True, inputs=None,
                dt_execution=None, dt_start=None, **fields):
         """Main method for creation of operations
 
@@ -328,6 +342,11 @@ class Operation:
            value of the attr:`dt_execution` right at creation. If
            ``state==planned``, this is mandatory. Otherwise, it defaults to
            the current date and time (:meth:`datetime.now`)
+        :param terminal:
+           can be set to ``False`` in exceptional cases where some of the
+           inputs are already inputs of some other Operation. This is obviously
+           inconsistent as an end result, but it can happen in the course
+           of planification refinements.
         :return Operation: concrete instance of the appropriate Operation
                            subclass.
 
@@ -361,6 +380,7 @@ class Operation:
         op = cls.insert(state=state, dt_execution=dt_execution, **fields)
         if inputs is not None:  # happens with creative Operations
             op.link_inputs(inputs)
+            op.set_inputs_upper_timespan_bounds(inputs, terminal=terminal)
         op.after_insert()
         return op
 
@@ -581,10 +601,11 @@ class Operation:
         Depending on the needs, it might be interesting to avoid
         actually fetching all those records.
 
-        :return: a generator of pairs (goods, their original ``dt_until``)
+        :return: a generator of pairs (avatar, tuple of original values)
+        TODO this is probably a remnant, I can't think of anything to
+        restore any more (storing original dt_until is a thing of the past)
         """
-        # TODO simple n-column query instead
-        return ((hi.avatar, hi.orig_dt_until)
+        return ((hi.avatar, ())
                 for hi in self.query_history_input().all())
 
     def reset_inputs_original_values(self, state=None):
@@ -599,10 +620,10 @@ class Operation:
         their records, but work directly on ids (and maybe do this in one pass
         with a clever UPDATE query).
         """
-        for avatar, dt_until in self.iter_inputs_original_values():
+        for avatar, orig_vals in self.iter_inputs_original_values():
             if state is not None:
                 avatar.state = state
-            avatar.update(dt_until=dt_until)
+            avatar.dt_until = None  # the avatar is terminal again
 
     @classmethod
     def check_create_conditions(cls, state, dt_execution,

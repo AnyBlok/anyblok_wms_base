@@ -97,23 +97,38 @@ class TestOperation(WmsTestCase):
         op.link_inputs(inputs=avatars[:1])
         self.assertEqual(op.inputs, avatars[:1])
         hi = self.single_result(HI.query().filter(HI.operation == op))
-        self.assertEqual(hi.orig_dt_until, self.dt_test1)
         self.assert_singleton(op.follows, value=arrival)
 
         op.link_inputs(inputs=avatars[1:2])
         self.assertEqual(op.inputs, avatars[:2])
-        his = HI.query().filter(HI.operation == op).order_by(
-            HI.orig_dt_until).all()
+        his = set(HI.query().filter(HI.operation == op).all())
         self.assertEqual(len(his), 2)
-        self.assertEqual(his[0], hi)
-        self.assertEqual(his[1].orig_dt_until, self.dt_test2)
+        self.assertTrue(hi in his)
         self.assert_singleton(op.follows, value=arrival)
 
         op.link_inputs(inputs=avatars[2:], clear=True)
         self.assertEqual(op.inputs, avatars[2:])
         hi = self.single_result(HI.query().filter(HI.operation == op))
-        self.assertEqual(hi.orig_dt_until, self.dt_test3)
         self.assert_singleton(op.follows, value=arrival)
+
+    def test_inputs_terminal(self):
+        """In regular Operation creations, all inputs should be terminal."""
+
+        arrival = self.Operation.Arrival.create(physobj_type=self.physobj_type,
+                                                dt_execution=self.dt_test1,
+                                                location=self.incoming_loc,
+                                                state='planned')
+        arrived = arrival.outcome
+        self.Operation.Move.create(input=arrived,
+                                   destination=self.stock,
+                                   dt_execution=self.dt_test2)
+
+        with self.assertRaises(OperationInputsError) as arc:
+            self.Operation.Move.create(input=arrived,
+                                       destination=self.stock,
+                                       dt_execution=self.dt_test3)
+        exc = arc.exception
+        self.assertEqual(exc.kwargs.get('avatar'), arrived)
 
     def test_before_insert(self):
         other_loc = self.insert_location('other')
@@ -168,13 +183,13 @@ class TestOperation(WmsTestCase):
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
                                                 state='planned')
-        goods = self.assert_singleton(arrival.outcomes)
+        avatar1 = self.assert_singleton(arrival.outcomes)
         Move = self.Operation.Move
-        Move.create(input=goods,
-                    dt_execution=self.dt_test2,
-                    destination=self.stock,
-                    state='planned')
-        move2 = Move.create(input=goods,
+        move1 = Move.create(input=avatar1,
+                            dt_execution=self.dt_test2,
+                            destination=self.stock,
+                            state='planned')
+        move2 = Move.create(input=move1.outcome,
                             dt_execution=self.dt_test2,
                             destination=self.stock,
                             state='planned')

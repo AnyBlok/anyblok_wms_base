@@ -43,14 +43,6 @@ class Move(Mixin.WmsSingleInputOperation,
 
     def after_insert(self):
         state, to_move, dt_exec = self.state, self.input, self.dt_execution
-        orig_dt_until = to_move.dt_until
-        if orig_dt_until is None:
-            dt_until = None
-        else:
-            # it's not clear what it means for to_move.dt_until not to be None
-            # in any case, dt_until should be at least dt_from
-            dt_until = max(orig_dt_until, dt_exec)
-
         to_move.dt_until = dt_exec
         if state == 'done':
             to_move.state = 'past'
@@ -59,7 +51,7 @@ class Move(Mixin.WmsSingleInputOperation,
             outcome_of=self,
             state='present' if state == 'done' else 'future',
             dt_from=dt_exec,
-            dt_until=dt_until,
+            dt_until=None,
             obj=to_move.obj)
 
     @classmethod
@@ -75,6 +67,8 @@ class Move(Mixin.WmsSingleInputOperation,
 
     @classmethod
     def plan_for_outcomes(cls, inputs, outcomes, dt_execution=None, **fields):
+        # TODO this should really go to single_outcome, there's nothing
+        # special about this
         if len(outcomes) != 1:
             raise OperationError(
                 cls, "can't plan for {nb_outcomes} outcomes, would need "

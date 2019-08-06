@@ -144,7 +144,6 @@ class Unpack(Mixin.WmsSingleInputOperation,
                                   location=packs.location,
                                   outcome_of=self,
                                   dt_from=self.dt_execution,
-                                  dt_until=packs.dt_until,
                                   state=outcome_state)
             if not clone:
                 physobj.update_properties(self.outcome_props_update(spec))
