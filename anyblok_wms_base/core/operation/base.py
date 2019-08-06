@@ -19,6 +19,7 @@ from anyblok.relationship import Many2One
 
 from anyblok_wms_base.utils import NonZero
 from anyblok_wms_base.constants import OPERATION_STATES, OPERATION_TYPES
+from anyblok_wms_base.dbapi import TimeSpan
 from anyblok_wms_base.exceptions import (
     OperationMissingInputsError,
     OperationInputsError,
@@ -279,6 +280,10 @@ class Operation:
     __str__ = __repr__
 
     def link_inputs(self, inputs=None, clear=False, **fields):
+        # TODO this method should also take care of timespans of the inputs,
+        # rather than letting all concrete classes deal with it. This is
+        # a leftover of the times where we didn't always have
+        # dt_from = outcome_of.dt_execution and dt_until=self.dt_execution
         HI = self.registry.Wms.Operation.HistoryInput
         if clear:
             HI.query().filter(HI.operation == self).delete(
@@ -860,6 +865,46 @@ class Operation:
         for follower in self.followers:
             follower.input_location_altered()
 
+    def _postpone_execution(self, new_dt, inputs, outcomes):
+        """Internal subcase of :meth:`alter_dt_execution`.
+
+        Do not use directly, lacks some protections
+        """
+        Wms = self.registry.Wms
+        Operation = Wms.Operation
+        HI = Operation.HistoryInput
+        Avatar = Wms.PhysObj.Avatar
+        res = (self.registry.query(Avatar)
+               .filter_by(outcome_of=self)
+               .outerjoin(HI, HI.avatar_id == Avatar.id)
+               .outerjoin(Operation, HI.operation_id == Operation.id)
+               .add_entity(Operation)
+               .all()
+               )
+        followers = {}  # op -> input avatars
+        for av, op in res:  # TODO better use an array_agg or something
+            followers.setdefault(op, []).append(av)
+
+        for follower, avs in followers.items():
+            for av in avs:
+                dt_until = av.dt_until
+                if dt_until is not None:
+                    # minimal consistent change (follower's alteration
+                    # could change it further)
+                    av.dt_until = max(dt_until, new_dt)
+            if follower is not None and new_dt > follower.dt_execution:
+                follower.alter_dt_execution(new_dt)
+
+        for outcome in outcomes:
+            outcome.dt_from = new_dt
+            if outcome.dt_until is not None:
+                outcome.dt_until = max(outcome.dt_until, new_dt)
+        self.registry.flush()
+        for inp in inputs:
+            inp.timespan = TimeSpan(lower=inp.outcome_of.dt_execution,
+                                    upper=new_dt,
+                                    bounds='[)')
+
     def alter_dt_execution(self, new_dt):
         """Change the date/time execution of a planned Operation.
 
@@ -882,45 +927,33 @@ class Operation:
         which is not supported yet, but that's a different story)
         """
         self.check_alterable()
-        self.dt_execution = new_dt
-        for av in self.inputs:
-            if av.dt_from is not None:
-                # av.dt_from can be None if av.timespan is empty,
-                # which makes this sanity check not comprehensive.
-                # On production databases, we expect to have
-                # the strong non-overlapping EXCLUDE constraint, but this check
-                # is still useful as an easier to debug condition.
-                if av.dt_from > new_dt:
-                    # TODO more precise exc
-                    raise OperationError(self,
-                                         "Can't alter dt_execution to "
-                                         "before input presence time")
-            av.dt_until = new_dt
-        Wms = self.registry.Wms
-        Operation = Wms.Operation
-        HI = Operation.HistoryInput
-        Avatar = Wms.PhysObj.Avatar
-        res = (self.registry.query(Avatar)
-               .filter_by(outcome_of=self)
-               .outerjoin(HI, HI.avatar_id == Avatar.id)
-               .outerjoin(Operation, HI.operation_id == Operation.id)
-               .add_entity(Operation)
-               .all()
-               )
-        followers = {}  # op -> input avatars
-        for av, op in res:  # TODO better use an array_agg or something
-            followers.setdefault(op, []).append(av)
+        # doing all graph queries first, to avoid the traps of triggering
+        # constraints because of autoflush
+        inputs, outcomes = self.inputs, self.outcomes
+        if any(av.dt_from is not None and av.dt_from > new_dt
+               for av in inputs):
+            # av.dt_from can be None if av.timespan is empty,
+            # which makes this sanity check not comprehensive.
+            # On production databases, we expect to have
+            # the strong non-overlapping EXCLUDE constraint, but this check
+            # is still useful as an easier to debug condition.
+            # TODO more precise exc
+            raise OperationError(self,
+                                 "Can't alter dt_execution to "
+                                 "before input presence time")
 
-        for follower, avs in followers.items():
-            for av in avs:
-                av.dt_from = new_dt
-                dt_until = av.dt_until
-                if dt_until is not None:
-                    # minimal consistent change (follower's alteration
-                    # could change it further)
-                    av.dt_until = max(dt_until, new_dt)
-            if follower is not None and new_dt > follower.dt_execution:
-                follower.alter_dt_execution(new_dt)
+        old_dt = self.dt_execution
+        self.dt_execution = new_dt
+        if new_dt > old_dt:
+            self._postpone_execution(new_dt, inputs, outcomes)
+
+        # that's the simplest and cheapest case, but it's far from
+        # being the frequent one: outcomes timespans just get wider
+        for av in inputs:
+            av.dt_until = new_dt
+        self.registry.flush()
+        for outcome in outcomes:
+            outcome.dt_from = new_dt
 
     def transitive_followers(self, seen=None):
         """Return a list of transitive followers, in execution order

@@ -13,6 +13,7 @@ from anyblok import Declarations
 from anyblok_wms_base.exceptions import (
     OperationError,
     )
+from anyblok_wms_base.constants import EMPTY_TIMESPAN
 
 Mixin = Declarations.Mixin
 Model = Declarations.Model
@@ -43,6 +44,7 @@ class WmsSingleOutcomeOperation:
 
         :param stopover: this is the location of the intermediate Avatar
                          that's been introduced (starting point of the Move).
+        :param dt_execution: TODO not supported yet
         :returns: the new Move instance
 
         This doesn't change anything for the followers of the current
@@ -56,6 +58,7 @@ class WmsSingleOutcomeOperation:
         destination. This is especially useful if the landing area can't be
         determined at the time of the original planning, or simply to follow
         the general principle of sober planning.
+
         """
         self.check_alterable()
         field = self.destination_field
@@ -67,13 +70,13 @@ class WmsSingleOutcomeOperation:
                 op=self)
         setattr(self, field, stopover)
 
-        outcome = self.outcome
-        new_outcome = self.registry.Wms.PhysObj.Avatar.insert(
+        final_outcome = self.outcome
+        stopover_outcome = self.registry.Wms.PhysObj.Avatar.insert(
             location=stopover,
             outcome_of=self,
             state='future',
-            dt_from=self.dt_execution,
-            dt_until=self.dt_execution,
-            obj=outcome.obj)
+            timespan=EMPTY_TIMESPAN,
+            obj=final_outcome.obj)
         return self.registry.Wms.Operation.Move.plan_for_outcomes(
-            (new_outcome, ), (outcome, ), dt_execution=self.dt_execution)
+            (stopover_outcome, ), (final_outcome, ),
+            dt_execution=self.dt_execution)
