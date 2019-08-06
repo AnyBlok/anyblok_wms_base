@@ -48,12 +48,14 @@ class HistoryInput:
     """
     operation = Many2One(model='Model.Wms.Operation',
                          index=True,
+                         nullable=False,
                          primary_key=True,
                          foreign_key_options={'ondelete': 'cascade'})
     """The Operation we are interested in."""
 
     avatar = Many2One(model='Model.Wms.PhysObj.Avatar',
                       primary_key=True,
+                      nullable=False,
                       foreign_key_options={'ondelete': 'cascade'})
     """One of the inputs of the :attr:`operation`."""
 
