@@ -21,7 +21,11 @@ as keys for a display system (with i18n in mind), such as
 ``wms_op_type_pack``.
 
 """
-from .dbapi import DATE_TIME_INFINITY  # noqa (reexport)
+from .dbapi import (  # noqa (re-exports)
+    DATE_TIME_INFINITY,
+    EMPTY_TIMESPAN,
+    )
+
 
 AVATAR_STATES = dict(past="wms_avatar_states_past",
                      present="wms_avatar_states_present",

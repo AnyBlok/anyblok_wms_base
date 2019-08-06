@@ -8,6 +8,7 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 import warnings
 from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
+from anyblok_wms_base.constants import EMPTY_TIMESPAN
 
 
 class TestAvatar(WmsTestCaseWithPhysObj):
@@ -49,7 +50,7 @@ class TestAvatar(WmsTestCaseWithPhysObj):
 
         self.assertEqual(avatar.dt_from, self.dt_test2)
 
-        avatar.timespan = None
+        avatar.timespan = EMPTY_TIMESPAN
         self.registry.flush()
         avatar.expire()
 
@@ -70,16 +71,12 @@ class TestAvatar(WmsTestCaseWithPhysObj):
 
         self.assertEqual(avatar.dt_until, self.dt_test2)
 
-        avatar.timespan = None
+        avatar.timespan = EMPTY_TIMESPAN
         self.registry.flush()
         avatar.expire()
 
-        avatar.dt_until = self.dt_test3
-        self.assertEqual(avatar.dt_until, self.dt_test3)
-        self.registry.flush()
-        avatar.expire()
-
-        self.assertEqual(avatar.dt_until, self.dt_test3)
+        with self.assertRaises(RuntimeError):
+            avatar.dt_until = self.dt_test3
 
     def test_get_property(self):
         avatar = self.avatar

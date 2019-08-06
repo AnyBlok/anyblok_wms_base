@@ -15,7 +15,9 @@ In particular, supporting a new DBAPI adapter such as pygresql should
 involve modifying this module only.
 """
 import psycopg2
-from psycopg2.extras import DateTimeTZRange  # noqa (reexport)
+from psycopg2.extras import DateTimeTZRange as TimeSpan
+
+EMPTY_TIMESPAN = TimeSpan(empty=True)
 
 
 class DbConstant:
@@ -45,14 +47,12 @@ def cast_tstz(value, cr):
         return DATE_TIME_INFINITY
     return psycopg2.extensions.PYDATETIMETZ(value, cr)
 
-from psycopg2.extensions import string_types
 
 TSTZ_WITH_INFINITY = psycopg2.extensions.new_type(
     psycopg2.extensions.PYDATETIMETZ.values,
     'TSTZ_WITH_INFINITY',
     cast_tstz)
 psycopg2.extensions.register_type(TSTZ_WITH_INFINITY)
-
 
 
 class DbConstantAdapter:

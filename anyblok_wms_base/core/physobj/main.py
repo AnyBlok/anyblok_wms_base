@@ -22,7 +22,7 @@ from anyblok.relationship import Many2One
 from anyblok.field import Function
 from anyblok_postgres.column import Jsonb, TsTzRange
 
-from anyblok_wms_base.dbapi import DateTimeTZRange
+from anyblok_wms_base.dbapi import TimeSpan
 from anyblok_wms_base.utils import dict_merge
 from anyblok_wms_base.constants import (
     AVATAR_STATES,
@@ -640,7 +640,7 @@ class Avatar:
     for a discussion of what this should actually mean.
     """
 
-    timespan = TsTzRange()
+    timespan = TsTzRange(nullable=False)
     """Time range during with the Avatar is meaningful.
 
     The bounds encode date&time with timezone information.
@@ -743,8 +743,8 @@ class Avatar:
 
     def _dt_from_set(self, v):
         ts = self.timespan
-        if ts is None:
-            ts = self.timespan = DateTimeTZRange(lower=v, bounds='[)')
+        if ts is None or ts.isempty:
+            ts = self.timespan = TimeSpan(lower=v, bounds='[)')
         # TODO the underscore certainly means it's not recommended, look
         # into that
         ts._lower = v
@@ -759,8 +759,10 @@ class Avatar:
 
     def _dt_until_set(self, v):
         ts = self.timespan
-        if ts is None:
-            ts = self.timespan = DateTimeTZRange(upper=v, bounds='[)')
+        if ts.isempty:
+            # TODO precise exc
+            raise RuntimeError("Avatar timespan lower bound can't be None")
+            ts = self.timespan = TimeSpan(upper=v, bounds='[)')
         # TODO the underscore certainly means it's not recommended, look
         # into that
         ts._upper = v

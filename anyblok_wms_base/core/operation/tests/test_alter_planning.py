@@ -8,7 +8,10 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 from datetime import timedelta
 from sqlalchemy import func
-from anyblok_wms_base.dbapi import DateTimeTZRange as DTRange
+from anyblok_wms_base.dbapi import (
+    TimeSpan,
+    EMPTY_TIMESPAN,
+    )
 from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 from anyblok_wms_base.exceptions import (
     OperationError,
@@ -84,7 +87,7 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         self.assertEqual(move_input.dt_until, new_dt)
         self.assertEqual(move_input.dt_from, self.dt_test1)
 
-        self.assertEqual(dep_input.timespan, DTRange(empty=True))
+        self.assertEqual(dep_input.timespan, EMPTY_TIMESPAN)
         self.assertEqual(dep.dt_execution, new_dt)
 
     def test_alter_destination_before_unpack(self):
@@ -162,20 +165,18 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
 
         arrival.alter_dt_execution(new_arrival_dt)
 
-        empty_range = DTRange(empty=True)
-
-        self.assertEqual(unp_input.timespan, empty_range)
-        self.assertEqual(unp_outcomes[0].timespan, empty_range)
+        self.assertEqual(unp_input.timespan, EMPTY_TIMESPAN)
+        self.assertEqual(unp_outcomes[0].timespan, EMPTY_TIMESPAN)
         self.assertEqual(dep1.dt_execution, new_arrival_dt)
         self.assertEqual(unp_outcomes[1].timespan,
-                         DTRange(lower=new_arrival_dt, upper=self.dt_test3))
+                         TimeSpan(lower=new_arrival_dt, upper=self.dt_test3))
         self.assertEqual(dep2.dt_execution, self.dt_test3)
 
         unp.alter_dt_execution(new_unp_dt)
-        self.assertEqual(unp_outcomes[0].timespan, empty_range)
+        self.assertEqual(unp_outcomes[0].timespan, EMPTY_TIMESPAN)
         self.assertEqual(dep1.dt_execution, new_unp_dt)
         self.assertEqual(unp_outcomes[1].timespan,
-                         DTRange(lower=new_unp_dt, upper=self.dt_test3))
+                         TimeSpan(lower=new_unp_dt, upper=self.dt_test3))
         self.assertEqual(dep2.dt_execution, self.dt_test3)
 
     def test_inconsistent_alter_destination_before_assembly(self):
@@ -253,8 +254,7 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         self.assertNotEqual(new_av, dep_input)
         self.assertEqual(new_av.location, stock)
         self.assertEqual(new_av.obj, dep_input.obj)
-        self.assertEqual(new_av.dt_from, self.avatar.dt_until)
-        self.assertEqual(new_av.dt_until, new_move.dt_execution)
+        self.assertEqual(new_av.timespan, EMPTY_TIMESPAN)
 
         self.assertEqual(dep_input.outcome_of, new_move)
         self.assertEqual(new_move.input, new_av)
@@ -286,7 +286,7 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         self.assertNotEqual(new_av, orig_dep_input)
         self.assertEqual(new_av.location, outgoing)
         self.assertEqual(new_av.obj, self.physobj)
-        self.assertEqual(new_av.timespan, DTRange(empty=True))
+        self.assertEqual(new_av.timespan, EMPTY_TIMESPAN)
 
         self.assertEqual(dep.input, new_av)
         self.assertEqual(new_move.destination, outgoing)
@@ -430,7 +430,6 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
 
         # say we get parcels with three units in each
         parcel_contents = [dict(type=unpacked_type.code, quantity=3)]
-
         unpacks = (
             Arrival.refine_with_trailing_unpack(
                 arrivals[:3], parcel_type,
