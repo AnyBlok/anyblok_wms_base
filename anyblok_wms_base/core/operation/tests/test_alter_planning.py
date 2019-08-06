@@ -246,18 +246,20 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         self.assert_singleton(dep.follows, value=new_move)
 
         # follower's input hasn't changed (same instance)
+        # but is now the move outcome
         self.assert_singleton(dep.inputs, value=dep_input)
 
         # about the new intermediate Avatar
-        new_av = self.assert_singleton(move.outcomes)
+        new_av = move.outcome
         self.assertNotEqual(new_av, dep_input)
         self.assertEqual(new_av.location, stock)
         self.assertEqual(new_av.obj, dep_input.obj)
         self.assertEqual(new_av.dt_from, self.avatar.dt_until)
-        self.assertEqual(new_av.dt_until, self.dt_test3)
+        self.assertEqual(new_av.dt_until, new_move.dt_execution)
 
         self.assertEqual(dep_input.outcome_of, new_move)
         self.assertEqual(new_move.input, new_av)
+        self.assertEqual(dep_input.dt_until, self.dt_test3)
 
     def test_refine_with_leading_move(self):
         outgoing = self.insert_location('OUTGOING')

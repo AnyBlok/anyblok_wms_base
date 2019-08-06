@@ -73,8 +73,7 @@ class WmsSingleOutcomeOperation:
             outcome_of=self,
             state='future',
             dt_from=self.dt_execution,
-            # copied fields:
-            dt_until=outcome.dt_until,
+            dt_until=self.dt_execution,
             obj=outcome.obj)
         return self.registry.Wms.Operation.Move.plan_for_outcomes(
             (new_outcome, ), (outcome, ), dt_execution=self.dt_execution)
