@@ -163,6 +163,7 @@ class TestAlterPlanning(WmsTestCaseWithPhysObj):
         dep2 = self.Operation.Departure.create(input=unp_outcomes[1],
                                                dt_execution=self.dt_test3)
 
+        self.assertEqual(unp_input.dt_until, unp.dt_execution)
         arrival.alter_dt_execution(new_arrival_dt)
 
         self.assertEqual(unp_input.timespan, EMPTY_TIMESPAN)

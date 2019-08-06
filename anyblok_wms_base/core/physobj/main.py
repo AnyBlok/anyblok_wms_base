@@ -759,10 +759,9 @@ class Avatar:
 
     def _dt_until_set(self, v):
         ts = self.timespan
-        if ts.isempty:
+        if ts.isempty and v is not None:
             # TODO precise exc
             raise RuntimeError("Avatar timespan lower bound can't be None")
-            ts = self.timespan = TimeSpan(upper=v, bounds='[)')
         # TODO the underscore certainly means it's not recommended, look
         # into that
         ts._upper = v

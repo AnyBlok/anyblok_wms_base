@@ -311,6 +311,11 @@ class Operation:
                     "Input {avatar!r} is not terminal: it already has "
                     "a finite timespan upper bound",
                     avatar=inp)
+            ts = inp.timespan
+            inp.timespan = TimeSpan(
+                lower=inp.outcome_of.dt_execution if ts.isempty else ts.lower,
+                upper=self.dt_execution,
+                bounds="[)")
             inp.dt_until = self.dt_execution
 
     def leaf_outcomes(self):
@@ -865,10 +870,10 @@ class Operation:
         for follower in self.followers:
             follower.input_location_altered()
 
-    def _postpone_execution(self, new_dt, inputs, outcomes):
-        """Internal subcase of :meth:`alter_dt_execution`.
+    def outcomes_by_follower(self):
+        """Return a dict (follower op) -> (outcomes in its inputs).
 
-        Do not use directly, lacks some protections
+        The key `None` is for those outcomes that are terminal.
         """
         Wms = self.registry.Wms
         Operation = Wms.Operation
@@ -881,29 +886,45 @@ class Operation:
                .add_entity(Operation)
                .all()
                )
-        followers = {}  # op -> input avatars
+        obf = {}
         for av, op in res:  # TODO better use an array_agg or something
-            followers.setdefault(op, []).append(av)
+            obf.setdefault(op, []).append(av)
+        return obf
 
-        for follower, avs in followers.items():
-            for av in avs:
-                dt_until = av.dt_until
-                if dt_until is not None:
-                    # minimal consistent change (follower's alteration
-                    # could change it further)
-                    av.dt_until = max(dt_until, new_dt)
-            if follower is not None and new_dt > follower.dt_execution:
+    def _postpone_execution(self, new_dt, inputs, outcomes):
+        """Internal subcase of :meth:`alter_dt_execution`.
+
+        Do not use directly, lacks some protections
+        """
+        old_dt = self.dt_execution
+        logger.debug("Starting postponing planified execution of %r "
+                     "from %s to %s", self, old_dt, new_dt)
+        self.dt_execution = new_dt
+
+        logger.debug("Postponing of %s(%d) from %s to %s: "
+                     "outcomes and followers",
+                     self.__class__.__name__, self.id, old_dt, new_dt)
+        for follower, outcomes in self.outcomes_by_follower().items():
+            if follower is None:
+                for outcome in outcomes:
+                    outcome.dt_from = new_dt
+            elif new_dt > follower.dt_execution:
                 follower.alter_dt_execution(new_dt)
+            else:
+                follower.set_inputs_upper_timespan_bounds(outcomes,
+                                                          terminal=False)
+                for outcome in outcomes:
+                    outcome.dt_from = new_dt
 
-        for outcome in outcomes:
-            outcome.dt_from = new_dt
-            if outcome.dt_until is not None:
-                outcome.dt_until = max(outcome.dt_until, new_dt)
-        self.registry.flush()
+            self.registry.flush()
+
+        logger.debug("Postponing of %s(%d) from %s to %s: doing inputs",
+                     self.__class__.__name__, self.id, old_dt, new_dt)
         for inp in inputs:
             inp.timespan = TimeSpan(lower=inp.outcome_of.dt_execution,
                                     upper=new_dt,
                                     bounds='[)')
+        self.registry.flush()
 
     def alter_dt_execution(self, new_dt):
         """Change the date/time execution of a planned Operation.
@@ -943,17 +964,32 @@ class Operation:
                                  "before input presence time")
 
         old_dt = self.dt_execution
-        self.dt_execution = new_dt
         if new_dt > old_dt:
-            self._postpone_execution(new_dt, inputs, outcomes)
+            return self._postpone_execution(new_dt, inputs, outcomes)
 
         # that's the simplest and cheapest case, but it's far from
         # being the frequent one: outcomes timespans just get wider
-        for av in inputs:
-            av.dt_until = new_dt
+        self.dt_execution = new_dt
+
+        #  takes care of empty cases
+        self.set_inputs_upper_timespan_bounds(inputs, terminal=False)
         self.registry.flush()
+
         for outcome in outcomes:
-            outcome.dt_from = new_dt
+            ts = outcome.timespan
+            if not ts.isempty:
+                upper = ts.upper
+            else:
+                # there is necessarily a follower
+                # quick hack, we should have an efficient standard
+                # method for that
+                for follower in self.followers:
+                    if outcome in follower.inputs:
+                        upper = follower.dt_execution
+            outcome.timespan = TimeSpan(lower=self.dt_execution,
+                                        upper=upper,
+                                        bounds="[)")
+            self.registry.flush()
 
     def transitive_followers(self, seen=None):
         """Return a list of transitive followers, in execution order

@@ -240,6 +240,7 @@ class TestOperation(WmsTestCase):
         self.assert_singleton(move1_rev.follows, value=move2_rev)
 
         move2_rev.execute(self.dt_test3 + timedelta(1))
+
         rev_dt2 = self.dt_test3 + timedelta(2)
         move1_rev.execute(rev_dt2)
 

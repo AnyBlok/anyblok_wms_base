@@ -7,15 +7,19 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 
+import logging
+
 from anyblok import Declarations
 from anyblok.column import Integer
 from anyblok.relationship import Many2One
+from anyblok_wms_base.dbapi import TimeSpan
 from anyblok_wms_base.exceptions import (
     OperationError,
     OperationContainerExpected,
     )
 
 
+logger = logging.getLogger(__name__)
 register = Declarations.register
 Mixin = Declarations.Mixin
 Operation = Declarations.Model.Wms.Operation
@@ -86,10 +90,21 @@ class Move(Mixin.WmsSingleInputOperation,
         return move
 
     def execute_planned(self):
-        dt_execution = self.dt_execution
-
         self.input.state = 'past'
-        self.outcome.update(state='present', dt_from=dt_execution)
+        outcome = self.outcome
+        # TODO this should really be done by the base class
+        ts = outcome.timespan
+        if not ts.isempty:
+            upper = ts.upper
+        else:
+            followers = self.followers
+            if followers:  # at most one
+                upper = next(iter(followers)).dt_execution
+
+        outcome.update(state='present',
+                       timespan=TimeSpan(lower=self.dt_execution,
+                                         upper=upper,
+                                         bounds='[)'))
 
     def is_reversible(self):
         """Moves are always reversible.
