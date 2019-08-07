@@ -24,6 +24,27 @@ EMPTY_TIMESPAN = TimeSpan(empty=True)
 
 
 class DbConstant:
+    """Represents a Database constant
+
+    The instantiation is done with the quoted database representation,
+    as :class:`bytes`.
+
+      >>> nan = DbConstant(b"'nan'::numeric")
+      >>> str(nan)
+      "'nan'::numeric"
+      >>> print(repr(nan))
+      DbConstant(b"'nan'::numeric")
+
+    One can also provide the value of str for cosmetic reasons.
+    In the unlikely case that the quoted DB representation couldn't be decoded
+    to :class:`str`, this would also be useful.
+
+      >>> nan = DbConstant(b"'nan'::numeric", as_str='NaN')
+      >>> str(nan)
+      'NaN'
+      >>> print(repr(nan))
+      DbConstant(b"'nan'::numeric")
+    """
 
     def __init__(self, dbrepr, as_str=None):
         self.dbrepr = dbrepr
@@ -97,6 +118,18 @@ def ts_contains(ts, dt):
     False
     >>> DATE_TIME_INFINITY in shorter_excl
     True
+
+    Corner cases with empty timespan at infiniy
+    >>> any(dti in TimeSpan(lower=inf, upper=inf, bounds=bounds)
+    ...     for dti in (inf, dt) for bounds in ('[)', '()'))
+    False
+
+    Here's the finite case::
+    >>> normal = TimeSpan(lower=dt, upper=later, bounds='[)')
+    >>> dt in normal
+    True
+    >>> later in normal
+    False
     """
     if dt is DATE_TIME_INFINITY:
         return ts.upper is DATE_TIME_INFINITY and ts.upper_inc
