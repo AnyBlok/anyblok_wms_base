@@ -126,11 +126,8 @@ class Aggregate(Mixin.WmsSingleOutcomeOperation,
         PhysObj = self.registry.Wms.PhysObj
 
         if self.state == 'done':
-            update = dict(dt_until=dt_exec, state='past')
-        else:
-            update = dict(dt_until=dt_exec)
-        for record in inputs:
-            record.update(**update)
+            for record in inputs:
+                record.state = 'past'
 
         tpl_avatar = next(iter(inputs))
         tpl_physobj = tpl_avatar.obj

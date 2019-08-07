@@ -62,7 +62,6 @@ class TestSplit(WmsTestCaseWithPhysObj):
 
         self.assertEqual(len(all_outcomes), 2)
 
-        self.assertEqual(self.avatar.state, 'present')
         self.assertEqual(self.avatar.dt_from, self.dt_test1)
         self.assertEqual(self.avatar.dt_until, self.dt_test2)
         self.assertEqual(sum(out.obj.quantity for out in all_outcomes), 3)
@@ -77,7 +76,9 @@ class TestSplit(WmsTestCaseWithPhysObj):
         for outcome in all_outcomes:
             self.assertEqual(outcome.dt_from, self.dt_test2)
             self.assertEqual(outcome.location, self.incoming_loc)
-            self.assertEqual(outcome.state, 'future')
+            # since introduction of TimeSpans, split auto execute
+            # on 'present' inputs
+            self.assertEqual(outcome.state, 'present')
             self.assertEqual(outcome.obj.type, self.physobj_type)
         wished_outcome = split.wished_outcome
         self.assertEqual(wished_outcome.obj.quantity, 2)

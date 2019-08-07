@@ -6,7 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from anyblok_wms_base.dbapi import DateTimeTZRange as DTRange
+from anyblok_wms_base.dbapi import TimeSpan
 from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 
 
@@ -76,8 +76,9 @@ class TestDeparture(WmsTestCaseWithPhysObj):
 
         sent = dep.input
         self.assertEqual(sent.state, 'past')
-        self.assertEqual(sent.timespan, DTRange(lower=self.dt_test1,
-                                                upper=self.dt_test3))
+        self.assertEqual(sent.timespan, TimeSpan(lower=self.dt_test1,
+                                                 upper=self.dt_test3,
+                                                 bounds='[)'))
         self.assertEqual(sent.obj.quantity, 1)
         # dt_until being exclusive,
         # at self.dt_test3 the physical objects were already sent,

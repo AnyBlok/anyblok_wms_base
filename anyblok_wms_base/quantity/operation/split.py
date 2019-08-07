@@ -100,7 +100,6 @@ class Split(SingleInput, InPlace, Operation):
             dt_from=self.dt_execution,
             dt_until=None,
         )
-        avatar.dt_until = self.dt_execution
         if avatar.state == 'present':
             # splitting must occur immediately, otherwise we may
             # have no present avatar with non empty timespan
@@ -157,9 +156,8 @@ class Split(SingleInput, InPlace, Operation):
 
     def execute_planned(self):
         for outcome in self.outcomes:
-            outcome.update(state='present', dt_from=self.dt_execution)
-        self.registry.flush()
-        self.input.update(state='past', dt_until=self.dt_execution)
+            outcome.state = 'present'
+        self.input.state = 'past'
         self.registry.flush()
 
     def is_reversible(self):
