@@ -159,9 +159,8 @@ class Observation(Mixin.WmsSingleInputOperation,
 
     def execute_planned(self):
         self.apply_properties()
-        dt_exec = self.dt_execution
         self.input.state = 'past'
-        self.outcome.update(dt_from=dt_exec, state='present')
+        self.outcome.state = 'present'
 
     def obliviate_single(self):
         """Restore the Properties as they were before execution.

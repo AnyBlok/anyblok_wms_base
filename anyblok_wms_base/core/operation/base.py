@@ -318,6 +318,57 @@ class Operation:
                 bounds="[)")
             inp.dt_until = self.dt_execution
 
+    def set_outcomes_lower_timespan_bounds(self):
+        """Make the time span of all outcomes start at `self.dt_execution`
+
+        For now, this is a facility callable by concrete operation classes,
+        maybe it'll be part of the standard :meth:`execute` later on.
+
+        It takes care of the case were the timespan is empty.
+
+        This will be much simpler and faster once we finalize our conventions
+        for indeterminate Avatars.
+        """
+        upper_from_follower = []
+        out_upper = {}
+        outcomes = self.outcomes
+        for outcome in outcomes:
+            ts = outcome.timespan
+            if not ts.isempty:
+                upper = ts.upper
+                if upper is not None and upper < self.dt_execution:
+                    # should not happen thanks to alter_dt_execution
+                    # being part of execute(), but better enforce it
+                    raise OperationError(self,
+                                         "outcome {outcome} has an upper "
+                                         "timespan bound earlier than "
+                                         "date of execution",
+                                         outcome=outcome)
+                out_upper[outcome] = upper
+            else:
+                # we'll take care of all of these ones with one query
+                upper_from_follower.append(outcome.id)
+
+        if upper_from_follower:
+            Wms = self.registry.Wms
+            Operation = Wms.Operation
+            HI = Operation.HistoryInput
+            Avatar = Wms.PhysObj.Avatar
+
+            query = (self.registry.query(Avatar, Operation.dt_execution)
+                     .filter(Avatar.id.in_(upper_from_follower))
+                     .join(HI, HI.avatar_id == Avatar.id)
+                     .join(Operation, HI.operation_id == Operation.id)
+                     .add_entity(Operation)
+                     )
+            # can't feed SQLA results directly to update()
+            out_upper.update((row[0], row[1]) for row in query.all())
+
+        for outcome in outcomes:
+            outcome.timespan = TimeSpan(lower=self.dt_execution,
+                                        upper=out_upper[outcome],
+                                        bounds='[)')
+
     def leaf_outcomes(self):
         """Return those of :attr:`outcomes` that aren't inputs of Operations.
         """
@@ -975,21 +1026,9 @@ class Operation:
         self.set_inputs_upper_timespan_bounds(inputs, terminal=False)
         self.registry.flush()
 
-        for outcome in outcomes:
-            ts = outcome.timespan
-            if not ts.isempty:
-                upper = ts.upper
-            else:
-                # there is necessarily a follower
-                # quick hack, we should have an efficient standard
-                # method for that
-                for follower in self.followers:
-                    if outcome in follower.inputs:
-                        upper = follower.dt_execution
-            outcome.timespan = TimeSpan(lower=self.dt_execution,
-                                        upper=upper,
-                                        bounds="[)")
-            self.registry.flush()
+        # this takes care of empty cases as well
+        self.set_outcomes_lower_timespan_bounds()
+        self.registry.flush()
 
     def transitive_followers(self, seen=None):
         """Return a list of transitive followers, in execution order

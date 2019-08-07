@@ -10,6 +10,7 @@ from datetime import datetime
 from datetime import timedelta
 
 from .testcase import WmsTestCase
+from anyblok_wms_base.dbapi import TimeSpan
 from anyblok_wms_base.exceptions import (
     OperationError,
     OperationInputsError,
@@ -411,3 +412,19 @@ class TestOperation(WmsTestCase):
 
         finally:
             self.Operation.followers = followers_orig_prop
+
+    def test_outcome_upper_bound_inconsistency(self):
+        op = self.Operation.Arrival.create(location=self.incoming_loc,
+                                           state='planned',
+                                           dt_execution=self.dt_test2,
+                                           physobj_type=self.physobj_type)
+        outcome = op.outcome
+        outcome.timespan = TimeSpan(lower=self.dt_test1,
+                                    upper=self.dt_test1,
+                                    bounds='[]')
+        with self.assertRaises(OperationError) as arc:
+            op.set_outcomes_lower_timespan_bounds()
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs.get('outcome'), outcome)

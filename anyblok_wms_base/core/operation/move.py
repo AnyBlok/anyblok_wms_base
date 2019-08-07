@@ -12,7 +12,6 @@ import logging
 from anyblok import Declarations
 from anyblok.column import Integer
 from anyblok.relationship import Many2One
-from anyblok_wms_base.dbapi import TimeSpan
 from anyblok_wms_base.exceptions import (
     OperationError,
     OperationContainerExpected,
@@ -90,21 +89,10 @@ class Move(Mixin.WmsSingleInputOperation,
         return move
 
     def execute_planned(self):
+        # TODO even simplified, this should be standard, and done by base class
+        self.set_outcomes_lower_timespan_bounds()
         self.input.state = 'past'
-        outcome = self.outcome
-        # TODO this should really be done by the base class
-        ts = outcome.timespan
-        if not ts.isempty:
-            upper = ts.upper
-        else:
-            followers = self.followers
-            if followers:  # at most one
-                upper = next(iter(followers)).dt_execution
-
-        outcome.update(state='present',
-                       timespan=TimeSpan(lower=self.dt_execution,
-                                         upper=upper,
-                                         bounds='[)'))
+        self.outcome.state = 'present'
 
     def is_reversible(self):
         """Moves are always reversible.

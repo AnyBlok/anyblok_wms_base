@@ -186,7 +186,7 @@ class Arrival(Mixin.WmsSingleOutcomeOperation, Operation):
         )
 
     def execute_planned(self):
-        self.outcome.update(state='present', dt_from=self.dt_execution)
+        self.outcome.state = 'present'
 
     @classmethod
     def refine_with_trailing_unpack(cls, arrivals, pack_type,
