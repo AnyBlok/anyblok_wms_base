@@ -14,6 +14,9 @@ DBAPI adapter in use.
 In particular, supporting a new DBAPI adapter such as pygresql should
 involve modifying this module only.
 """
+from datetime import (
+    timezone,
+)
 import psycopg2
 from psycopg2.extras import DateTimeTZRange as TimeSpan
 
@@ -40,6 +43,8 @@ For instance, if a method is used to query Avatars for a given date, using
 this marker in the interface is more explicit than using None (which could
 also mean one does not care about dates).
 """
+
+DATE_TIME_INFINITY.tzinfo = timezone.utc
 
 
 def cast_tstz(value, cr):
