@@ -46,6 +46,70 @@ also mean one does not care about dates).
 
 DATE_TIME_INFINITY.tzinfo = timezone.utc
 
+# partial support for comparison
+#  This works only with the constant in left-hand side; Python seems to have
+#  some capabilities to flip the comparison over, but not in this case
+DATE_TIME_INFINITY.__ge__ = lambda x: True
+DATE_TIME_INFINITY.__gt__ = lambda x: x is not DATE_TIME_INFINITY
+DATE_TIME_INFINITY.__le__ = lambda x: x is DATE_TIME_INFINITY
+DATE_TIME_INFINITY.__lt__ = lambda x: False
+
+ts_orig_contains = TimeSpan.__contains__
+
+
+def ts_contains(ts, dt):
+    """Monkey-patch of the 'in' operator of TimeSpan to deal with infinity.
+
+    Necessary because the partial comparison support doesn't work with
+    infinity in the right hand side.
+
+    >>> inf = DATE_TIME_INFINITY  # shortcut
+    >>> from datetime import datetime
+    >>> dt = datetime(2001, 4, 7, tzinfo=timezone.utc)
+    >>> later = datetime(2002, 1, 1, tzinfo=timezone.utc)
+
+    >>> finite = TimeSpan(lower=dt, upper=later, bounds='[)')
+    >>> inf in finite
+    False
+
+    >>> unbounded = TimeSpan(lower=dt, upper=inf, bounds='[)')
+    >>> later in unbounded
+    True
+    >>> DATE_TIME_INFINITY in unbounded
+    False
+
+    >>> bounded = TimeSpan(lower=dt, upper=inf, bounds='[]')
+    >>> later in bounded
+    True
+    >>> DATE_TIME_INFINITY in bounded
+    True
+
+    >>> shorter = TimeSpan(lower=later, upper=inf, bounds='[]')
+    >>> dt in shorter
+    False
+    >>> later in shorter
+    True
+
+    >>> shorter_excl = TimeSpan(lower=later, upper=inf, bounds='(]')
+    >>> dt in shorter_excl
+    False
+    >>> later in shorter_excl
+    False
+    >>> DATE_TIME_INFINITY in shorter_excl
+    True
+    """
+    if dt is DATE_TIME_INFINITY:
+        return ts.upper is DATE_TIME_INFINITY and ts.upper_inc
+    elif ts.upper is DATE_TIME_INFINITY:
+        if ts.lower is DATE_TIME_INFINITY:
+            return False
+        return (ts.lower_inc and dt >= ts.lower) or dt > ts.lower
+
+    return ts_orig_contains(ts, dt)
+
+
+TimeSpan.__contains__ = ts_contains
+
 
 def cast_tstz(value, cr):
     if value == "infinity":
