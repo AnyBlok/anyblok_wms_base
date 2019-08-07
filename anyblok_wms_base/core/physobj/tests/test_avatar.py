@@ -120,13 +120,6 @@ class TestAvatar(WmsTestCaseWithPhysObj):
                              2)
         assert_warnings_goods_deprecation(got)
 
-    def test_infinity(self):  # TODO NOCOMMIT shouldn't be here
-        from anyblok_wms_base.constants import DATE_TIME_INFINITY
-        self.avatar.dt_until = DATE_TIME_INFINITY
-        self.registry.flush()
-        self.avatar.expire()
-        self.assertEqual(self.avatar.dt_until, DATE_TIME_INFINITY)
-
     def test_pysobj_current_avatar(self):
         avatar = self.avatar
         # just to make sure
