@@ -11,6 +11,7 @@ package names for readability in page titles.
    :maxdepth: 2
 
    constants
+   dbapi
    exceptions
    utils
    core/index

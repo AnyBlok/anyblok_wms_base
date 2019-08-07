@@ -79,7 +79,7 @@ ts_orig_contains = TimeSpan.__contains__
 
 
 def ts_contains(ts, dt):
-    """Monkey-patch of the 'in' operator of TimeSpan to deal with infinity.
+    """Patching of the 'in' operator of :class:`TimeSpan` to deal with infinity.
 
     Necessary because the partial comparison support doesn't work with
     infinity in the right hand side.
@@ -119,17 +119,19 @@ def ts_contains(ts, dt):
     >>> DATE_TIME_INFINITY in shorter_excl
     True
 
-    Corner cases with empty timespan at infiniy
-    >>> any(dti in TimeSpan(lower=inf, upper=inf, bounds=bounds)
-    ...     for dti in (inf, dt) for bounds in ('[)', '()'))
-    False
+    Corner cases with empty timespans at infinity::
+
+      >>> any(dti in TimeSpan(lower=inf, upper=inf, bounds=bounds)
+      ...     for dti in (inf, dt) for bounds in ('[)', '()'))
+      False
 
     Here's the finite case::
-    >>> normal = TimeSpan(lower=dt, upper=later, bounds='[)')
-    >>> dt in normal
-    True
-    >>> later in normal
-    False
+
+      >>> normal = TimeSpan(lower=dt, upper=later, bounds='[)')
+      >>> dt in normal
+      True
+      >>> later in normal
+      False
     """
     if dt is DATE_TIME_INFINITY:
         return ts.upper is DATE_TIME_INFINITY and ts.upper_inc

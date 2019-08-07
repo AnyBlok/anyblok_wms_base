@@ -90,7 +90,6 @@ class Move(Mixin.WmsSingleInputOperation,
 
     def execute_planned(self):
         # TODO even simplified, this should be standard, and done by base class
-        self.set_outcomes_lower_timespan_bounds()
         self.input.state = 'past'
         self.outcome.state = 'present'
 

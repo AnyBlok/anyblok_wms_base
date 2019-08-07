@@ -37,6 +37,7 @@ Model.Wms.Operation
    .. automethod:: plan_revert
    .. automethod:: obliviate
    .. automethod:: alter_destination
+   .. automethod:: alter_dt_execution
 
    .. raw:: html
 
@@ -81,7 +82,6 @@ Model.Wms.Operation.HistoryInput
 
    .. autoattribute:: operation
    .. autoattribute:: avatar
-   .. autoattribute:: orig_dt_until
 
 
 Helper Mixin classes
