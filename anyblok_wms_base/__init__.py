@@ -8,4 +8,4 @@
 # obtain one at http://mozilla.org/MPL/2.0/.
 
 version = '0.10.0.dev1'  # this comment to make a conflict forcing me to review
-                         # before merge
+# before merge
