@@ -9,6 +9,7 @@
 import warnings
 from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 from anyblok_wms_base.constants import EMPTY_TIMESPAN
+from anyblok_wms_base.dbapi import TimeSpan
 
 
 class TestAvatar(WmsTestCaseWithPhysObj):
@@ -77,6 +78,26 @@ class TestAvatar(WmsTestCaseWithPhysObj):
 
         with self.assertRaises(RuntimeError):
             avatar.dt_until = self.dt_test3
+
+    def test_compat_dt_until_None(self):
+        # during instantiation with dt_from, dt_until
+        # kwargs, it happens that dt_until is set first
+        avatar = self.avatar
+        avatar.timespan = None
+        avatar.dt_until = self.dt_test2
+        self.assertIsNone(avatar.dt_from)
+        # inclusivity of `None` lower bound doesn't make
+        # much sense but it is useful once a true value is
+        # set (None lower bounds in AWB are or should be
+        # prohibited anyway)
+        avatar.dt_from = self.dt_test1
+        # let's make a round trip
+        self.registry.flush()
+        avatar.expire
+        self.assertEqual(self.avatar.timespan,
+                         TimeSpan(lower=self.dt_test1,
+                                  upper=self.dt_test2,
+                                  bounds='[)'))
 
     def test_get_property(self):
         avatar = self.avatar

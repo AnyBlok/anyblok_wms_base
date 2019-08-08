@@ -640,6 +640,9 @@ class Avatar:
     for a discussion of what this should actually mean.
     """
 
+    # default avoid None to occur in intermediate steps before
+    # serialization (seen only in python3.5 and upcoming
+    # refactor will use None anyway as indeterminate marker
     timespan = TsTzRange(nullable=False)
     """Time range during with the Avatar is meaningful.
 
@@ -759,6 +762,12 @@ class Avatar:
 
     def _dt_until_set(self, v):
         ts = self.timespan
+        if ts is None:
+            # can happen during instantiation (only seen with Python3.5
+            # so far). If dt_from is not set later on, some other parts
+            # of AWB should complain, but we have no choice at this point
+            self.timespan = TimeSpan(lower=None, upper=v, bounds='[)')
+            return
         if ts.isempty and v is not None:
             # TODO precise exc
             raise RuntimeError("Avatar timespan lower bound can't be None")
