@@ -27,6 +27,16 @@ to be customized by the local DBA.
              from the strongest integrity constraints, nor the fastest
              indexing solutions.
 
+.. note:: if one tries to restore a database dump into a database that
+          doesn't have the extension, without superuser database
+          privilege, this ends up in error at the
+          creation of the constraint(s) that needs it, producing an empty
+          database. Its common for remount script to
+          accept non zero return codes from ``pg_restore`` because of
+          ``CREATE COMMENT`` on extensions. These should check
+          explicitely stderr about ``btree_gist`` creation errors.
+          Here again, using a database template makes things simpler.
+
 .. _arch:
 
 Architecture
