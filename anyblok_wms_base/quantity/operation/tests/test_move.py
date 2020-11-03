@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from anyblok_wms_base.constants import EMPTY_TIMESPAN
 from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 
 
@@ -15,7 +16,6 @@ class TestMove(WmsTestCaseWithPhysObj):
 
     def setUp(self):
         super(TestMove, self).setUp()
-        self.avatar.dt_until = self.dt_test3
         self.Move = self.Operation.Move
 
     def test_partial_done(self):
@@ -31,8 +31,9 @@ class TestMove(WmsTestCaseWithPhysObj):
         # the original has been thrown in the past by the split
         self.assertEqual(self.avatar.obj.quantity, 3)
         self.assertEqual(self.avatar.state, 'past')
-        self.assertEqual(self.avatar.dt_from, self.dt_test1)
-        self.assertEqual(self.avatar.dt_until, self.dt_test2)
+        # consistently with comment in Splitter mixin,
+        # the one with empty timespan is the one that has been split
+        self.assertEqual(self.avatar.timespan, EMPTY_TIMESPAN)
 
         not_moved = self.assert_singleton(split.leaf_outcomes())
         self.assertEqual(not_moved.obj.quantity, 2)
@@ -40,7 +41,7 @@ class TestMove(WmsTestCaseWithPhysObj):
         after_move = self.assert_singleton(move.outcomes)
         self.assertEqual(after_move.obj.quantity, 1)
         self.assertEqual(after_move.dt_from, self.dt_test2)
-        self.assertEqual(after_move.dt_until, self.dt_test3)
+        self.assertIsNone(after_move.dt_until)
         self.assertEqual(after_move.location, self.stock)
 
     def test_partial_planned_execute(self):
@@ -59,8 +60,9 @@ class TestMove(WmsTestCaseWithPhysObj):
         # the original has been thrown in the past by the split
         self.assertEqual(self.avatar.obj.quantity, 3)
         self.assertEqual(self.avatar.state, 'past')
-        self.assertEqual(self.avatar.dt_from, self.dt_test1)
-        self.assertEqual(self.avatar.dt_until, self.dt_test2)
+        # consistently with comment in Splitter mixin,
+        # the one with empty timespan is the one that has been split
+        self.assertEqual(self.avatar.timespan, EMPTY_TIMESPAN)
 
         not_moved = self.assert_singleton(split.leaf_outcomes())
         self.assertEqual(not_moved.obj.quantity, 2)
@@ -69,7 +71,7 @@ class TestMove(WmsTestCaseWithPhysObj):
         self.assertEqual(after_move.obj.quantity, 1)
         self.assertEqual(after_move.location, self.stock)
         self.assertEqual(after_move.dt_from, self.dt_test2)
-        self.assertEqual(after_move.dt_until, self.dt_test3)
+        self.assertIsNone(after_move.dt_until)
         self.assertEqual(after_move.state, 'present')
 
 

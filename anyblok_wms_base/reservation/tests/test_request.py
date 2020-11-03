@@ -162,9 +162,19 @@ class RequestItemTestCase(WmsTestCase):
     def test_reserve_avatars_once(self):
         """We don't reserve several times PhysObj that have several Avatars."""
         goods = self.goods[self.props1][0]
-        for av in self.avatars.values():
-            # can't have several 'present' Avatars for one physicial object
-            av.update(state='future', obj=goods)
+        # Simplest way to have a new Avatar, with no conflict due to
+        # state or time range
+        self.Operation.Observation.create(input=self.avatars[goods],
+                                          state='planned',
+                                          dt_execution=self.dt_test3)
+        Avatar = self.PhysObj.Avatar
+        self.assertEqual(Avatar.query()
+                         .filter(Avatar.obj == goods, Avatar.state != 'past')
+                         .count(),
+                         2)
+        # exclude other phyobjs by setting their Avatars in the past state
+        for av in Avatar.query().filter(Avatar.obj != goods).all():
+            av.state = 'past'
         self.registry.flush()  # to be sure
 
         item = self.RequestItem(goods_type=self.goods_type1,

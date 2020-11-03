@@ -282,6 +282,7 @@ class TestUnpack(WmsTestCase):
         # No property at all, we fail explicitely
         with self.assertRaises(OperationInputsError) as arc:
             unpack()
+        self.packs.dt_until = None  # restoration
         str(arc.exception)
         repr(arc.exception)
         exc_kwargs = arc.exception.kwargs

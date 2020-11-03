@@ -7,6 +7,8 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 
+import logging
+
 from anyblok import Declarations
 from anyblok.column import Integer
 from anyblok.relationship import Many2One
@@ -16,6 +18,7 @@ from anyblok_wms_base.exceptions import (
     )
 
 
+logger = logging.getLogger(__name__)
 register = Declarations.register
 Mixin = Declarations.Mixin
 Operation = Declarations.Model.Wms.Operation
@@ -43,15 +46,6 @@ class Move(Mixin.WmsSingleInputOperation,
 
     def after_insert(self):
         state, to_move, dt_exec = self.state, self.input, self.dt_execution
-        orig_dt_until = to_move.dt_until
-        if orig_dt_until is None:
-            dt_until = None
-        else:
-            # it's not clear what it means for to_move.dt_until not to be None
-            # in any case, dt_until should be at least dt_from
-            dt_until = max(orig_dt_until, dt_exec)
-
-        to_move.dt_until = dt_exec
         if state == 'done':
             to_move.state = 'past'
         self.registry.Wms.PhysObj.Avatar.insert(
@@ -59,7 +53,6 @@ class Move(Mixin.WmsSingleInputOperation,
             outcome_of=self,
             state='present' if state == 'done' else 'future',
             dt_from=dt_exec,
-            dt_until=dt_until,
             obj=to_move.obj)
 
     @classmethod
@@ -75,6 +68,8 @@ class Move(Mixin.WmsSingleInputOperation,
 
     @classmethod
     def plan_for_outcomes(cls, inputs, outcomes, dt_execution=None, **fields):
+        # TODO this should really go to single_outcome, there's nothing
+        # special about this
         if len(outcomes) != 1:
             raise OperationError(
                 cls, "can't plan for {nb_outcomes} outcomes, would need "
@@ -94,10 +89,9 @@ class Move(Mixin.WmsSingleInputOperation,
         return move
 
     def execute_planned(self):
-        dt_execution = self.dt_execution
-
-        self.input.update(state='past', dt_until=dt_execution)
-        self.outcome.update(state='present', dt_from=dt_execution)
+        # TODO even simplified, this should be standard, and done by base class
+        self.input.state = 'past'
+        self.outcome.state = 'present'
 
     def is_reversible(self):
         """Moves are always reversible.

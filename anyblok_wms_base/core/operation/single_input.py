@@ -89,10 +89,13 @@ class WmsSingleInputOperation:
         """
         self.check_alterable()
         move = self.registry.Wms.Operation.Move.create(
+            terminal=False,
             input=self.input,
             destination=stopover,
             dt_execution=self.dt_execution,
             state='planned')
-        self.link_inputs(move.outcomes, clear=True)
+        new_inputs = move.outcomes
+        self.link_inputs(new_inputs, clear=True)
+        self.set_inputs_upper_timespan_bounds(new_inputs)
         self.input_location_altered()
         return move

@@ -1095,6 +1095,10 @@ class TestAssembly(WmsTestCase):
                                  name='default',
                                  dt_execution=self.dt_test1,
                                  state='planned')
+        # Necessary cleanup
+        for avatar in avatars:
+            avatar.dt_until = None
+
         exc = arc.exception
         str(exc)
         repr(exc)

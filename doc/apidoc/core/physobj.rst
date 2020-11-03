@@ -107,6 +107,8 @@ Model.Wms.PhysObj.Avatar
    .. autoattribute:: outcome_of
    .. autoattribute:: location
    .. autoattribute:: state
+   .. autoattribute:: timespan
    .. autoattribute:: dt_from
    .. autoattribute:: dt_until
    .. autoattribute:: id
+   .. automethod:: define_table_args

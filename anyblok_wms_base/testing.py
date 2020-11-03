@@ -215,9 +215,9 @@ class WmsTestCaseWithPhysObj(SharedDataTestCase, WmsTestCase):
                                                state='planned',
                                                dt_execution=cls.dt_test1,
                                                **cls.arrival_kwargs)
-
         assert len(cls.arrival.outcomes) == 1
         cls.avatar = cls.arrival.outcome
+        assert cls.avatar.dt_until is None
         cls.physobj = cls.avatar.obj
         cls.Avatar = cls.PhysObj.Avatar
 

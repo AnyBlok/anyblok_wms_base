@@ -1,6 +1,42 @@
 For downstream developers and deployers
 =======================================
 
+.. _install:
+
+Installation
+~~~~~~~~~~~~
+
+Database
+--------
+
+.. warning:: AnyBlok WMS / Base supports PostgreSQL only.
+
+It is strongly recommended to install the `btree_gist
+<https://www.postgresql.org/docs/11/btree-gist.html>`_ PostgreSQL
+extension::
+
+  CREATE EXTENSION btree_gist;
+
+This requires PostgreSQL administration privileges. If you want it to
+be automatically available in databases created automatically by
+unprivileged ``anyblok_createdb`` processes, you can install it in appropriate
+database template, for instance ``template1``, the default one meant
+to be customized by the local DBA.
+
+.. warning:: If ``btree_gist`` is not available, your database will not benefit
+             from the strongest integrity constraints, nor the fastest
+             indexing solutions.
+
+.. note:: if one tries to restore a database dump into a database that
+          doesn't have the extension, without superuser database
+          privilege, this ends up in error at the
+          creation of the constraint(s) that needs it, producing an empty
+          database. Its common for remount script to
+          accept non zero return codes from ``pg_restore`` because of
+          ``CREATE COMMENT`` on extensions. These should check
+          explicitely stderr about ``btree_gist`` creation errors.
+          Here again, using a database template makes things simpler.
+
 .. _arch:
 
 Architecture

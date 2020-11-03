@@ -40,6 +40,15 @@ class TestObservation(WmsTestCaseWithPhysObj):
         self.assertEqual(self.avatar.state, 'past')
         self.assertEqual(outcome.state, 'present')
 
+    def test_planned_input_present(self):
+        self.avatar.state = 'present'
+        obs = self.Observation.create(state='planned',
+                                      dt_execution=self.dt_test2,
+                                      input=self.avatar)
+
+        self.assertEqual(obs.outcome.state, 'future')
+        self.assertEqual(obs.input.state, 'present')
+
     def test_done(self):
         self.avatar.state = 'present'
         obs = self.Observation.create(state='done',

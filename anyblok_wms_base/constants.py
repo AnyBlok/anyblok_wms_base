@@ -21,6 +21,11 @@ as keys for a display system (with i18n in mind), such as
 ``wms_op_type_pack``.
 
 """
+from .dbapi import (  # noqa (re-exports)
+    DATE_TIME_INFINITY,
+    EMPTY_TIMESPAN,
+    )
+
 
 AVATAR_STATES = dict(past="wms_avatar_states_past",
                      present="wms_avatar_states_present",
@@ -79,14 +84,6 @@ they are prefixed with ``wms_``.
 """
 
 SPLIT_AGGREGATE_PHYSICAL_BEHAVIOUR = 'split_aggregate_physical'
-
-DATE_TIME_INFINITY = object()
-"""A marker used to represent +infinity date/time.
-
-For instance, if a method is used to query Avatars for a given date, using
-this marker in the interface is more explicit than using None (which could
-also mean one does not care about dates).
-"""
 
 
 DEFAULT_ASSEMBLY_NAME = 'default'

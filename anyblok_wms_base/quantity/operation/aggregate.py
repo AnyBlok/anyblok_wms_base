@@ -10,7 +10,6 @@
 from anyblok import Declarations
 from anyblok.column import Integer
 
-from anyblok_wms_base.utils import min_upper_bounds
 from anyblok_wms_base.exceptions import (
     OperationInputsError,
 )
@@ -126,14 +125,9 @@ class Aggregate(Mixin.WmsSingleOutcomeOperation,
         dt_exec = self.dt_execution
         PhysObj = self.registry.Wms.PhysObj
 
-        outcome_dt_until = min_upper_bounds(g.dt_until for g in inputs)
-
         if self.state == 'done':
-            update = dict(dt_until=dt_exec, state='past')
-        else:
-            update = dict(dt_until=dt_exec)
-        for record in inputs:
-            record.update(**update)
+            for record in inputs:
+                record.state = 'past'
 
         tpl_avatar = next(iter(inputs))
         tpl_physobj = tpl_avatar.obj
@@ -148,7 +142,6 @@ class Aggregate(Mixin.WmsSingleOutcomeOperation,
             outcome_of=self,
             dt_from=dt_exec,
             # dt_until in states 'present' and 'future' is theoretical anyway
-            dt_until=outcome_dt_until,
             state='present' if self.state == 'done' else 'future',
             location=self.unique_inputs_location(inputs))
 

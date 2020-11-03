@@ -105,14 +105,14 @@ class Observation(Mixin.WmsSingleInputOperation,
                 "would mean one knows result in advance).")
         dt_exec = self.dt_execution
 
-        inp_av.update(dt_until=dt_exec, state='past')
+        if state == 'done':
+            inp_av.state = 'past'
         physobj.Avatar.insert(
             obj=physobj,
             state='future' if state == 'planned' else 'present',
             outcome_of=self,
             location=self.input.location,
-            dt_from=dt_exec,
-            dt_until=None)
+            dt_from=dt_exec)
 
         if self.state == 'done':
             self.apply_properties()
@@ -159,9 +159,8 @@ class Observation(Mixin.WmsSingleInputOperation,
 
     def execute_planned(self):
         self.apply_properties()
-        dt_exec = self.dt_execution
-        self.input.update(dt_until=dt_exec, state='past')
-        self.outcome.update(dt_from=dt_exec, state='present')
+        self.input.state = 'past'
+        self.outcome.state = 'present'
 
     def obliviate_single(self):
         """Restore the Properties as they were before execution.

@@ -19,14 +19,14 @@ class TestMove(WmsTestCaseWithPhysObj):
     def setUp(self):
         super(TestMove, self).setUp()
         self.Move = self.Operation.Move
-        self.avatar.dt_until = self.dt_test3
 
     def assertBackToBeginning(self):
-        new_goods = self.single_result(self.Avatar.query())
-        self.assertEqual(new_goods.location, self.incoming_loc)
-        self.assertEqual(new_goods.state, 'present')
-        self.assertEqual(new_goods.dt_from, self.dt_test1)
-        self.assertEqual(new_goods.dt_until, self.dt_test3)
+        avatar = self.single_result(self.Avatar.query())
+        self.assertEqual(avatar, self.avatar)
+        self.assertEqual(avatar.location, self.incoming_loc)
+        self.assertEqual(avatar.state, 'present')
+        self.assertEqual(avatar.dt_from, self.dt_test1)
+        self.assertIsNone(avatar.dt_until)
         # TODO also check that id did not change once we can make it True
 
     def test_planned_execute(self):

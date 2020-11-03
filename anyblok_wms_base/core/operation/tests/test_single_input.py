@@ -81,7 +81,7 @@ class TestSingleInputOperation(WmsTestCaseWithPhysObj):
         exc = arc.exception
         self.assertEqual(exc.model_name, self.op_model_name)
 
-    def test_whole_planned_execute_but_not_ready(self):
+    def test_planned_execute_but_not_ready(self):
         # TODO should go to test_operation
         move = self.Move.create(destination=self.stock,
                                 dt_execution=self.dt_test2,

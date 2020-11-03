@@ -83,7 +83,9 @@ def run(db_name, nose_additional_opts):
                       ANYBLOK_DATABASE_DRIVER=driver)
 
     awb_dir = os.path.join(os.path.dirname(sys.argv[0]), 'anyblok_wms_base')
-    doctests([os.path.join(awb_dir, 'utils.py')],
+    doctests([os.path.join(awb_dir, 'utils.py'),
+              os.path.join(awb_dir, 'dbapi.py'),
+              ],
              nose_additional_opts, cover_erase=True)
     bloks_dir = awb_dir
     dropdb(db_name)

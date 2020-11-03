@@ -9,21 +9,20 @@
 from copy import deepcopy
 import warnings
 
-from sqlalchemy import CheckConstraint
 from sqlalchemy import Index
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import orm
-from sqlalchemy import or_
+from sqlalchemy.dialects.postgresql import ExcludeConstraint
 
 from anyblok import Declarations
 from anyblok.column import Text
 from anyblok.column import Selection
 from anyblok.column import Integer
-from anyblok.column import DateTime
 from anyblok.relationship import Many2One
 from anyblok.field import Function
-from anyblok_postgres.column import Jsonb
+from anyblok_postgres.column import Jsonb, TsTzRange
 
+from anyblok_wms_base.dbapi import TimeSpan
 from anyblok_wms_base.utils import dict_merge
 from anyblok_wms_base.constants import (
     AVATAR_STATES,
@@ -337,12 +336,8 @@ class PhysObj:
             tail = tail.filter(
                 Avatar.state.in_(('present', ) + tuple(additional_states)))
 
-        if at_datetime is DATE_TIME_INFINITY:
-            tail = tail.filter(Avatar.dt_until.is_(None))
-        elif at_datetime is not None:
-            tail = tail.filter(Avatar.dt_from <= at_datetime,
-                               or_(Avatar.dt_until.is_(None),
-                                   Avatar.dt_until > at_datetime))
+        if at_datetime is not None:
+            tail = tail.filter(Avatar.timespan.contains(at_datetime))
         cte = cte.union_all(tail)
         return cte
 
@@ -378,8 +373,10 @@ class PhysObj:
         """
         Avatar = self.Avatar
         return (Avatar.query()
-                .filter(Avatar.state.in_(('present', 'future')))
-                .filter_by(obj=self, dt_until=None)
+                .filter(Avatar.state.in_(('present', 'future')),
+                        Avatar.obj == self,
+                        Avatar.timespan.contains(DATE_TIME_INFINITY)
+                        )
                 .first())
 
 
@@ -643,13 +640,20 @@ class Avatar:
     for a discussion of what this should actually mean.
     """
 
-    dt_from = DateTime(label="Exist (or will) from this date & time",
-                       nullable=False)
-    """Date and time from which the Avatar is meaningful, inclusively.
+    # default avoid None to occur in intermediate steps before
+    # serialization (seen only in python3.5 and upcoming
+    # refactor will use None anyway as indeterminate marker
+    timespan = TsTzRange(nullable=False)
+    """Time range during with the Avatar is meaningful.
 
-    Functionally, even though the default in creating Operations will be
-    to use the current date and time, this is not to be confused with the
-    time of creation in the database, which we don't care much about.
+    The bounds encode date&time with timezone information.
+    At the time of this writing, the lower bound is always inclusive, whereas
+    the upper bound is exclusive, but nothing really enforces that.
+
+    The lower bound of this time range is functionally not to be
+    confused with the time of creation in the database, which we don't care
+    much about, even though the default in creating Operations will be
+    to use the current date and time.
 
     The actual meaning really depends on the value of the :attr:`state`
     field:
@@ -665,29 +669,23 @@ class Avatar:
       If the end application does serious time prediction, it can use it
       freely.
 
-    In all cases, this doesn't mean that the very same PhysObj aren't present
-    at an earlier time with the same state, location, etc. That earlier time
-    range would simply be another Avatar (use case: moving back and forth).
+    In all cases, this doesn't mean that the very same :class:`PhysObj`
+    aren't present outside the time range` with the same state, location, etc.
+    That earlier time range would simply be another Avatar, and it would even
+    be incorrect for the core to merge them if adjacent, for traceability
+    reasons (moving back and forth).
     """
 
-    dt_until = DateTime(label="Exist (or will) until this date & time")
-    """Date and time until which the Avatar record is meaningful, exclusively.
+    dt_from = Function(fget='_dt_from_get',
+                       fset='_dt_from_set',
+                       fexpr='_dt_from_expr')
+    """Convenience function field for the lower bound of :attr:`timespan`
+    """
 
-    Like :attr:`dt_from`, the meaning varies according to the value of
-    :attr:`state`:
-
-    + In the ``past`` state, this is supposed to be a faithful
-      representation of reality: apart from the special case of formal
-      :ref:`Splits and Aggregates <op_split_aggregate>`, the goods
-      really left this location at these date and time.
-
-    + In the ``present`` and ``future`` states, this is purely
-      theoretical, and the same remarks as for the :attr:`dt_from` field
-      apply readily.
-
-    In all cases, this doesn't mean that the very same goods aren't present
-    at an later time with the same state, location, etc. That later time
-    range would simply be another Avatar (use case: moving back and forth).
+    dt_until = Function(fget='_dt_until_get',
+                        fset='_dt_until_set',
+                        fexpr='_dt_until_expr')
+    """Convenience function field for the upper bound of :attr:`timespan`
     """
 
     outcome_of = Many2One(index=True,
@@ -709,13 +707,78 @@ class Avatar:
 
     @classmethod
     def define_table_args(cls):
-        return super().define_table_args() + (
-                CheckConstraint('dt_until IS NULL OR dt_until >= dt_from',
-                                name='dt_range_valid'),
-                Index("idx_avatar_present_unique",
-                      cls.obj_id, unique=True,
-                      postgresql_where=(cls.state == 'present'))
-            )
+        """Add specific indexes and constraints.
+
+        If the ``btree_gist`` PostgreSQL extension is present (a much
+        recommended situation), we can add an exclusion rule that
+        prevents firmly any overlapping of the Avatars of a given Physical
+        Object.
+
+        Installing extensions is done per database by this command::
+
+            CREATE EXTENSION btree_gist;
+
+        but that requires PostgreSQL superuser rights, which the current
+        process may not have, even if it's allowed to create the database.
+        It's possible to pre-add it to `template1`, the default template, or
+        to an explicit one to circumvent the condition.
+        """
+        awb_args = [Index("idx_avatar_present_unique",
+                          cls.obj_id, unique=True,
+                          postgresql_where=(cls.state == 'present')),
+                    ]
+        btree_gist_version = cls.registry.execute(
+            "SELECT extversion FROM pg_catalog.pg_extension "
+            "WHERE extname='btree_gist'").first()
+        if btree_gist_version is None:  # pragma: no cover
+            warnings.warn("Please install the btree_gist PostgreSQL extension "
+                          "(usually packaged in postgresql-contrib or similar) "
+                          "for best consistency checks. "
+                          "Installation requires superuser database rights.")
+        else:
+            # prevent overlapping of avatars for a given Physical Object
+            awb_args.append(ExcludeConstraint(('obj_id', '='),
+                                              ('timespan', '&&')))
+        return super().define_table_args() + tuple(awb_args)
+
+    def _dt_from_get(self):
+        return self.timespan.lower
+
+    def _dt_from_set(self, v):
+        ts = self.timespan
+        if ts is None or ts.isempty:
+            ts = self.timespan = TimeSpan(lower=v, bounds='[)')
+        # TODO the underscore certainly means it's not recommended, look
+        # into that
+        ts._lower = v
+        flag_modified(self, '__anyblok_field_timespan')
+
+    @classmethod
+    def _dt_from_expr(cls):
+        return cls.timespan  # TODO NOCOMMIT
+
+    def _dt_until_get(self):
+        return self.timespan.upper
+
+    def _dt_until_set(self, v):
+        ts = self.timespan
+        if ts is None:
+            # can happen during instantiation (only seen with Python3.5
+            # so far). If dt_from is not set later on, some other parts
+            # of AWB should complain, but we have no choice at this point
+            self.timespan = TimeSpan(lower=None, upper=v, bounds='[)')
+            return
+        if ts.isempty and v is not None:
+            # TODO precise exc
+            raise RuntimeError("Avatar timespan lower bound can't be None")
+        # TODO the underscore certainly means it's not recommended, look
+        # into that
+        ts._upper = v
+        flag_modified(self, '__anyblok_field_timespan')
+
+    @classmethod
+    def _dt_until_expr(cls):
+        return cls.timespan  # TODO NOCOMMIT
 
     def _goods_get(self):
         deprecation_warn_goods()

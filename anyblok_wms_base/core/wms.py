@@ -6,12 +6,10 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
-from sqlalchemy import or_
 from sqlalchemy import not_
 from sqlalchemy import func
 from sqlalchemy import orm
 from anyblok import Declarations
-from anyblok_wms_base.constants import DATE_TIME_INFINITY
 
 register = Declarations.register
 Model = Declarations.Model
@@ -134,12 +132,8 @@ class Wms:
                     "to specify the 'at_datetime' kwarg".format(
                         additional_states))
 
-        if at_datetime is DATE_TIME_INFINITY:
-            query = query.filter(Avatar.dt_until.is_(None))
-        elif at_datetime is not None:
-            query = query.filter(Avatar.dt_from <= at_datetime,
-                                 or_(Avatar.dt_until.is_(None),
-                                     Avatar.dt_until > at_datetime))
+        if at_datetime is not None:
+            query = query.filter(Avatar.timespan.contains(at_datetime))
         if additional_filter is not None:
             query = additional_filter(query)
         return query

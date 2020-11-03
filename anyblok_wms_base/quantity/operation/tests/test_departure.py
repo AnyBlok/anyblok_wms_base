@@ -6,6 +6,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public License,
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
+from anyblok_wms_base.dbapi import TimeSpan
 from anyblok_wms_base.testing import WmsTestCaseWithPhysObj
 
 
@@ -57,6 +58,7 @@ class TestDeparture(WmsTestCaseWithPhysObj):
                                past=(3, self.dt_test1))
 
     def test_partial_planned_execute(self):
+        self.avatar.state = 'present'
         dep = self.Departure.create(quantity=1,
                                     state='planned',
                                     dt_execution=self.dt_test2,
@@ -66,7 +68,6 @@ class TestDeparture(WmsTestCaseWithPhysObj):
         self.assertEqual(split.type, 'wms_split')
         self.assert_singleton(split.follows, value=self.arrival)
 
-        self.avatar.state = 'present'
         self.assert_quantities(future=(2, self.dt_test2),
                                present=3,
                                past=(3, self.dt_test1))
@@ -75,7 +76,9 @@ class TestDeparture(WmsTestCaseWithPhysObj):
 
         sent = dep.input
         self.assertEqual(sent.state, 'past')
-        self.assertEqual(sent.dt_until, self.dt_test3)
+        self.assertEqual(sent.timespan, TimeSpan(lower=self.dt_test1,
+                                                 upper=self.dt_test3,
+                                                 bounds='[)'))
         self.assertEqual(sent.obj.quantity, 1)
         # dt_until being exclusive,
         # at self.dt_test3 the physical objects were already sent,

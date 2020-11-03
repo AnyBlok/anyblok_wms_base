@@ -37,6 +37,7 @@ env:
 
 script:
   - flake8 anyblok_wms_base
+  - psql -c "CREATE EXTENSION btree_gist" template1
   - python3 run_all_tests.py -- -v
 
 after_success:

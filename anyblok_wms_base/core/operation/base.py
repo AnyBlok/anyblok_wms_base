@@ -19,6 +19,7 @@ from anyblok.relationship import Many2One
 
 from anyblok_wms_base.utils import NonZero
 from anyblok_wms_base.constants import OPERATION_STATES, OPERATION_TYPES
+from anyblok_wms_base.dbapi import TimeSpan
 from anyblok_wms_base.exceptions import (
     OperationMissingInputsError,
     OperationInputsError,
@@ -48,20 +49,16 @@ class HistoryInput:
     """
     operation = Many2One(model='Model.Wms.Operation',
                          index=True,
+                         nullable=False,
                          primary_key=True,
                          foreign_key_options={'ondelete': 'cascade'})
     """The Operation we are interested in."""
 
     avatar = Many2One(model='Model.Wms.PhysObj.Avatar',
                       primary_key=True,
+                      nullable=False,
                       foreign_key_options={'ondelete': 'cascade'})
     """One of the inputs of the :attr:`operation`."""
-
-    orig_dt_until = DateTime(label="Original dt_until of avatars")
-    """Saving the original ``dt_until`` value of the :attr:`Avatar <avatar>`
-
-    This is needed for :ref:`cancel and oblivion <op_cancel_revert_obliviate>`
-    """
 
 
 @register(Wms)
@@ -283,6 +280,10 @@ class Operation:
     __str__ = __repr__
 
     def link_inputs(self, inputs=None, clear=False, **fields):
+        # TODO this method should also take care of timespans of the inputs,
+        # rather than letting all concrete classes deal with it. This is
+        # a leftover of the times where we didn't always have
+        # dt_from = outcome_of.dt_execution and dt_until=self.dt_execution
         HI = self.registry.Wms.Operation.HistoryInput
         if clear:
             HI.query().filter(HI.operation == self).delete(
@@ -290,7 +291,83 @@ class Operation:
         for avatar in inputs:
             HI.insert(avatar=avatar,
                       operation=self,
-                      orig_dt_until=avatar.dt_until)
+                      )
+
+    def set_inputs_upper_timespan_bounds(self, inputs, terminal=True):
+        """Ensure that all inputs time spans end at `self.dt_execution`
+
+        A terminal Avatar not in the ``past`` state should always be future
+        unbound. If that's not true, we take the opportunity to raise
+        :class:`AvatarError`
+
+        :param inputs: should be same as `self.inputs`, but the current callers
+                       know them already.
+        :param terminal: same meaning as in :meth:`create`
+        """
+        for inp in inputs:
+            if terminal and inp.dt_until is not None:
+                raise OperationInputsError(
+                    self,
+                    "Input {avatar!r} is not terminal: it already has "
+                    "a finite timespan upper bound",
+                    avatar=inp)
+            ts = inp.timespan
+            inp.timespan = TimeSpan(
+                lower=inp.outcome_of.dt_execution if ts.isempty else ts.lower,
+                upper=self.dt_execution,
+                bounds="[)")
+            inp.dt_until = self.dt_execution
+
+    def set_outcomes_lower_timespan_bounds(self):
+        """Make the time span of all outcomes start at `self.dt_execution`
+
+        For now, this is a facility callable by concrete operation classes,
+        maybe it'll be part of the standard :meth:`execute` later on.
+
+        It takes care of the case were the timespan is empty.
+
+        This will be much simpler and faster once we finalize our conventions
+        for indeterminate Avatars.
+        """
+        upper_from_follower = []
+        out_upper = {}
+        outcomes = self.outcomes
+        for outcome in outcomes:
+            ts = outcome.timespan
+            if not ts.isempty:
+                upper = ts.upper
+                if upper is not None and upper < self.dt_execution:
+                    # should not happen thanks to alter_dt_execution
+                    # being part of execute(), but better enforce it
+                    raise OperationError(self,
+                                         "outcome {outcome} has an upper "
+                                         "timespan bound earlier than "
+                                         "date of execution",
+                                         outcome=outcome)
+                out_upper[outcome] = upper
+            else:
+                # we'll take care of all of these ones with one query
+                upper_from_follower.append(outcome.id)
+
+        if upper_from_follower:
+            Wms = self.registry.Wms
+            Operation = Wms.Operation
+            HI = Operation.HistoryInput
+            Avatar = Wms.PhysObj.Avatar
+
+            query = (self.registry.query(Avatar, Operation.dt_execution)
+                     .filter(Avatar.id.in_(upper_from_follower))
+                     .join(HI, HI.avatar_id == Avatar.id)
+                     .join(Operation, HI.operation_id == Operation.id)
+                     .add_entity(Operation)
+                     )
+            # can't feed SQLA results directly to update()
+            out_upper.update((row[0], row[1]) for row in query.all())
+
+        for outcome in outcomes:
+            outcome.timespan = TimeSpan(lower=self.dt_execution,
+                                        upper=out_upper[outcome],
+                                        bounds='[)')
 
     def leaf_outcomes(self):
         """Return those of :attr:`outcomes` that aren't inputs of Operations.
@@ -305,7 +382,7 @@ class Operation:
                 .all())
 
     @classmethod
-    def create(cls, state='planned', inputs=None,
+    def create(cls, state='planned', terminal=True, inputs=None,
                dt_execution=None, dt_start=None, **fields):
         """Main method for creation of operations
 
@@ -328,6 +405,11 @@ class Operation:
            value of the attr:`dt_execution` right at creation. If
            ``state==planned``, this is mandatory. Otherwise, it defaults to
            the current date and time (:meth:`datetime.now`)
+        :param terminal:
+           can be set to ``False`` in exceptional cases where some of the
+           inputs are already inputs of some other Operation. This is obviously
+           inconsistent as an end result, but it can happen in the course
+           of planification refinements.
         :return Operation: concrete instance of the appropriate Operation
                            subclass.
 
@@ -361,6 +443,7 @@ class Operation:
         op = cls.insert(state=state, dt_execution=dt_execution, **fields)
         if inputs is not None:  # happens with creative Operations
             op.link_inputs(inputs)
+            op.set_inputs_upper_timespan_bounds(inputs, terminal=terminal)
         op.after_insert()
         return op
 
@@ -581,10 +664,11 @@ class Operation:
         Depending on the needs, it might be interesting to avoid
         actually fetching all those records.
 
-        :return: a generator of pairs (goods, their original ``dt_until``)
+        :return: a generator of pairs (avatar, tuple of original values)
+        TODO this is probably a remnant, I can't think of anything to
+        restore any more (storing original dt_until is a thing of the past)
         """
-        # TODO simple n-column query instead
-        return ((hi.avatar, hi.orig_dt_until)
+        return ((hi.avatar, ())
                 for hi in self.query_history_input().all())
 
     def reset_inputs_original_values(self, state=None):
@@ -599,10 +683,10 @@ class Operation:
         their records, but work directly on ids (and maybe do this in one pass
         with a clever UPDATE query).
         """
-        for avatar, dt_until in self.iter_inputs_original_values():
+        for avatar, orig_vals in self.iter_inputs_original_values():
             if state is not None:
                 avatar.state = state
-            avatar.update(dt_until=dt_until)
+            avatar.dt_until = None  # the avatar is terminal again
 
     @classmethod
     def check_create_conditions(cls, state, dt_execution,
@@ -837,6 +921,62 @@ class Operation:
         for follower in self.followers:
             follower.input_location_altered()
 
+    def outcomes_by_follower(self):
+        """Return a dict (follower op) -> (outcomes in its inputs).
+
+        The key `None` is for those outcomes that are terminal.
+        """
+        Wms = self.registry.Wms
+        Operation = Wms.Operation
+        HI = Operation.HistoryInput
+        Avatar = Wms.PhysObj.Avatar
+        res = (self.registry.query(Avatar)
+               .filter_by(outcome_of=self)
+               .outerjoin(HI, HI.avatar_id == Avatar.id)
+               .outerjoin(Operation, HI.operation_id == Operation.id)
+               .add_entity(Operation)
+               .all()
+               )
+        obf = {}
+        for av, op in res:  # TODO better use an array_agg or something
+            obf.setdefault(op, []).append(av)
+        return obf
+
+    def _postpone_execution(self, new_dt, inputs, outcomes):
+        """Internal subcase of :meth:`alter_dt_execution`.
+
+        Do not use directly, lacks some protections
+        """
+        old_dt = self.dt_execution
+        logger.debug("Starting postponing planified execution of %r "
+                     "from %s to %s", self, old_dt, new_dt)
+        self.dt_execution = new_dt
+
+        logger.debug("Postponing of %s(%d) from %s to %s: "
+                     "outcomes and followers",
+                     self.__class__.__name__, self.id, old_dt, new_dt)
+        for follower, outcomes in self.outcomes_by_follower().items():
+            if follower is None:
+                for outcome in outcomes:
+                    outcome.dt_from = new_dt
+            elif new_dt > follower.dt_execution:
+                follower.alter_dt_execution(new_dt)
+            else:
+                follower.set_inputs_upper_timespan_bounds(outcomes,
+                                                          terminal=False)
+                for outcome in outcomes:
+                    outcome.dt_from = new_dt
+
+            self.registry.flush()
+
+        logger.debug("Postponing of %s(%d) from %s to %s: doing inputs",
+                     self.__class__.__name__, self.id, old_dt, new_dt)
+        for inp in inputs:
+            inp.timespan = TimeSpan(lower=inp.outcome_of.dt_execution,
+                                    upper=new_dt,
+                                    bounds='[)')
+        self.registry.flush()
+
     def alter_dt_execution(self, new_dt):
         """Change the date/time execution of a planned Operation.
 
@@ -859,39 +999,36 @@ class Operation:
         which is not supported yet, but that's a different story)
         """
         self.check_alterable()
-        self.dt_execution = new_dt
-        for av in self.inputs:
-            if av.dt_from > new_dt:
-                # TODO more precise exc
-                raise OperationError(self,
-                                     "Can't alter dt_execution to "
-                                     "before input presence time")
-            av.dt_until = new_dt
-        Wms = self.registry.Wms
-        Operation = Wms.Operation
-        HI = Operation.HistoryInput
-        Avatar = Wms.PhysObj.Avatar
-        res = (self.registry.query(Avatar)
-               .filter_by(outcome_of=self)
-               .outerjoin(HI, HI.avatar_id == Avatar.id)
-               .outerjoin(Operation, HI.operation_id == Operation.id)
-               .add_entity(Operation)
-               .all()
-               )
-        followers = {}  # op -> input avatars
-        for av, op in res:  # TODO better use an array_agg or something
-            followers.setdefault(op, []).append(av)
+        # doing all graph queries first, to avoid the traps of triggering
+        # constraints because of autoflush
+        inputs, outcomes = self.inputs, self.outcomes
+        if any(av.dt_from is not None and av.dt_from > new_dt
+               for av in inputs):
+            # av.dt_from can be None if av.timespan is empty,
+            # which makes this sanity check not comprehensive.
+            # On production databases, we expect to have
+            # the strong non-overlapping EXCLUDE constraint, but this check
+            # is still useful as an easier to debug condition.
+            # TODO more precise exc
+            raise OperationError(self,
+                                 "Can't alter dt_execution to "
+                                 "before input presence time")
 
-        for follower, avs in followers.items():
-            for av in avs:
-                av.dt_from = new_dt
-                dt_until = av.dt_until
-                if dt_until is not None:
-                    # minimal consistent change (follower's alteration
-                    # could change it further)
-                    av.dt_until = max(dt_until, new_dt)
-            if follower is not None and new_dt > follower.dt_execution:
-                follower.alter_dt_execution(new_dt)
+        old_dt = self.dt_execution
+        if new_dt > old_dt:
+            return self._postpone_execution(new_dt, inputs, outcomes)
+
+        # that's the simplest and cheapest case, but it's far from
+        # being the frequent one: outcomes timespans just get wider
+        self.dt_execution = new_dt
+
+        #  takes care of empty cases
+        self.set_inputs_upper_timespan_bounds(inputs, terminal=False)
+        self.registry.flush()
+
+        # this takes care of empty cases as well
+        self.set_outcomes_lower_timespan_bounds()
+        self.registry.flush()
 
     def transitive_followers(self, seen=None):
         """Return a list of transitive followers, in execution order

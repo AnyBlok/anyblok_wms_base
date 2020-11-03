@@ -117,7 +117,43 @@ planification, and maybe implementations of
 :ref:`improvement_operation_superseding` in a way that'd be akin to the
 obsolescence markers of Mercurial, but that's probably too far fetched.
 
-Decision about all this postponed until version 0.9
+Implementation based on date/time ranges
+++++++++++++++++++++++++++++++++++++++++
+
+.. note:: August 2019 addendum, part of migration to date/time ranges
+
+.Here's a plan that should work, using the replacement of
+``dt_from`` and ``dt_until`` by a range
+(:py:attr:`timespan <anyblok_wms_base.core.physobj.main.Avatar.timespan>`) and
+the :py:data:`infinity <anyblok_wms_base.dbapi.DATE_TIME_INFINITY>` value:
+
+- timespan ``None``: undetermined non terminal Avatar
+- timespan ``[infinity, infinity]``: undetermined
+  terminal Avatar (still appears in future quantity queries
+  at infinity). The ``[infinity, None)`` value would probably also
+  work and provide easier compatibility (the test for terminality
+  would be that the the timespan upper bound is ``None``, same as it
+  is now for semi-determinate Avatars).
+- all these indetermined Avatars would be produced by Operations whose
+  ``dt_execution`` is "indeterminate", i.e., ``None`` or maybe infinity,
+  provied that infinity becomes the default value in ``create()``.
+  In particular, we'd stop initializing ``dt_execution``
+  from the inputs' ``dt_from`` by default.
+- upon execution of an Operation with previously indeterminate
+  ``dt_execution``, we'd simply make its outcomes
+  semi-determinate: ``[dt_execution, None)``
+  (maybe ``[dt_execution, infinity]``, depending on the choice made
+  for terminal indeterminate Avatar above). Nothing would have to be
+  propagated, since all
+  descendent Avatars of an indeterminate one would be indeterminate.
+- data migration: nothing to be done, assuming migration to timespans
+  would have already been done. The upcoming
+  timespan support already deals with all corner cases
+  (notably related to empty timespans). Existing
+  Operations jsut wouldn't get the performance boost and the robustness of
+  the new, simpler scheme. Some cleanups could be decided and
+  implemented later, when most ``future`` Avatars of production
+  database created before this change would be at least ``present``.
 
 .. _improvement_federation:
 

@@ -68,17 +68,16 @@ class TestDeparture(WmsTestCaseWithPhysObj):
 
     def test_whole_planned_cancel(self):
         self.avatar.state = 'present'
-        self.avatar.dt_until = self.dt_test3
         dep = self.Departure.create(state='planned',
                                     dt_execution=self.dt_test2,
                                     input=self.avatar)
         dep.cancel()
 
-        new_goods = self.single_result(self.Avatar.query())
-        self.assertEqual(new_goods.state, 'present')
-        self.assertEqual(new_goods.dt_from, self.dt_test1)
-        self.assertEqual(new_goods.dt_until, self.dt_test3)
-        self.assertEqual(new_goods.location, self.incoming_loc)
+        self.assertEqual(self.single_result(self.Avatar.query()), self.avatar)
+        self.assertEqual(self.avatar.state, 'present')
+        self.assertEqual(self.avatar.dt_from, self.dt_test1)
+        self.assertIsNone(self.avatar.dt_until)
+        self.assertEqual(self.avatar.location, self.incoming_loc)
 
     def test_whole_done(self):
         self.avatar.update(state='present')
@@ -100,10 +99,12 @@ class TestDeparture(WmsTestCaseWithPhysObj):
                                     dt_execution=self.dt_test2,
                                     input=self.avatar)
         dep.obliviate()
-        new_goods = self.single_result(self.Avatar.query())
-        self.assertEqual(new_goods.state, 'present')
-        self.assertEqual(new_goods.dt_from, self.dt_test1)
-        self.assertEqual(new_goods.location, self.incoming_loc)
+
+        self.assertEqual(self.single_result(self.Avatar.query()), self.avatar)
+        self.assertEqual(self.avatar.state, 'present')
+        self.assertEqual(self.avatar.dt_from, self.dt_test1)
+        self.assertIsNone(self.avatar.dt_until)
+        self.assertEqual(self.avatar.location, self.incoming_loc)
 
     def test_repr(self):
         dep = self.Departure.create(state='planned',

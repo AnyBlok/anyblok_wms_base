@@ -33,16 +33,13 @@ class Departure(Mixin.WmsSingleInputOperation, Operation):
 
     def depart(self):
         """Common logic for final departure step."""
-        self.input.update(state='past', reason=self,
-                          dt_until=self.dt_execution)
+        self.input.state = 'past'
 
     def after_insert(self):
         """Either finish right away, or represent the future decrease."""
         self.registry.flush()
         if self.state == 'done':
             self.depart()
-        else:
-            self.input.dt_until = self.dt_execution
 
     def execute_planned(self):
         self.registry.flush()

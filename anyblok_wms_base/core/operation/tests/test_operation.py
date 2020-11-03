@@ -10,6 +10,7 @@ from datetime import datetime
 from datetime import timedelta
 
 from .testcase import WmsTestCase
+from anyblok_wms_base.dbapi import TimeSpan
 from anyblok_wms_base.exceptions import (
     OperationError,
     OperationInputsError,
@@ -97,23 +98,38 @@ class TestOperation(WmsTestCase):
         op.link_inputs(inputs=avatars[:1])
         self.assertEqual(op.inputs, avatars[:1])
         hi = self.single_result(HI.query().filter(HI.operation == op))
-        self.assertEqual(hi.orig_dt_until, self.dt_test1)
         self.assert_singleton(op.follows, value=arrival)
 
         op.link_inputs(inputs=avatars[1:2])
         self.assertEqual(op.inputs, avatars[:2])
-        his = HI.query().filter(HI.operation == op).order_by(
-            HI.orig_dt_until).all()
+        his = set(HI.query().filter(HI.operation == op).all())
         self.assertEqual(len(his), 2)
-        self.assertEqual(his[0], hi)
-        self.assertEqual(his[1].orig_dt_until, self.dt_test2)
+        self.assertTrue(hi in his)
         self.assert_singleton(op.follows, value=arrival)
 
         op.link_inputs(inputs=avatars[2:], clear=True)
         self.assertEqual(op.inputs, avatars[2:])
         hi = self.single_result(HI.query().filter(HI.operation == op))
-        self.assertEqual(hi.orig_dt_until, self.dt_test3)
         self.assert_singleton(op.follows, value=arrival)
+
+    def test_inputs_terminal(self):
+        """In regular Operation creations, all inputs should be terminal."""
+
+        arrival = self.Operation.Arrival.create(physobj_type=self.physobj_type,
+                                                dt_execution=self.dt_test1,
+                                                location=self.incoming_loc,
+                                                state='planned')
+        arrived = arrival.outcome
+        self.Operation.Move.create(input=arrived,
+                                   destination=self.stock,
+                                   dt_execution=self.dt_test2)
+
+        with self.assertRaises(OperationInputsError) as arc:
+            self.Operation.Move.create(input=arrived,
+                                       destination=self.stock,
+                                       dt_execution=self.dt_test3)
+        exc = arc.exception
+        self.assertEqual(exc.kwargs.get('avatar'), arrived)
 
     def test_before_insert(self):
         other_loc = self.insert_location('other')
@@ -168,13 +184,13 @@ class TestOperation(WmsTestCase):
                                                 location=self.incoming_loc,
                                                 dt_execution=self.dt_test1,
                                                 state='planned')
-        goods = self.assert_singleton(arrival.outcomes)
+        avatar1 = self.assert_singleton(arrival.outcomes)
         Move = self.Operation.Move
-        Move.create(input=goods,
-                    dt_execution=self.dt_test2,
-                    destination=self.stock,
-                    state='planned')
-        move2 = Move.create(input=goods,
+        move1 = Move.create(input=avatar1,
+                            dt_execution=self.dt_test2,
+                            destination=self.stock,
+                            state='planned')
+        move2 = Move.create(input=move1.outcome,
                             dt_execution=self.dt_test2,
                             destination=self.stock,
                             state='planned')
@@ -225,6 +241,7 @@ class TestOperation(WmsTestCase):
         self.assert_singleton(move1_rev.follows, value=move2_rev)
 
         move2_rev.execute(self.dt_test3 + timedelta(1))
+
         rev_dt2 = self.dt_test3 + timedelta(2)
         move1_rev.execute(rev_dt2)
 
@@ -395,3 +412,19 @@ class TestOperation(WmsTestCase):
 
         finally:
             self.Operation.followers = followers_orig_prop
+
+    def test_outcome_upper_bound_inconsistency(self):
+        op = self.Operation.Arrival.create(location=self.incoming_loc,
+                                           state='planned',
+                                           dt_execution=self.dt_test2,
+                                           physobj_type=self.physobj_type)
+        outcome = op.outcome
+        outcome.timespan = TimeSpan(lower=self.dt_test1,
+                                    upper=self.dt_test1,
+                                    bounds='[]')
+        with self.assertRaises(OperationError) as arc:
+            op.set_outcomes_lower_timespan_bounds()
+        exc = arc.exception
+        str(exc)
+        repr(exc)
+        self.assertEqual(exc.kwargs.get('outcome'), outcome)
