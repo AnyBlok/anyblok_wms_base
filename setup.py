@@ -28,11 +28,10 @@ anyblok_init = [
 ]
 
 requirements = [
-    'anyblok>=0.22.5',
+    'anyblok<1.0.0',
+    'sqlalchemy==1.3.23',
     'anyblok_postgres',
-    'psycopg2-binary==2.8.3',
-    'sqlalchemy==1.3.6',
-    'alembic==1.0.11',
+    'alembic==1.5.2',
 ]
 
 # it is a bit lame, because ideally we'd prefer to
