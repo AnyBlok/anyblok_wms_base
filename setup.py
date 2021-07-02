@@ -28,7 +28,7 @@ anyblok_init = [
 ]
 
 requirements = [
-    'anyblok<1.1.0',
+    'anyblok<1.2.0',
     'sqlalchemy==1.3.23',
     'anyblok_postgres',
     'alembic==1.5.2',
