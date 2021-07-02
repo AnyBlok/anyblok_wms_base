@@ -1405,7 +1405,7 @@ class TestTypedExpression(BlokTestCase):
 
     def test_seq(self):
         self.registry.System.Sequence.insert(code='prd',
-                                             number=12,
+                                             start=12,
                                              formater='PRD/{seq}')
         self.assertEqual(self.eval_typed_expr('sequence', 'prd'), 'PRD/12')
         self.assertEqual(self.eval_typed_expr('sequence', 'prd'), 'PRD/13')
