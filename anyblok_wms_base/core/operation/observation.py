@@ -106,6 +106,7 @@ class Observation(Mixin.WmsSingleInputOperation,
         dt_exec = self.dt_execution
 
         inp_av.update(dt_until=dt_exec, state='past')
+
         physobj.Avatar.insert(
             obj=physobj,
             state='future' if state == 'planned' else 'present',
@@ -113,6 +114,8 @@ class Observation(Mixin.WmsSingleInputOperation,
             location=self.input.location,
             dt_from=dt_exec,
             dt_until=None)
+
+        self.insert_before(avatar=inp_av)
 
         if self.state == 'done':
             self.apply_properties()
@@ -210,3 +213,21 @@ class Observation(Mixin.WmsSingleInputOperation,
         # reversal trivial, it's enough to return the reversal of that
         # single follower
         return next(iter(follows))
+
+    def insert_before(self, avatar):
+        """Inserting an Observation before some other operation
+
+        When an Observation is created, the Observation's input avatar 
+        could already be defined as an input of a previously created Operation.
+        If so, we replace this Operation's input avatar with the outcome
+        created by the Observation
+        :param avatar:
+            input Avatar of another Operation to look for
+        """
+        HI = self.registry.Wms.Operation.HistoryInput
+        query = HI.query().filter(HI.avatar_id == avatar.id, 
+                                  HI.operation_id != self.id)
+        if query.count():
+            hi = query.one()
+            hi.avatar = self.outcome
+
