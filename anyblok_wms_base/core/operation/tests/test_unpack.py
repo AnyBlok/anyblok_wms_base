@@ -7,6 +7,7 @@
 # v. 2.0. If a copy of the MPL was not distributed with this file,You can
 # obtain one at http://mozilla.org/MPL/2.0/.
 from anyblok_wms_base.testing import WmsTestCase
+from anyblok_wms_base.testing import ConcurrencyBlokTestCase
 from anyblok_wms_base.exceptions import (
     OperationInputsError,
 )
@@ -721,3 +722,66 @@ class TestUnpack(WmsTestCase):
         # the new Property has been set
         for av in unp.outcomes:
             self.assertEqual(av.obj.get_property('foo'), 7)
+
+class TestUnpackConcurrency(ConcurrencyBlokTestCase, WmsTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.Operation1 = self.registry.Wms.Operation
+        self.Avatar2 = self.registry2.Wms.PhysObj.Avatar
+        self.Unpack1 = self.registry.Wms.Operation.Unpack
+        self.Unpack2 = self.registry2.Wms.Operation.Unpack
+
+
+    @classmethod
+    def setUpCommonData(cls):
+        super().setUpCommonData()
+        cls.stock = cls.cls_insert_location("STOCK")
+        cls.unpacked_type = cls.Wms.PhysObj.Type.insert(code='Unpacked')
+        cls.packed_physobj_type = cls.Wms.PhysObj.Type.insert(
+            label="Pack",
+            code='PACK',
+            behaviours=dict(unpack=dict(
+                outcomes=[
+                    dict(type=cls.unpacked_type.code,
+                         quantity=3,
+                         forward_properties=['foo', 'bar'],
+                         required_properties=['foo'],
+                         )
+                ],
+            ))
+        )
+        cls.arrival = cls.Wms.Operation.Arrival.create(
+            physobj_type=cls.packed_physobj_type,
+            location=cls.stock,
+            # dt_execution=self.dt_test1,
+            physobj_properties=dict(foo=3),
+            state='done'
+        )
+        assert len(cls.arrival.outcomes) == 1
+        cls.pack = cls.arrival.outcome
+
+    @classmethod
+    def removeCommonData(cls):
+        cls.Wms.PhysObj.Avatar.query().delete()
+        cls.Wms.Operation.Unpack.query().delete()
+        cls.Wms.Operation.Arrival.query().delete()
+        cls.Wms.Operation.query().delete()
+        cls.Wms.PhysObj.query().delete()
+        cls.Wms.PhysObj.Type.query().delete()
+        super().removeCommonData()
+
+    def test_create_two_unpack_operation_on_same_physobj_avatar_failed(self):
+        # start unpack from request 1 acquire lock on unpacked avatar
+        pack2 = self.Avatar2.query().filter_by(id=self.pack.id).first()
+        self.Unpack1.create(
+            state='done',
+            input=self.pack
+        )
+        # trying to add unpack operation in an other transaction shoud raise
+        # lock errors
+        with self.assertRaises(self.Operation1.OperationCreationRelatedPhysObjLock):
+            self.Unpack2.create(
+                state='done',
+                input=pack2
+            )
