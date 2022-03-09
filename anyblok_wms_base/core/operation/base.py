@@ -10,6 +10,8 @@
 import logging
 from datetime import datetime, timezone
 
+import sqlalchemy
+
 from anyblok import Declarations
 from anyblok.column import String
 from anyblok.column import Selection
@@ -284,10 +286,17 @@ class Operation:
 
     def link_inputs(self, inputs=None, clear=False, **fields):
         HI = self.registry.Wms.Operation.HistoryInput
+        Avatar = self.registry.Wms.PhysObj.Avatar
         if clear:
             HI.query().filter(HI.operation == self).delete(
                 synchronize_session='fetch')
         for avatar in inputs:
+            try:
+                # acquire lock to avoid creating operation twice for same input avatar
+                avatar = Avatar.query().with_for_update(nowait=True, of=Avatar).filter_by(id=avatar.id).first()
+            except sqlalchemy.exc.OperationalError as op_err:
+                self.registry.rollback()
+                raise self.OperationCreationRelatedPhysObjLock(op_err)
             HI.insert(avatar=avatar,
                       operation=self,
                       orig_dt_until=avatar.dt_until)
@@ -922,3 +931,8 @@ class Operation:
             res.insert(0, fol)
             seen.add(fol)
         return res
+
+    class OperationCreationRelatedPhysObjLock(RuntimeError):
+        """Used to rewrap concurrency errors while taking locks."""
+        def __init__(self, db_exc):
+            self.db_exc = db_exc
