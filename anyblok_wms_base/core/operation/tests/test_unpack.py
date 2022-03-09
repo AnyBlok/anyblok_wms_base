@@ -778,8 +778,8 @@ class TestUnpackConcurrency(ConcurrencyBlokTestCase, WmsTestCase):
             state='done',
             input=self.pack
         )
-        # trying to add unpack operation in an other transaction shoud raise
-        # lock errors
+        # trying to add unpack operation in an other transaction should raise
+        # lock error
         with self.assertRaises(self.Operation1.OperationCreationRelatedPhysObjLock):
             self.Unpack2.create(
                 state='done',

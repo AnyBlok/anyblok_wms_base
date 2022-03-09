@@ -10,6 +10,7 @@ import itertools
 from datetime import datetime, timezone
 
 from anyblok_wms_base.testing import BlokTestCase
+from anyblok_wms_base.testing import ConcurrencyBlokTestCase
 from anyblok_wms_base.testing import WmsTestCase
 from anyblok_wms_base.constants import CONTENTS_PROPERTY
 from anyblok_wms_base.exceptions import (
@@ -1418,3 +1419,91 @@ class TestTypedExpression(BlokTestCase):
         repr(exc)
         self.assertEqual(exc.kwargs['expr_type'], 'c0nst')
         self.assertEqual(exc.kwargs['expr_value'], 'bar')
+
+
+class TestAssemblyConcurrency(ConcurrencyBlokTestCase, WmsTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.Operation1 = self.registry.Wms.Operation
+        self.Avatar2 = self.registry2.Wms.PhysObj.Avatar
+        self.Type2 = self.registry2.Wms.PhysObj.Type
+        self.Assembly1 = self.registry.Wms.Operation.Assembly
+        self.Assembly2 = self.registry2.Wms.Operation.Assembly
+
+
+    @classmethod
+    def setUpCommonData(cls):
+        super().setUpCommonData()
+        cls.stock = cls.cls_insert_location("STOCK")
+        cls.component1_type = cls.Wms.PhysObj.Type.insert(code='COMPONENT-1')
+        cls.component2_type = cls.Wms.PhysObj.Type.insert(code='COMPONENT-2')
+        cls.assembly_type = cls.Wms.PhysObj.Type.insert(
+            label="Assembly",
+            code='ASSEMBLY',
+            behaviours={
+                "assembly": {
+                    "default": {
+                        "inputs": [
+                            {
+                                "type": "COMPONENT-1",
+                                "quantity": 1,
+                            },
+                            {
+                                "type": "COMPONENT-2",
+                                "quantity": 1,
+                            },
+                        ],
+                    }
+                }
+            },
+        )
+        cls.c1_1 = cls.Wms.Operation.Arrival.create(
+            physobj_type=cls.component1_type,
+            location=cls.stock,
+            state='done'
+        ).outcome
+        cls.c1_2 = cls.Wms.Operation.Arrival.create(
+            physobj_type=cls.component1_type,
+            location=cls.stock,
+            state='done'
+        ).outcome
+        cls.c2 = cls.Wms.Operation.Arrival.create(
+            physobj_type=cls.component2_type,
+            location=cls.stock,
+            state='done'
+        ).outcome
+
+    @classmethod
+    def removeCommonData(cls):
+        cls.Wms.PhysObj.Avatar.query().delete()
+        cls.Wms.Operation.Assembly.query().delete()
+        cls.Wms.Operation.Arrival.query().delete()
+        cls.Wms.Operation.query().delete()
+        cls.Wms.PhysObj.query().delete()
+        cls.Wms.PhysObj.Type.query().delete()
+        super().removeCommonData()
+
+    def test_create_two_unpack_operation_on_same_physobj_avatar_failed(self):
+        # start unpack from request 1 acquire lock on unpacked avatar
+        available_avatar = self.Avatar2.query().filter_by(
+            id=self.c1_2.id).first()
+        consumed_avatar_txn2 = self.Avatar2.query().filter_by(
+            id=self.c2.id).first()
+        assembly_type_txn2 = self.Type2.query().filter_by(
+            code=self.assembly_type.code).first()
+        self.Assembly1.create(
+            inputs=[self.c1_1, self.c2],
+            outcome_type=self.assembly_type,
+            name="default",
+            state="done",
+        )
+        # trying to add Assembly operation in an other transaction should raise
+        # lock error
+        with self.assertRaises(self.Operation1.OperationCreationRelatedPhysObjLock):
+            self.Assembly2.create(
+                inputs=[available_avatar, consumed_avatar_txn2],
+                outcome_type=assembly_type_txn2,
+                name="default",
+                state="done",
+            )
